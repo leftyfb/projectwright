@@ -171,6 +171,17 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertNotIn("WORKER rc=", result.stdout)
         self.assertIn("[ ] **P101", self.queue.read_text())
 
+    def test_worker_quota_unavailable_does_not_advance_existing_task(self):
+        self.config["quota"] = {"enabled": True}
+        self.save_config()
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("MANAGER decision=no_op", result.stdout)
+        self.assertIn("WORKER rc=3", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+        self.assertFalse((self.project / "worker_journal.json").exists())
+
     def test_manager_quota_refusal_never_starts_worker(self):
         self.config["planning"]["trigger"]["pending_below"] = 2
         self.config["quota"] = {"enabled": True}
