@@ -30,6 +30,14 @@ python3 -B scripts/validate-baseline.py --mode development
 still enforcing the expected file set and running syntax, import, dependency,
 and offline-suite checks. Details: `docs/baseline-validation.md`.
 
+## Decision and configuration contracts
+
+The `project_queue_manager.py --once` JSON and exit-code contract, quota
+sensor semantics, and Telegram multi-recipient parsing/delivery rules are
+specified in `docs/baseline-validation.md`. Current coverage and explicit
+remaining gaps are tracked in `docs/test-coverage-matrix.md` and
+`docs/e2e-test-gaps.md`.
+
 ## Test documentation
 
 - `docs/test-source-inventory.md` — recovered historical test artifacts and
