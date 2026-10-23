@@ -15,8 +15,15 @@ import unittest
 from unittest.mock import patch
 
 SRC = Path(__file__).resolve().parents[2] / "src" / "projectwright"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+if str(SRC) in sys.path:
+    sys.path.remove(str(SRC))
+sys.path.insert(0, str(SRC))
+# Some Hermes test processes pre-import installed scripts. These tests are
+# strictly source-tree tests, so discard only stale modules outside this repo.
+for _module_name in ("project_queue_manager", "project_queue_planner", "pw_dispatch", "pw_project_timer", "project_task_worker"):
+    _loaded = sys.modules.get(_module_name)
+    if _loaded is not None and Path(getattr(_loaded, "__file__", "")).resolve().parent != SRC:
+        sys.modules.pop(_module_name, None)
 
 import project_queue_manager as manager
 import project_queue_planner as planner
@@ -60,13 +67,46 @@ class DispatchFixture(unittest.TestCase):
         (self.project_dir / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
         return cfg
 
-    def run_tick(self, report, *, manager_rc=0, worker_rc=0, worker_stdout=""):
+    def run_tick(self, report=None, *, manager_rc=None, worker_rc=0, worker_stdout="",
+                 manager_stdout=None, manager_stderr=""):
         calls = []
 
         def runner(args, **kwargs):
             calls.append(args)
             if len(calls) == 1:
-                return subprocess.CompletedProcess(args, manager_rc, json.dumps(report), "")
+                stdout = manager_stdout
+                if stdout is None:
+                    payload = dict(report or {})
+                    payload.setdefault("project", self.project)
+                    if payload.get("decision") == "queued":
+                        payload.setdefault("pending", 0)
+                        payload.setdefault("added", 1)
+                        payload.setdefault("task_ids", ["P101"])
+                        payload.setdefault("planning_mode", "tactical")
+                        payload.setdefault("notes_sync", "not_configured")
+                    elif payload.get("decision") == "busy":
+                        payload.setdefault("reason", "Project lock held; skip planning")
+                    elif payload.get("decision") == "blocked":
+                        payload.setdefault("reason", "planning blocked")
+                    elif payload.get("decision") == "no_op":
+                        payload.setdefault("pending", 0)
+                    elif payload.get("decision") == "awaiting_acceptance":
+                        payload.setdefault("pending", 0)
+                        payload.setdefault("reason", "approval required")
+                        payload.setdefault("milestones", ["TEST-001-M1"])
+                    elif payload.get("decision") == "quota_blocked":
+                        payload.setdefault("pending", 0)
+                        payload.setdefault("quota", {"allowed": False})
+                    elif payload.get("decision") == "planner_failed":
+                        payload.setdefault("pending", 0)
+                        payload.setdefault("reason", "planning failed")
+                    stdout = json.dumps(payload)
+                    actual_rc = dispatch.manager_exit_code(payload.get("decision"))
+                else:
+                    actual_rc = 0 if manager_rc is None else manager_rc
+                if manager_rc is not None:
+                    actual_rc = manager_rc
+                return subprocess.CompletedProcess(args, actual_rc, stdout, manager_stderr)
             return subprocess.CompletedProcess(args, worker_rc, worker_stdout, "")
 
         with patch.dict(os.environ, {"HERMES_PROJECT_CONFIG_DIR": str(self.root / "projects")}):
@@ -75,6 +115,165 @@ class DispatchFixture(unittest.TestCase):
 
 
 class TestTick(DispatchFixture):
+    def test_manager_output_contract_rejects_ambiguous_responses(self):
+        valid_queued = {
+            "project": self.project, "decision": "queued", "pending": 0,
+            "added": 1, "task_ids": ["P101"], "planning_mode": "tactical",
+            "notes_sync": "not_configured",
+        }
+        malformed = [
+            ("not-json", 0),
+            ("", 0),
+            (json.dumps({"project": self.project, "decision": "queued"}) + "\nnotice", 0),
+            ('{"project": "fixture", "decision": }', 0),
+            (json.dumps({**valid_queued, "pending": True}), 0),
+            (json.dumps({**valid_queued, "project": "another-project"}), 0),
+            (json.dumps({**valid_queued, "task_ids": ["NOT-A-TASK-ID"]}), 0),
+            (json.dumps({**valid_queued, "notes_sync": ""}), 0),
+            (json.dumps({**valid_queued, "notes_sync": "unexpected"}), 0),
+            (json.dumps({**valid_queued, "branch": "main"}), 0),
+            (json.dumps(valid_queued), 3),
+            ('{"project": "fixture", "decision": "quota_blocked", "pending": 0, "quota": {"allowed": false, "remaining_percent": NaN}}', 4),
+            (json.dumps({"project": self.project, "decision": "no_op", "pending": 0}), 0),
+            (json.dumps({"project": self.project, "decision": "busy",
+                         "reason": "Project lock held; skip planning"}), 0),
+        ]
+        for stdout, manager_rc in malformed:
+            with self.subTest(stdout=stdout, manager_rc=manager_rc):
+                with contextlib.redirect_stderr(io.StringIO()):
+                    result, calls = self.run_tick(
+                        manager_rc=manager_rc, manager_stdout=stdout,
+                        manager_stderr="diagnostics stay on stderr",
+                    )
+            self.assertNotEqual(result, 0)
+            self.assertEqual(len(calls), 1)
+
+    def test_manager_contract_rejects_duplicate_json_keys(self):
+        stdout = ('{"project": "fixture", "project": "fixture", '
+                  '"decision": "no_op", "pending": 0}')
+        with contextlib.redirect_stderr(io.StringIO()):
+            result, calls = self.run_tick(manager_stdout=stdout, manager_rc=3)
+        self.assertEqual((result, len(calls)), (21, 1))
+
+    def test_manager_output_contract_accepts_supported_decision_shapes(self):
+        reports = [
+            (self.queued_report(), 0),
+            ({"project": self.project, "decision": "busy",
+              "reason": "Project lock held; skip planning"}, 2),
+            ({"project": self.project, "decision": "blocked",
+              "reason": "Requirements file missing"}, 2),
+            ({"project": self.project, "decision": "no_op", "pending": 0}, 3),
+            ({"project": self.project, "decision": "disabled"}, 3),
+            ({"project": self.project, "decision": "awaiting_acceptance", "pending": 0,
+              "reason": "approval required", "milestone": "TEST-001-M1"}, 3),
+            ({"project": self.project, "decision": "awaiting_acceptance", "pending": 0,
+              "reason": "approval required", "milestones": ["TEST-001-M1"]}, 3),
+            ({"project": self.project, "decision": "quota_blocked", "pending": 0,
+              "quota": {"allowed": False, "reason": "limited"}}, 4),
+            ({"project": self.project, "decision": "planner_failed", "pending": 0,
+              "reason": "planner unavailable"}, 4),
+        ]
+        for report, returncode in reports:
+            with self.subTest(decision=report["decision"], report=report):
+                self.assertEqual(
+                    dispatch.parse_manager_response(json.dumps(report), self.project, returncode),
+                    report,
+                )
+
+    def test_ready_for_planner_status_decision_is_refused(self):
+        report = {
+            "project": self.project,
+            "decision": "ready_for_planner",
+            "pending": 1,
+        }
+        with contextlib.redirect_stderr(io.StringIO()):
+            result, calls = self.run_tick(
+                manager_rc=4, manager_stdout=json.dumps(report),
+            )
+        self.assertEqual(result, 21)
+        self.assertEqual(len(calls), 1)
+
+    def test_queued_modes_accept_tactical_and_strategic(self):
+        tactical = self.queued_report()
+        strategic = {**tactical, "planning_mode": "strategic"}
+        for report in (tactical, strategic):
+            with self.subTest(planning_mode=report["planning_mode"]):
+                self.assertEqual(
+                    dispatch.parse_manager_response(json.dumps(report), self.project, 0),
+                    report,
+                )
+
+    def queued_report(self):
+        return {
+            "project": self.project,
+            "decision": "queued",
+            "pending": 0,
+            "added": 1,
+            "task_ids": ["P101"],
+            "planning_mode": "tactical",
+            "notes_sync": "not_configured",
+        }
+
+    def test_plan_once_output_is_accepted_by_dispatcher(self):
+        repo = self.root / "worktree"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True)
+        (repo / "README.md").write_text("fixture\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "add", "README.md"], check=True)
+        subprocess.run([
+            "git", "-C", str(repo), "-c", "user.name=Fixture",
+            "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture",
+        ], check=True)
+        requirements = self.project_dir / "requirements.md"
+        requirements.write_text(
+            "## TEST-001 — Fixture requirement\n### TEST-001-M1 — Fixture milestone\n",
+            encoding="utf-8",
+        )
+        cfg = self.config(worktree=repo, planning={
+            "enabled": True,
+            "requirements_file": str(requirements),
+        })
+        Path(cfg["work_log"]).write_text("", encoding="utf-8")
+
+        def fake_planner(_cfg, _prompt, *, timeout):
+            return {"tasks": [{
+                "id": "P101", "kind": "READ",
+                "description": "Review the fixture requirements and summarize next steps",
+                "requirement_id": "TEST-001", "milestone_id": "TEST-001-M1",
+            }]}
+
+        report = planner.plan_once(
+            self.project, self.root / "projects", planner=fake_planner,
+            quota_evaluator=lambda _settings: {"allowed": True},
+        )
+        self.assertEqual(report["decision"], "queued")
+        self.assertEqual(
+            dispatch.parse_manager_response(json.dumps(report), self.project, manager.once_exit_code("queued")),
+            report,
+        )
+
+    def test_valid_exit_code_contract_preserves_busy_and_no_op(self):
+        expected = {
+            "queued": 0, "busy": 2, "blocked": 2, "no_op": 3,
+            "disabled": 3, "awaiting_acceptance": 3,
+            "quota_blocked": 4, "planner_failed": 4,
+        }
+        for decision, code in expected.items():
+            self.assertEqual(manager.once_exit_code(decision), code)
+            self.assertEqual(dispatch.manager_exit_code(decision), code)
+        self.assertEqual(manager.once_exit_code("unknown"), 4)
+        self.assertEqual(manager.once_exit_code(None), 4)
+        with contextlib.redirect_stdout(io.StringIO()):
+            busy, busy_calls = self.run_tick(
+                {"decision": "busy", "reason": "Project lock held; skip planning"},
+                manager_rc=2,
+            )
+            no_op, no_op_calls = self.run_tick(
+                {"decision": "no_op", "pending": 0}, manager_rc=3,
+            )
+        self.assertEqual((busy, len(busy_calls)), (0, 1))
+        self.assertEqual((no_op, len(no_op_calls)), (0, 1))
+
     def test_queued_executes_one(self):
         result, calls = self.run_tick({"decision": "queued"})
         self.assertEqual(result, 0)
@@ -97,15 +296,19 @@ class TestTick(DispatchFixture):
         self.assertEqual(len(calls), 1)
 
     def test_untrusted_no_op_refuses(self):
-        result, calls = self.run_tick({"decision": "no_op"})
+        result, calls = self.run_tick(manager_stdout=json.dumps({
+            "project": self.project, "decision": "no_op",
+        }))
         self.assertNotEqual(result, 0)
         self.assertEqual(len(calls), 1)
 
     def test_planner_failed_never_executes(self):
-        for mode in ("planner_failed", "blocked", "quota_blocked", "busy", "replenish"):
+        for mode in ("planner_failed", "blocked", "quota_blocked", "replenish"):
             result, calls = self.run_tick({"decision": mode})
             self.assertNotEqual(result, 0)
             self.assertEqual(len(calls), 1)
+        result, calls = self.run_tick({"decision": "busy"})
+        self.assertEqual((result, len(calls)), (0, 1))
 
     def test_nonzero_manager_fails_closed(self):
         result, calls = self.run_tick({"decision": "queued"}, manager_rc=2)
@@ -130,15 +333,15 @@ class DispatcherHardening(DispatchFixture):
 
     def test_busy_malformed_or_mismatched_refused(self):
         reports = [
-            ({"decision": "busy", "reason": "different", "project": self.project}, 2),
-            ({"decision": "busy", "reason": "Project lock held; skip planning", "project": "other"}, 2),
-            ({"decision": "busy", "reason": "Project lock held; skip planning", "project": self.project}, 1),
-            ({"decision": "blocked", "reason": "Project lock held; skip planning", "project": self.project}, 2),
+            ({"decision": "busy", "reason": "different", "project": self.project}, 2, 21),
+            ({"decision": "busy", "reason": "Project lock held; skip planning", "project": "other"}, 2, 21),
+            ({"decision": "busy", "reason": "Project lock held; skip planning", "project": self.project}, 1, 21),
+            ({"decision": "blocked", "reason": "Project lock held; skip planning", "project": self.project}, 2, 20),
         ]
-        for report, manager_rc in reports:
+        for report, manager_rc, expected_rc in reports:
             with contextlib.redirect_stderr(io.StringIO()):
                 result, calls = self.run_tick(report, manager_rc=manager_rc)
-            self.assertEqual(result, 20)
+            self.assertEqual(result, expected_rc)
             self.assertEqual(len(calls), 1)
 
     def test_completed_task_summary(self):
@@ -194,10 +397,12 @@ class NoOpContract(unittest.TestCase):
         fixture = DispatchFixture("runTest")
         fixture.setUp()
         try:
-            result, calls = fixture.run_tick({"project": fixture.project, "decision": "no_op"})
+            result, calls = fixture.run_tick(manager_stdout=json.dumps({
+                "project": fixture.project, "decision": "no_op",
+            }))
         finally:
             fixture.doCleanups()
-        self.assertEqual(result, 24)
+        self.assertEqual(result, 21)
         self.assertEqual(len(calls), 1)
 
     def test_pending_noop_still_routes_worker(self):
@@ -242,7 +447,7 @@ class BusyContract(unittest.TestCase):
                              {"decision": "busy", "project": "x", "reason": "wrong"},
                              {"decision": "busy", "project": "other", "reason": "Project lock held; skip planning"}):
                 result, calls = fixture.run_tick(response, manager_rc=2)
-                self.assertEqual(result, 20)
+                self.assertEqual(result, 21)
                 self.assertEqual(len(calls), 1)
         finally:
             fixture.doCleanups()
@@ -374,7 +579,7 @@ class CycleTests(DispatchFixture):
 
         def runner(cmd, **kwargs):
             calls.append(cmd)
-            return subprocess.CompletedProcess(cmd, 0, json.dumps({"decision": "no_op", "pending": 0}), "")
+            return subprocess.CompletedProcess(cmd, 3, json.dumps({"project": self.project, "decision": "no_op", "pending": 0}), "")
 
         result = dispatch.run_tick(self.project, self.scripts, runner=runner)
         self.assertEqual(result, 0)

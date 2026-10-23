@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Project-agnostic, deterministic planning preflight (Stage A; no AI/writes).
+"""Project queue manager and planner entry point.
 
-Does not edit any queue, repository, worker state, or planning state. --once
-only authorizes whether a future planner may be called; it does NOT plan yet.
+--status reports project state. --once invokes plan_once and may run the
+configured planner and persist queue/planning state. For --once, stdout is
+exactly one JSON object; diagnostics belong on stderr.
+Exit codes: 0 queued, 2 busy/blocked, 3 no_op/disabled/awaiting_acceptance,
+4 quota_blocked/planner_failed/unknown refusal; 1 is an execution error.
 """
 from __future__ import annotations
 
@@ -20,6 +23,18 @@ ROW = re.compile(r'^\s*- \[(?P<state>[ x!])\]\s+\*\*(?P<id>[A-Z]+\d+)\s+[—-]\s
 VALID_KINDS = {'READ', 'EDIT', 'TEST', 'COMMIT', 'VERIFY', 'DECIDE'}
 DEFAULT_TRIGGER = {'pending_below': 3, 'review_every_completed_tasks': 6, 'replan_on_blocker': True}
 DEFAULT_QUEUE = {'target_pending': 6, 'max_new_tasks': 5, 'max_pending': 10}
+ONCE_EXIT_CODES = {
+    'queued': 0, 'busy': 2, 'blocked': 2,
+    'no_op': 3, 'disabled': 3, 'awaiting_acceptance': 3,
+    'quota_blocked': 4, 'planner_failed': 4,
+}
+
+
+def once_exit_code(decision: object) -> int:
+    """Map a machine-readable --once decision to its documented process code."""
+    if not isinstance(decision, str):
+        return 4
+    return ONCE_EXIT_CODES.get(decision, 4)
 
 
 def project_config(project: str, root: Path) -> tuple[Path, dict]:
@@ -235,6 +250,8 @@ def main() -> int:
         else:
             result = inspect(args.project, args.config_root, mode=mode)
         print(json.dumps(result, indent=2, sort_keys=True))
+        if mode == 'once':
+            return once_exit_code(result.get('decision'))
         return 0 if result['decision'] not in ('blocked', 'busy', 'quota_blocked') else 2
     except Exception as exc:
         print(f'ERROR: {type(exc).__name__}: {exc}', file=sys.stderr)
