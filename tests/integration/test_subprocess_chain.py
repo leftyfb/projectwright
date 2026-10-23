@@ -52,7 +52,7 @@ class RealSubprocessChain(unittest.TestCase):
         self.hermes = self.base / "fake-hermes"
         self.hermes.write_text(
             "#!/usr/bin/env python3\n"
-            "import json, pathlib, re, sys\n"
+            "import json, os, pathlib, re, sys\n"
             "if len(sys.argv) > 1 and sys.argv[1] == 'send':\n"
             "    sys.stdin.read()\n"
             "    sys.exit(0)\n"
@@ -66,7 +66,6 @@ class RealSubprocessChain(unittest.TestCase):
             "    sys.exit(0)\n"
             "if len(sys.argv) < 2 or sys.argv[1] != 'chat':\n"
             "    sys.exit(30)\n"
-            "import os\n"
             "prompt = sys.stdin.read()\n"
             "if os.environ.get('PW_FAKE_MODE') == 'missing_report':\n"
             "    print('No completion artifact')\n"
