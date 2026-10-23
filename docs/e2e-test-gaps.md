@@ -28,6 +28,21 @@ CI uses seven-day GitHub Actions log artifacts rather than Git commits.
 The separate tux self-hosted workflow is not yet operational because no isolated
 runner has been registered. Actual host integration is still outstanding.
 
+## Host runner validation (2026-10-23)
+
+The registered `tux-projectwright` self-hosted runner successfully completed
+[run 40042397907](https://github.com/leftyfb/projectwright/actions/runs/40042397907)
+with **107/107 offline tests passing**, the development validator passing, and
+seven-day ephemeral logs uploaded. Additional subprocess tests now cover a
+wrong-task completion report, an explicit blocked result, and unauthorized Git
+worktree mutation by a READ task. All are deliberately refused without advancing
+the task checkbox.
+
+This is source-based subprocess integration **running on tux**, not an invocation
+of the installed Hermes model, Telegram or production project state. The
+one-file smoke trigger was removed after verification; the self-hosted workflow
+is manual-only again.
+
 ## Existing evidence
 
 - At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The offline `tests/` suite and `scripts/validate-baseline.py` were introduced on `test/reproducible-baseline` and are present in this checkout; dependency metadata remains absent; offline CI has since been added.
