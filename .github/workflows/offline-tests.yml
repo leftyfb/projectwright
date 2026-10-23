@@ -1,0 +1,62 @@
+name: Offline regression tests
+
+on:
+  push:
+    branches:
+      - main
+      - test/review-followups
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Run offline tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/projectwright-test-logs"
+          python3 -B -m unittest discover -s tests -p 'test_*.py' -v \
+            2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/unittest.log"
+
+      - name: Development validation
+        if: always()
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/projectwright-test-logs"
+          python3 -B scripts/validate-baseline.py --mode development \
+            2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/validator.log"
+
+      - name: Verify whitespace
+        if: always()
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/projectwright-test-logs"
+          git diff --check \
+            2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/diff-check.log"
+
+      - name: Upload ephemeral test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-test-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/projectwright-test-logs/
+          retention-days: 7
+          if-no-files-found: warn
