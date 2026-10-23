@@ -6,6 +6,7 @@ Git repository, subprocess executable, and home directory is disposable.
 from __future__ import annotations
 
 import json
+import fcntl
 import os
 from pathlib import Path
 import re
@@ -122,6 +123,25 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
         self.assertNotIn("WORKER rc=", second.stdout)
         self.assertEqual(self.queue.read_text().count("[x] **P101"), 1)
+
+    def test_project_lock_contention_never_starts_worker(self):
+        lock = self.project / "worker.lock"
+        with lock.open("a+") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            result = self.dispatch()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("DEFERRED", result.stdout)
+        self.assertNotIn("WORKER rc=", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+
+    def test_manager_quota_refusal_never_starts_worker(self):
+        self.config["planning"]["trigger"]["pending_below"] = 2
+        self.config["quota"] = {"enabled": True}
+        self.save_config()
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("WORKER rc=", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
 
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
