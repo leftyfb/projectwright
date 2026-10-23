@@ -24,9 +24,8 @@ import pw_buttons
 
 
 class NotificationRaceTests(unittest.TestCase):
-    @unittest.expectedFailure
     def test_pending_request_revoked_during_delivery_never_gets_marked_delivered(self):
-        """Current notifier checks pending once, before starting a network send."""
+        """Revocation during transport must not produce a delivery receipt."""
         # Import inside the method to prevent unittest discovery from collecting
         # the imported TestCase class a second time.
         from tests.acceptance.test_acceptance_and_telegram import TelegramApprovalAndButtonTests
