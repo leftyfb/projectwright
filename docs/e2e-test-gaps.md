@@ -1,6 +1,6 @@
 # End-to-end test coverage and gaps
 
-Source baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. The original audit was read-only: no fixture was modified and no Projectwright worker was launched then. The current branch adds an isolated `unittest` suite; it still does not run live Hermes, Telegram, Home Assistant, or systemd integration.
+Source baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. The original audit was read-only: no fixture was modified and no Projectwright worker was launched then. Host and external-fixture observations below are a snapshot from 2026-10-23, not current-state guarantees; recheck before relying on them. The current branch adds an isolated `unittest` suite; it still does not run live Hermes, Telegram, Home Assistant, or systemd integration.
 
 ## Existing evidence
 

@@ -1,6 +1,6 @@
 # Technical debt and unresolved questions
 
-Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. Findings below are source/runtime observations, not a refactor or production change.
+Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. Findings below are source/runtime observations, not a refactor or production change. Operational and external-system states were observed read-only on 2026-10-23; they are historical snapshots, not guarantees about current host state, and must be rechecked before operational use.
 
 ## Confirmed operational findings
 
@@ -27,7 +27,7 @@ Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. Findings below are source/
 
 ## Classification and confidence
 
-No module is proven legacy or unused. `pw_project_timer.py` has no normal-flow caller observed and is classified as a manual operations utility, not as dead code. The installed manifest proves source/install parity for all 18 scripts; it does not prove each script executes. Actual usage is established only for the enabled plugin, active notification timer/service, disabled worker timer/service definition, and direct source call paths documented in `component-inventory.md` and `runtime-entrypoints.md`.
+No module is proven legacy or unused. `pw_project_timer.py` has no normal-flow caller observed and is classified as a manual operations utility, not as dead code. The checked-in manifest pins the source hashes and expected installed paths; a separate read-only runtime inspection compared the installed copies and reported parity for all 18 scripts. Neither result proves that each script executes. Actual usage is established only for the enabled plugin, active notification timer/service, disabled worker timer/service definition, and direct source call paths documented in `docs/component-inventory.md` and `docs/runtime-entrypoints.md`.
 
 ## Questions to resolve before refactoring
 

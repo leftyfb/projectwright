@@ -1,6 +1,6 @@
 # Component inventory
 
-Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. All 18 tracked Python files under `src/projectwright/` were AST-parsed and inventoried. The installed-source manifest lists 18 scripts and reports all installed copies in `/home/leftyfb/.hermes/scripts/` match source. “Used” below means direct call/launcher evidence, not merely import reachability.
+Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. All 18 tracked Python files under `src/projectwright/` were AST-parsed and inventoried. The checked-in source manifest pins the 18 source hashes and expected installed paths; a separate read-only audit compared installed copies and reported all 18 matching source at audit time. “Used” below means direct call/launcher evidence, not merely import reachability.
 
 | File | Classification | Imports / dependencies | Runtime or actual-usage evidence |
 |---|---|---|---|
