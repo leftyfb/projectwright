@@ -1,0 +1,78 @@
+{
+  "generated_utc": "2026-10-23T01:56:01.959067+00:00",
+  "scripts_directory": "/home/leftyfb/.hermes/scripts",
+  "files": {
+    "project_acceptance_gate.py": {
+      "sha256": "fd506bf4d8d27b3197dc80feff3bec1483619f23590aa2b633a149d741db6b7a",
+      "bytes": 1188
+    },
+    "project_milestone_guard.py": {
+      "sha256": "8e7b164593803e3101ba12d97490f06566c42ddc419b0113be835128b535f554",
+      "bytes": 20787
+    },
+    "project_milestone_sequence.py": {
+      "sha256": "1ff9ee8ed094e6d7ff6878381d87c8dca471e72a47d151e18460880679c03cad",
+      "bytes": 2978
+    },
+    "project_notes_publisher.py": {
+      "sha256": "23581d2ad25eeee3e1b9c45f517ca2b237504e501deeacc9149f72af0ee69a69",
+      "bytes": 4247
+    },
+    "project_notes_sync.py": {
+      "sha256": "b3fcd246d643b8786f16c62ab2a0757c724046fc1bfa9b573e00d34a6a8b6d71",
+      "bytes": 5013
+    },
+    "project_queue_manager.py": {
+      "sha256": "b9eae4a28734626925c58f0977608d2d5510c8623ed4a6da10a0d6a8ffd5f47e",
+      "bytes": 12620
+    },
+    "project_queue_planner.py": {
+      "sha256": "f258375866ec3cb9c785b86d8790437c34883d9690c43a3fd17d6c5306c95808",
+      "bytes": 17650
+    },
+    "project_quota.py": {
+      "sha256": "cbba6a2792f3fc3f3afb215acd3a69528dfa9cda9db1ae45fafda24bb6dc0d70",
+      "bytes": 4619
+    },
+    "project_recovery.py": {
+      "sha256": "0b3c3b6aaba3c2d039da00ad75d30f458e930ad6ff4d5e0518163ecf6a90bed0",
+      "bytes": 6720
+    },
+    "project_task_worker.py": {
+      "sha256": "819a27580f783d1b039f111f5a5f2c2d84aecd7df3c51fec5f48e3055387fdc6",
+      "bytes": 42160
+    },
+    "project_telegram_approval.py": {
+      "sha256": "4071e4009dc82dd34c5a6218caef9a4709adde5daeb2f0f9cbbd9f755ff5d921",
+      "bytes": 9626
+    },
+    "project_worker_journal.py": {
+      "sha256": "205168223c4e3d8917d25f0a58d3ee76033837203b8ffd7dc8351f6dbdd2af84",
+      "bytes": 6271
+    },
+    "project_worker_progress.py": {
+      "sha256": "6a0ed45a98ab8ee7b4f2966e99e12520795a22d9603ff8d1b9b65f98cfa6b9cd",
+      "bytes": 1932
+    },
+    "pw_buttons.py": {
+      "sha256": "85c7050904d1f4241807aa3d658c169b8956ceee90256ff32e59c9ed18eb19f8",
+      "bytes": 4506
+    },
+    "pw_dispatch.py": {
+      "sha256": "aa661add1f69bf7064fa05214bd4829fee4746b00823930eb2476c0ba627bbe9",
+      "bytes": 8765
+    },
+    "pw_notify.py": {
+      "sha256": "53240b138f286ce24da774358b834b07421372e5d55c9f13040b94045cec2f8f",
+      "bytes": 4056
+    },
+    "pw_plugin.py": {
+      "sha256": "c652e30dcaa31c869b77016a46494bd679b1b1fcf6cd66909afee666d85090ee",
+      "bytes": 2013
+    },
+    "pw_project_timer.py": {
+      "sha256": "9c4ce3b748445774e93ba4de850e1bdb51b5e3be871282b627d4b45e37dfacaa",
+      "bytes": 3040
+    }
+  }
+}
