@@ -7,14 +7,14 @@ Source baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. The original audit 
 GitHub Actions `Offline regression tests` run
 [40036531497](https://github.com/leftyfb/projectwright/actions/runs/40036531497)
 passed **100 offline tests**, with zero failures, skips, and expected failures,
-at commit `c72dff5`. Later commits require their own run confirmation.
+at commit `c72dff5`. A later full offline CI run [40036721750](https://github.com/leftyfb/projectwright/actions/runs/40036721750) passed **101 tests** at commit `bf96dcd`, with zero failures, skips, or expected failures.
 
 `tests/integration/test_subprocess_chain.py` now launches the real dispatcher,
 manager, planner (when requested), and worker through separate Python processes
 against a disposable Git repository, temporary project root, and fake Hermes
 executable. It verifies successful READ completion, idempotent subsequent tick,
 real planner queue replenishment, missing requirements blocking, held-project-lock
-deferment, quota refusal, and missing Hermes completion-report refusal.
+deferment, quota refusal, missing Hermes completion-report refusal, and malformed planner-output refusal.
 These tests **do not** invoke the real model, Telegram, Home Assistant, systemd,
 or any installed production script.
 
