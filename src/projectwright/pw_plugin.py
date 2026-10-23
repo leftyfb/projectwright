@@ -24,7 +24,6 @@ def _authorized_ids():
 def _factory(app, adapter):
     from telegram.ext import CallbackQueryHandler
     from pw_buttons import approve, reject
-    admins = _authorized_ids()
     root = Path.home() / '.hermes' / 'projects'
 
     async def on_press(update, context):
@@ -33,7 +32,8 @@ def _factory(app, adapter):
             return
         uid = str(getattr(q.from_user, 'id', ''))
         chat = getattr(getattr(q.message, 'chat', None), 'type', None)
-        if uid not in admins or chat != 'private':
+        # Re-read on each callback so revoked users lose access immediately.
+        if uid not in _authorized_ids() or chat != 'private':
             await q.answer('Not authorized', show_alert=True)
             return
         try:
