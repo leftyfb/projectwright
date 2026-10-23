@@ -77,7 +77,19 @@ class RealSubprocessChain(unittest.TestCase):
             "if not match:\n"
             "    sys.exit(31)\n"
             "dest = pathlib.Path(match.group(1).strip())\n"
-            "mode = os.environ.get('PW_FAKE_MODE')\n"            "if mode == 'malformed_report':\n"
+            "mode = os.environ.get('PW_FAKE_MODE')\n"            "if mode == 'git_cycle':\n"
+            "    import subprocess\n"
+            "    task = re.search(r'Assignment: (P[0-9]+) [—-] (EDIT|TEST|COMMIT)', prompt)\n"
+            "    if not task: sys.exit(32)\n"
+            "    tid, kind = task.groups()\n"
+            "    if kind == 'EDIT': pathlib.Path('probe.txt').write_text('edited\\\\n')\n"
+            "    if kind == 'COMMIT':\n"
+            "        subprocess.run(['git','add','probe.txt'], check=True)\n"
+            "        subprocess.run(['git','commit','-qm','fixture cycle'],check=True)\n"
+            "    dest.write_text(json.dumps({'task_id':tid,'status':'completed',\n"
+            "        'summary':'cycle fixture', 'verification':'cycle verified','blocker':''}))\n"
+            "    sys.exit(0)\n"
+            "if mode == 'malformed_report':\n"
             "    dest.write_text('{broken-json')\n"
             "    sys.exit(0)\n"
             "if mode == 'modify_queue':\n"
@@ -289,6 +301,26 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertIn("altered assignment", self.queue.read_text())
         self.assertIn("[ ] **P101", self.queue.read_text())
         self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+
+    def test_real_edit_test_commit_cycle_preserves_git_scope(self):
+        self.queue.write_text(
+            "- [ ] **P101 — EDIT** modify fixture file\\n"
+            "- [ ] **P102 — TEST** test fixture change\\n"
+            "- [ ] **P103 — COMMIT** commit validated fixture\\n"
+        )
+        self.env["PW_FAKE_MODE"] = "git_cycle"
+        self.config["planning"]["enabled"] = True
+        self.save_config()
+        for task_id in ("P101", "P102", "P103"):
+            result = self.dispatch()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("WORKER rc=0", result.stdout)
+            self.assertIn(f"[x] **{task_id}", self.queue.read_text())
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+        self.assertNotEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+        self.assertFalse((self.project / "cycle.json").exists())
+        self.assertEqual(git(self.repo, "show", "--format=", "--name-only", "HEAD"), "probe.txt")
+        self.assertEqual(self.queue.read_text().count("[x]"), 3)
 
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
