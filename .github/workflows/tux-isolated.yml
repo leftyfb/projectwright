@@ -2,6 +2,11 @@ name: Tux isolated verification
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - test/review-followups
+    paths:
+      - .github/tux-run-once.txt
 
 permissions:
   contents: read
