@@ -20,13 +20,15 @@ import pw_dispatch
 import pw_notify
 import pw_plugin
 import pw_buttons
-from tests.acceptance.test_acceptance_and_telegram import TelegramApprovalAndButtonTests
 
 
 class NotificationRaceTests(unittest.TestCase):
     @unittest.expectedFailure
     def test_pending_request_revoked_during_delivery_never_gets_marked_delivered(self):
         """Current notifier checks pending once, before starting a network send."""
+        # Import inside the method to prevent unittest discovery from collecting
+        # the imported TestCase class a second time.
+        from tests.acceptance.test_acceptance_and_telegram import TelegramApprovalAndButtonTests
         fixture = TelegramApprovalAndButtonTests("test_scan_pins_buttons_and_message_evidence")
         fixture.setUp()
         try:
