@@ -114,8 +114,7 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertIsNone(journal["current_task"])
         self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
         self.assertEqual(git(self.repo, "status", "--porcelain"), "")
-        second = self.dispatch()
-        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+        # Disable replenishment for the second tick: test no duplicate worker\n        # execution without asking the fake planner to generate new tasks.\n        self.config["planning"]["enabled"] = False\n        self.save_config()\n        second = self.dispatch()\n        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
         self.assertNotIn("WORKER rc=", second.stdout)
         self.assertEqual(self.queue.read_text().count("[x] **P101"), 1)
 
