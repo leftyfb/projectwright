@@ -173,11 +173,11 @@ def authorized_cycle_task(project, scripts, report):
         if module.CYCLE_FILE.resolve() != Path(cfg['cycle_file']).expanduser().resolve():
             return False
         queue = module.QUEUE.read_text(encoding='utf-8')
-        from_queue = __import__('project_queue_manager') if str(scripts) in sys.path else None
-        if from_queue is None:
-            sys.path.insert(0, str(scripts))
-            from_queue = __import__('project_queue_manager')
-        summary = from_queue.queue_summary(queue)
+        # Load the manager helpers from the selected scripts tree, not sys.modules.
+        # This read-only gate must not trust an unrelated pre-imported manager.
+        import runpy
+        manager_helpers = runpy.run_path(str(scripts / 'project_queue_manager.py'))
+        summary = manager_helpers['queue_summary'](queue)
         if summary['invalid_lines'] or summary['blocked_count'] or not summary['pending']:
             return False
         task = module.pick_task(queue)
@@ -211,8 +211,8 @@ def authorized_cycle_task(project, scripts, report):
         if not dirty or not dirty <= set(allowed):
             return False
         # A current journal or recovery incident cannot authorize dispatch.
-        journal = from_queue.read_json_optional(root / project / 'worker_journal.json')
-        incidents = from_queue.read_json_optional(root / project / 'recovery_incidents.json')
+        journal = manager_helpers['read_json_optional'](root / project / 'worker_journal.json')
+        incidents = manager_helpers['read_json_optional'](root / project / 'recovery_incidents.json')
         if journal.get('current_task') is not None or incidents and (
             not isinstance(incidents.get('incidents'), list) or
             any(not isinstance(i, dict) or i.get('status') not in ('resolved', 'closed') for i in incidents['incidents'])
