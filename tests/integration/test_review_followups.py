@@ -4,6 +4,7 @@ All tests are offline. Expected failures describe currently unresolved behavior;
 removing expectedFailure requires a proven implementation fix.
 """
 import asyncio
+import shutil
 import json
 import sys
 import tempfile
@@ -86,7 +87,6 @@ class CallbackConfigurationTests(unittest.TestCase):
 
 
 class DispatcherImportIsolationTests(unittest.TestCase):
-    @unittest.expectedFailure
     def test_cycle_gate_ignores_poisoned_global_queue_manager_module(self):
         """The cycle gate must resolve its helper from the selected scripts tree."""
         with tempfile.TemporaryDirectory(prefix="pw-module-isolation-") as td:
@@ -96,6 +96,7 @@ class DispatcherImportIsolationTests(unittest.TestCase):
             project.mkdir(parents=True)
             scripts = base / "scripts"
             scripts.mkdir()
+            shutil.copyfile(SRC / "project_queue_manager.py", scripts / "project_queue_manager.py")
             cycle_file = project / "cycle.json"
             cycle = {"version": 1, "phase": "active", "last_task": "P101",
                      "head": "abc", "branch": "main", "snapshot": ["M foo.txt"],
