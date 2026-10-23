@@ -4,10 +4,12 @@
 import fcntl
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[2] / "src" / "projectwright"
@@ -233,6 +235,54 @@ class RecoveryContracts(unittest.TestCase):
         )
         self.assertEqual(result["outcome"], "review")
         self.assertTrue(result["cycle_present"])
+
+    def test_atomic_json_replace_failure_preserves_last_valid_incident_file(self):
+        path = self.project / "recovery_incidents.json"
+        original = b'{"schema_version":1,"incidents":[]}\n'
+        path.write_bytes(original)
+        with patch.object(recovery.os, "replace", side_effect=OSError("simulated replace failure")):
+            with self.assertRaisesRegex(OSError, "simulated replace failure"):
+                recovery.atomic_json(path, {"schema_version": 1, "incidents": [{"id": "new"}]})
+        self.assertEqual(path.read_bytes(), original)
+        self.assertEqual(list(self.project.glob(".recovery_incidents.json.*")), [])
+
+    def test_install_disabled_uses_only_fake_systemctl(self):
+        home = self.root / "fake-home"
+        project_root = self.root / "projects"
+        scripts = home / ".hermes/scripts"
+        scripts.mkdir(parents=True)
+        (scripts / "pw_dispatch.py").write_text("# fixture dispatcher\n")
+        project = project_root / "pw-timer-fixture"
+        project.mkdir(parents=True)
+        (project / "config.json").write_text(json.dumps({"id": "pw-timer-fixture"}))
+        fake_bin = self.root / "fake-bin"
+        fake_bin.mkdir()
+        fake_log = self.root / "fake-systemctl.log"
+        fake_systemctl = fake_bin / "systemctl"
+        fake_systemctl.write_text(
+            "#!/bin/sh\n"
+            "printf '%s\\n' \"$*\" >> \"$FAKE_SYSTEMCTL_LOG\"\n"
+        )
+        fake_systemctl.chmod(0o755)
+        env = {
+            **os.environ,
+            "HOME": str(home),
+            "PATH": str(fake_bin) + os.pathsep + os.environ.get("PATH", ""),
+            "FAKE_SYSTEMCTL_LOG": str(fake_log),
+        }
+        completed = subprocess.run(
+            [sys.executable, "-B", str(SRC / "pw_project_timer.py"),
+             "install-disabled", "pw-timer-fixture", "--root", str(project_root)],
+            capture_output=True, text=True, env=env, check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(fake_log.read_text().splitlines(), ["--user daemon-reload"])
+        unit_dir = home / ".config/systemd/user"
+        service = (unit_dir / "projectwright-worker-pw-timer-fixture.service").read_text()
+        timer_unit = (unit_dir / "projectwright-worker-pw-timer-fixture.timer").read_text()
+        self.assertIn("ExecStart=/usr/bin/python3 -B " + str(scripts / "pw_dispatch.py"), service)
+        self.assertNotIn("--once", service)
+        self.assertIn("Persistent=false", timer_unit)
 
     def test_timer_generates_dispatcher_service_and_disabled_timer(self):
         service, timer_unit = timer.unit_strings(
