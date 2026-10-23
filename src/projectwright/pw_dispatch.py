@@ -253,7 +253,7 @@ def run_tick(project, scripts, *, runner=subprocess.run):
         print('FAIL unexpected planning decision='+decision, file=sys.stderr)
         return 20
     worker = [sys.executable, '-B', str(scripts/'project_task_worker.py'), '--project', project, '--once']
-    w = runner(worker, capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1'}, timeout=2700)
+    w = runner(worker, capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1', 'PROJECTWRIGHT_DISPATCHED':'1'}, timeout=2700)
     print('WORKER rc='+str(w.returncode))
     if w.stdout: print(w.stdout[-4000:])
     if w.stderr: print(w.stderr[-4000:], file=sys.stderr)
