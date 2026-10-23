@@ -56,6 +56,9 @@ class RealSubprocessChain(unittest.TestCase):
             "if len(sys.argv) > 1 and sys.argv[1] == 'send':\n"
             "    sys.stdin.read()\n"
             "    sys.exit(0)\n"
+            "if '-z' in sys.argv and os.environ.get('PW_FAKE_MODE') == 'bad_plan':\n"
+            "    print('INVALID JSON')\n"
+            "    sys.exit(0)\n"
             "if '-z' in sys.argv:\n"
             "    print(json.dumps({'tasks':[{'id':'P101', 'kind':'READ',\n"
             "        'description':'Inspect the disposable fixture read-only',\n"
@@ -148,6 +151,16 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
         state = json.loads((self.project / "planning_state.json").read_text())
         self.assertEqual(state["last_task_ids"], ["P101"])
+
+    def test_invalid_planner_response_cannot_mutate_queue(self):
+        self.queue.write_text("")
+        (self.project / "work_log.md").write_text("")
+        self.env["PW_FAKE_MODE"] = "bad_plan"
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("WORKER rc=", result.stdout)
+        self.assertEqual(self.queue.read_text(), "")
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
 
     def test_project_lock_contention_never_starts_worker(self):
         lock = self.project / "worker.lock"
