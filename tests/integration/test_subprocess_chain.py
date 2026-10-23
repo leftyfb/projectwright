@@ -63,7 +63,11 @@ class RealSubprocessChain(unittest.TestCase):
             "    sys.exit(0)\n"
             "if len(sys.argv) < 2 or sys.argv[1] != 'chat':\n"
             "    sys.exit(30)\n"
+            "import os\n"
             "prompt = sys.stdin.read()\n"
+            "if os.environ.get('PW_FAKE_MODE') == 'missing_report':\n"
+            "    print('No completion artifact')\n"
+            "    sys.exit(0)\n"
             "match = re.search(r'at this EXACT absolute path:\\s*\\n([^\\n]+)', prompt)\n"
             "if not match:\n"
             "    sys.exit(31)\n"
@@ -163,6 +167,20 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn("WORKER rc=", result.stdout)
         self.assertIn("[ ] **P101", self.queue.read_text())
+
+    def test_missing_fake_hermes_report_cannot_complete_task(self):
+        self.env["PW_FAKE_MODE"] = "missing_report"
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+        journal_file = self.project / "worker_journal.json"
+        self.assertTrue(journal_file.exists())
+        record = json.loads(journal_file.read_text())
+        self.assertNotEqual(
+            (record.get("last_completed_task") or {}).get("id"), "P101"
+        )
 
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
