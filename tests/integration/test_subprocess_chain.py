@@ -74,7 +74,11 @@ class RealSubprocessChain(unittest.TestCase):
             "if not match:\n"
             "    sys.exit(31)\n"
             "dest = pathlib.Path(match.group(1).strip())\n"
-            "dest.write_text(json.dumps({'task_id': 'P101', 'status': 'completed',\n"
+            "mode = os.environ.get('PW_FAKE_MODE')\n"
+            "if mode == 'mutate_repo':\n"
+            "    pathlib.Path('probe.txt').write_text('tampered\\\\n')\n"
+            "dest.write_text(json.dumps({'task_id': 'P999' if mode == 'wrong_task' else 'P101',\n"
+            "    'status': 'blocked' if mode == 'blocked' else 'completed',\n"
             "    'summary': 'fixture read', 'verification': 'fixture inspected', 'blocker': ''}))\n"
             "print('FAKE_HERMES_ONLY')\n"
         )
@@ -225,6 +229,31 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertNotEqual(
             (record.get("last_completed_task") or {}).get("id"), "P101"
         )
+
+    def test_wrong_task_completion_report_cannot_advance_queue(self):
+        self.env["PW_FAKE_MODE"] = "wrong_task"
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+
+    def test_reported_blocker_cannot_advance_queue(self):
+        self.env["PW_FAKE_MODE"] = "blocked"
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+
+    def test_read_only_task_detects_repository_tampering(self):
+        self.env["PW_FAKE_MODE"] = "mutate_repo"
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+        self.assertNotEqual(git(self.repo, "status", "--porcelain"), "")
 
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
