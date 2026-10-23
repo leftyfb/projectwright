@@ -97,6 +97,19 @@ def _delivery_state(marker: Path, current_id: str, users):
     return recipients
 
 
+
+def _still_pending(directory: Path, pinned: dict) -> bool:
+    """A revoked or replaced request must not get a new delivery receipt."""
+    pending = directory / 'telegram_approval_pending.json'
+    try:
+        if json.loads(pending.read_text(encoding='utf-8')) != pinned:
+            return False
+        rejected = directory / 'telegram_approval_rejected.json'
+        return not (rejected.exists() and json.loads(rejected.read_text(encoding='utf-8')) == pinned)
+    except FileNotFoundError:
+        return False
+
+
 def notify_pending(root: Path, *, dry_run=False, transport=None):
     import project_telegram_approval as bridge
     out=[]
@@ -127,12 +140,15 @@ def notify_pending(root: Path, *, dry_run=False, transport=None):
             delivered = _delivery_state(marker, current_id, users)
             if all(user in delivered for user in users):
                 continue
-            if json.loads((directory/'telegram_approval_pending.json').read_text()) != pinned:
+            if not _still_pending(directory, pinned):
                 continue
             failures = []
             for user in users:
                 if user in delivered:
                     continue
+                # Acceptance may have changed since the scan or last recipient.
+                if not _still_pending(directory, pinned):
+                    break
                 try:
                     msgid=send(root,pinned,transport=transport,recipient=user,values=values)
                     if type(msgid) is not int or msgid <= 0:
@@ -140,6 +156,10 @@ def notify_pending(root: Path, *, dry_run=False, transport=None):
                 except Exception as exc:
                     failures.append(type(exc).__name__)
                     continue
+                # Network delivery cannot be undone. If acceptance changed while
+                # sending, avoid recording a stale receipt or sending to others.
+                if not _still_pending(directory, pinned):
+                    break
                 delivered[user] = msgid
                 # Telegram acceptance and local marker persistence are not atomic;
                 # a failure here leaves an at-least-once retry that may duplicate.
