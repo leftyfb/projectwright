@@ -49,7 +49,6 @@ class NotificationRaceTests(unittest.TestCase):
 
 
 class CallbackConfigurationTests(unittest.TestCase):
-    @unittest.expectedFailure
     def test_running_callback_handler_rechecks_authorized_users(self):
         """Changing allowed users currently requires registering handlers again."""
         class Handler:
