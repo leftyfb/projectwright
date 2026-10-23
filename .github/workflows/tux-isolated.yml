@@ -22,8 +22,6 @@ jobs:
     timeout-minutes: 20
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-      HOME: ${{ runner.temp }}/projectwright-home
-      HERMES_PROJECT_CONFIG_DIR: ${{ runner.temp }}/projectwright-home/.hermes/projects
     steps:
       - name: Check out exact requested revision
         uses: actions/checkout@v4
@@ -33,7 +31,10 @@ jobs:
       - name: Create empty test home
         shell: bash
         run: |
-          mkdir -p "$HOME/.hermes/projects" "$RUNNER_TEMP/projectwright-test-logs"
+          test_home="$RUNNER_TEMP/projectwright-home"
+          mkdir -p "$test_home/.hermes/projects" "$RUNNER_TEMP/projectwright-test-logs"
+          printf "HOME=%s\\n" "$test_home" >> "$GITHUB_ENV"
+          printf "HERMES_PROJECT_CONFIG_DIR=%s\\n" "$test_home/.hermes/projects" >> "$GITHUB_ENV"
 
       - name: Offline unittest suite
         shell: bash
