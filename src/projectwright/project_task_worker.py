@@ -797,7 +797,7 @@ def main() -> int:
         # progress while another process holds the project lock.
         if LOCK_CONTENDED:
             return rc
-        if rc == 0:
+        if rc == 0 and os.environ.get('PROJECTWRIGHT_DISPATCHED') != '1':
             # process_once has released its project lock before returning.
             # Never plan inside an active EDIT/TEST/COMMIT Git cycle.
             if CYCLE_FILE.exists():
