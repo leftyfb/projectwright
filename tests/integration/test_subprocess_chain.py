@@ -171,6 +171,27 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertNotIn("WORKER rc=", result.stdout)
         self.assertIn("[ ] **P101", self.queue.read_text())
 
+    def test_interrupted_journal_blocks_before_running_fake_hermes(self):
+        journal = self.project / "worker_journal.json"
+        journal.write_text(json.dumps({
+            "current_task": {"id": "P099", "phase": "running"}
+        }))
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=2", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+        self.assertFalse((self.project / "results").exists())
+
+    def test_corrupt_journal_blocks_before_running_fake_hermes(self):
+        (self.project / "worker_journal.json").write_text("{invalid")
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=2", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+        self.assertFalse((self.project / "results").exists())
+
     def test_worker_quota_unavailable_does_not_advance_existing_task(self):
         self.config["quota"] = {"enabled": True}
         self.save_config()
