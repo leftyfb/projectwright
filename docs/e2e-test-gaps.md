@@ -1,15 +1,32 @@
 # End-to-end test coverage and gaps
 
-Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. This is a coverage inventory only. No fixture was modified and no Projectwright worker was launched during the audit.
+Source baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. The original audit was read-only: no fixture was modified and no Projectwright worker was launched then. The current branch adds an isolated `unittest` suite; it still does not run live Hermes, Telegram, Home Assistant, or systemd integration.
 
 ## Existing evidence
 
-- The repository has 18 Python scripts but no `tests/` directory, test runner, CI workflow, or dependency manifest in the inspected tree.
+- At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The `test/reproducible-baseline` branch now contains an offline `tests/` suite and `scripts/validate-baseline.py`; CI and dependency metadata remain absent.
 - External fixture projects exist under `~/.hermes/projects/`: `pw-sequence-test`, `pw-e2e-allow`, and `pw-e2e-deny`. Their queues were fully checked at inspection: 12, 4, and 3 checked task rows respectively. The allow fixture has historical completed result records for P101–P104; the deny fixture has completed result records for P101–P103. Those records do not by themselves establish that Telegram callback, stale-approval, or denial behavior was executed end to end.
 - The `pw-sequence-test` systemd worker timer is disabled, and there is no active worker cron job identified. The enabled approval-notification timer is not a worker test harness.
-- A read-only AST inventory parsed all 18 source files without a syntax-parse error. This is not behavioral test coverage. No automated test suite was run because none is present in the repository.
+- The original read-only AST inventory parsed all 18 source files. It was not behavioral coverage. Current syntax/import and offline-suite results are recorded in `docs/test-coverage-matrix.md`; historical claims remain separate in `docs/test-source-inventory.md`.
 
-## Prioritized gaps before refactoring
+## Current checked-out tests
+
+The repository's `tests/unit`, `tests/integration`, `tests/recovery`, and
+`tests/acceptance` modules use standard-library `unittest`. Ordinary discovery
+is offline and does not contact live services, change host units, or use the
+external Projectwright fixtures. The worker-delivery integration contract uses
+a disposable Git repository and temporary project files. Run the suite and
+baseline checks using the commands in `README.md` and `docs/baseline-validation.md`.
+
+Covered offline contracts include source-manifest validation, queue/dispatch
+decisions, quota and progress handling, milestone sequence and receipt-chain
+behavior, Telegram button/approval/notifier state with mocked transport,
+recovery/journal checks, and durable task completion when notification delivery
+fails. The optional quota entity default remains an expected failure; see the
+coverage matrix and technical-debt record. Coverage is not proof that live
+Hermes, Telegram, HA, systemd, or the user's fixtures work end to end.
+
+## Prioritized residual gaps before refactoring
 
 ### P0 — establish the safety contract
 

@@ -1,0 +1,1 @@
+Fixture data is generated inside each unittest's TemporaryDirectory. Git-repository tests initialize disposable repositories under the OS temporary directory. No live projects, credentials, HTTP services, timers, or /tmp historical archives are required by ordinary discovery.

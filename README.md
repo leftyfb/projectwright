@@ -1,0 +1,39 @@
+# Projectwright source snapshot and tests
+
+This repository contains an audited snapshot of Projectwright's 18 flat Python
+modules under `src/projectwright/`, together with an immutable source manifest
+and an offline `unittest` suite. Runtime scripts in `~/.hermes/scripts/` are not
+modified by this repository's tests.
+
+## Run the offline suite
+
+From the repository root:
+
+```sh
+python3 -B -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+The suite uses temporary directories/repositories and mocked service boundaries.
+It does not send Telegram messages, call live Home Assistant or Hermes APIs, or
+start/enable systemd units. Live checks are intentionally not part of default
+discovery; see `docs/e2e-test-gaps.md` before attempting any separate live test.
+
+## Validate source and baseline
+
+```sh
+python3 -B scripts/validate-baseline.py --mode baseline
+python3 -B scripts/validate-baseline.py --mode development
+```
+
+`baseline` requires the checked-out source file set and SHA-256 values to match
+`installed-source-manifest.json`. `development` reports source drift while
+still enforcing the expected file set and running syntax, import, dependency,
+and offline-suite checks. Details: `docs/baseline-validation.md`.
+
+## Test documentation
+
+- `docs/test-source-inventory.md` — recovered historical test artifacts and
+  provenance.
+- `docs/test-coverage-matrix.md` — current offline coverage and known gaps.
+- `docs/e2e-test-gaps.md` — residual live/integration work and safety boundaries.
+- `docs/technical-debt.md` — source/runtime findings and unresolved contracts.
