@@ -56,6 +56,11 @@ class RealSubprocessChain(unittest.TestCase):
             "if len(sys.argv) > 1 and sys.argv[1] == 'send':\n"
             "    sys.stdin.read()\n"
             "    sys.exit(0)\n"
+            "if '-z' in sys.argv:\n"
+            "    print(json.dumps({'tasks':[{'id':'P101', 'kind':'READ',\n"
+            "        'description':'Inspect the disposable fixture read-only',\n"
+            "        'requirement_id':'DEMO-1', 'milestone_id':'DEMO-1-M1'}]}))\n"
+            "    sys.exit(0)\n"
             "if len(sys.argv) < 2 or sys.argv[1] != 'chat':\n"
             "    sys.exit(30)\n"
             "prompt = sys.stdin.read()\n"
@@ -123,6 +128,22 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
         self.assertNotIn("WORKER rc=", second.stdout)
         self.assertEqual(self.queue.read_text().count("[x] **P101"), 1)
+
+    def test_real_planner_replenishes_and_worker_executes(self):
+        self.queue.write_text("")
+        (self.project / "work_log.md").write_text("")
+        self.config["planning"]["queue"] = {
+            "target_pending": 1, "max_new_tasks": 1, "max_pending": 2
+        }
+        self.save_config()
+        result = self.dispatch()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("MANAGER decision=queued", result.stdout)
+        self.assertIn("WORKER rc=0", result.stdout)
+        self.assertIn("[x] **P101 — READ**", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+        state = json.loads((self.project / "planning_state.json").read_text())
+        self.assertEqual(state["last_task_ids"], ["P101"])
 
     def test_project_lock_contention_never_starts_worker(self):
         lock = self.project / "worker.lock"
