@@ -67,6 +67,9 @@ class RealSubprocessChain(unittest.TestCase):
             "if len(sys.argv) < 2 or sys.argv[1] != 'chat':\n"
             "    sys.exit(30)\n"
             "prompt = sys.stdin.read()\n"
+            "if os.environ.get('PW_FAKE_MODE') == 'nonzero_exit':\n"
+            "    print('fixture failed')\n"
+            "    sys.exit(19)\n"
             "if os.environ.get('PW_FAKE_MODE') == 'missing_report':\n"
             "    print('No completion artifact')\n"
             "    sys.exit(0)\n"
@@ -74,7 +77,13 @@ class RealSubprocessChain(unittest.TestCase):
             "if not match:\n"
             "    sys.exit(31)\n"
             "dest = pathlib.Path(match.group(1).strip())\n"
-            "mode = os.environ.get('PW_FAKE_MODE')\n"
+            "mode = os.environ.get('PW_FAKE_MODE')\n"            "if mode == 'malformed_report':\n"
+            "    dest.write_text('{broken-json')\n"
+            "    sys.exit(0)\n"
+            "if mode == 'modify_queue':\n"
+            "    q = pathlib.Path(os.environ['PW_FAKE_QUEUE'])\n"
+            "    q.write_text(q.read_text().replace('inspect the isolated fixture', 'altered assignment'))\n"
+
             "if mode == 'mutate_repo':\n"
             "    pathlib.Path('probe.txt').write_text('tampered\\\\n')\n"
             "dest.write_text(json.dumps({'task_id': 'P999' if mode == 'wrong_task' else 'P101',\n"
@@ -254,6 +263,32 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertIn("[ ] **P101", self.queue.read_text())
         self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
         self.assertNotEqual(git(self.repo, "status", "--porcelain"), "")
+
+    def test_nonzero_fake_hermes_exit_does_not_advance_task(self):
+        self.env["PW_FAKE_MODE"] = "nonzero_exit"
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+
+    def test_malformed_fake_hermes_report_does_not_advance_task(self):
+        self.env["PW_FAKE_MODE"] = "malformed_report"
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+
+    def test_task_queue_changed_during_agent_call_is_not_overwritten(self):
+        self.env["PW_FAKE_MODE"] = "modify_queue"
+        self.env["PW_FAKE_QUEUE"] = str(self.queue)
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=", result.stdout)
+        self.assertIn("altered assignment", self.queue.read_text())
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
 
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
