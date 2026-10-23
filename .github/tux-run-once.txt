@@ -1,1 +1,2 @@
 Initial isolated tux runner verification. Only changes to this file start the tux job.
+Retry after runtime HOME environment correction.
