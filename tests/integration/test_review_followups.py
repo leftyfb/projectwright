@@ -99,7 +99,7 @@ class DispatcherImportIsolationTests(unittest.TestCase):
             shutil.copyfile(SRC / "project_queue_manager.py", scripts / "project_queue_manager.py")
             cycle_file = project / "cycle.json"
             cycle = {"version": 1, "phase": "active", "last_task": "P101",
-                     "head": "abc", "branch": "main", "snapshot": ["M foo.txt"],
+                     "head": "abc", "branch": "main", "snapshot": ["foo.txt"],
                      "allowed": ["foo.txt"]}
             cycle_file.write_text(json.dumps(cycle))
             (project / "config.json").write_text(
@@ -120,7 +120,7 @@ class DispatcherImportIsolationTests(unittest.TestCase):
                 pick_task=lambda text: SimpleNamespace(task_id="P102", kind="TEST"),
                 ROW=SimpleNamespace(finditer=lambda text: [
                     Match("P101", "EDIT", "x"), Match("P102", "TEST", " ")]),
-                repo_state=lambda: ("abc", "main", None, ["M foo.txt"]),
+                repo_state=lambda: ("abc", "main", None, ["foo.txt"]),
             )
             class Loader:
                 def exec_module(self, module):
