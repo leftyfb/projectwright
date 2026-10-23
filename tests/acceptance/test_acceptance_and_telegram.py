@@ -9,12 +9,14 @@ fixtures. No live Telegram service or user project state is accessed.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 # Import the checked-out implementation, never ~/.hermes/scripts.
@@ -304,8 +306,11 @@ class TelegramApprovalAndButtonTests(unittest.TestCase):
                 [pw_buttons.resolve(self.root, button["callback_data"])[0] for button in buttons],
                 ["a", "r"],
             )
-            self.assertEqual(pw_notify.notify_pending(self.root, dry_run=True), [])
-        self.assertEqual(json.loads((self.project / "telegram_approval_notified.json").read_text())["message_id"], 56)
+            self.assertEqual(
+                pw_notify.notify_pending(self.root, transport=lambda payload: 57), []
+            )
+        marker = json.loads((self.project / "telegram_approval_notified.json").read_text())
+        self.assertEqual(marker["recipients"], {"123": 56})
         self.assertEqual(record["project"], "fixture")
 
     def test_notification_transport_failure_is_retryable(self) -> None:
@@ -314,7 +319,7 @@ class TelegramApprovalAndButtonTests(unittest.TestCase):
             "TELEGRAM_BOT_TOKEN": "fixture-token",
             "TELEGRAM_ALLOWED_USERS": "123",
         }):
-            with self.assertRaisesRegex(OSError, "fixture transport failure"):
+            with self.assertRaisesRegex(RuntimeError, "1 recipient"):
                 pw_notify.notify_pending(
                     self.root,
                     transport=lambda payload: (_ for _ in ()).throw(OSError("fixture transport failure")),
@@ -323,19 +328,134 @@ class TelegramApprovalAndButtonTests(unittest.TestCase):
             self.assertTrue((self.project / "telegram_approval_pending.json").exists())
             rows = pw_notify.notify_pending(self.root, transport=lambda payload: 57)
         self.assertEqual(len(rows), 1)
-        self.assertEqual(json.loads((self.project / "telegram_approval_notified.json").read_text())["message_id"], 57)
+        marker = json.loads((self.project / "telegram_approval_notified.json").read_text())
+        self.assertEqual(marker["recipients"], {"123": 57})
 
-    def test_notifier_and_plugin_have_different_multi_user_contracts(self) -> None:
-        """Record the existing contract mismatch; source behavior is unchanged."""
+    def test_notifier_and_plugin_share_strict_multi_user_parser(self) -> None:
+        """Both outbound sends and callback authorization use the same ID list."""
         record = self.scan_one()
+        values = {
+            "TELEGRAM_BOT_TOKEN": "fixture-token",
+            "TELEGRAM_ALLOWED_USERS": "123, 456",
+        }
+        with patch.object(pw_notify, "config_values", return_value=values):
+            self.assertEqual(pw_plugin._authorized_ids(), frozenset({"123", "456"}))
+            self.assertEqual(pw_notify.parse_allowed_users(values["TELEGRAM_ALLOWED_USERS"]), ("123", "456"))
+            sent = []
+            pw_notify.notify_pending(
+                self.root, transport=lambda payload: (sent.append(payload) or 58)
+            )
+        self.assertEqual([payload["chat_id"] for payload in sent], ["123", "456"])
+        marker = json.loads((self.project / "telegram_approval_notified.json").read_text())
+        self.assertEqual(marker["recipients"], {"123": 58, "456": 58})
+
+    def test_allowed_user_parser_rejects_malformed_or_ambiguous_lists(self) -> None:
+        for value in ("", "123,", ",123", "123,,456", "123,123", "0", "01", "１２３", "abc"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                pw_notify.parse_allowed_users(value)
+
+    def test_partial_notification_failure_retries_only_missing_recipient(self) -> None:
+        self.scan_one()
         values = {
             "TELEGRAM_BOT_TOKEN": "fixture-token",
             "TELEGRAM_ALLOWED_USERS": "123,456",
         }
+        attempts = []
+        def partial(payload):
+            user = payload["chat_id"]
+            attempts.append(user)
+            if user == "456":
+                raise OSError("fixture delivery failure")
+            return 60
+
         with patch.object(pw_notify, "config_values", return_value=values):
-            self.assertEqual(pw_plugin._authorized_ids(), frozenset({"123", "456"}))
-            with self.assertRaisesRegex(ValueError, "exactly one authorized"):
-                pw_notify.send(self.root, record, transport=lambda payload: 58)
+            with self.assertRaisesRegex(RuntimeError, "1 recipient"):
+                pw_notify.notify_pending(self.root, transport=partial)
+            marker = json.loads((self.project / "telegram_approval_notified.json").read_text())
+            self.assertEqual(marker["recipients"], {"123": 60})
+            self.assertTrue((self.project / "telegram_approval_pending.json").exists())
+            retried = []
+            rows = pw_notify.notify_pending(
+                self.root,
+                transport=lambda payload: (retried.append(payload["chat_id"]) or 61),
+            )
+            duplicate = pw_notify.notify_pending(self.root, transport=lambda payload: 62)
+        self.assertEqual(attempts, ["123", "456"])
+        self.assertEqual(retried, ["456"])
+        self.assertEqual(len(rows), 1)
+        marker = json.loads((self.project / "telegram_approval_notified.json").read_text())
+        self.assertEqual(marker["recipients"], {"123": 60, "456": 61})
+        self.assertEqual(duplicate, [])
+
+    def test_marker_write_failure_can_duplicate_accepted_message(self) -> None:
+        """Telegram send and local marker writes cannot provide exactly-once delivery."""
+        self.scan_one()
+        values = {
+            "TELEGRAM_BOT_TOKEN": "fixture-token",
+            "TELEGRAM_ALLOWED_USERS": "123",
+        }
+        attempts = []
+
+        def accepted(payload):
+            attempts.append(payload["chat_id"])
+            return 70 + len(attempts)
+
+        with patch.object(pw_notify, "config_values", return_value=values):
+            with patch.object(
+                bridge, "atomic_json", side_effect=OSError("fixture marker failure")
+            ):
+                with self.assertRaisesRegex(OSError, "fixture marker failure"):
+                    pw_notify.notify_pending(self.root, transport=accepted)
+            self.assertFalse((self.project / "telegram_approval_notified.json").exists())
+            rows = pw_notify.notify_pending(self.root, transport=accepted)
+
+        self.assertEqual(attempts, ["123", "123"])
+        self.assertEqual(len(rows), 1)
+        marker = json.loads((self.project / "telegram_approval_notified.json").read_text())
+        self.assertEqual(marker["recipients"], {"123": 72})
+
+    def test_callback_requires_configured_private_user(self) -> None:
+        class Handler:
+            def __init__(self, callback, pattern):
+                self.callback = callback
+                self.pattern = pattern
+
+        class App:
+            def add_handler(self, handler):
+                self.handler = handler
+
+        class Query:
+            def __init__(self, user_id, chat_type):
+                self.from_user = SimpleNamespace(id=user_id)
+                self.message = SimpleNamespace(chat=SimpleNamespace(type=chat_type))
+                self.data = "pwa:a:fixture:" + "0" * 20
+                self.answers = []
+                self.edited = []
+            async def answer(self, text, **kwargs):
+                self.answers.append((text, kwargs))
+            async def edit_message_text(self, text):
+                self.edited.append(text)
+
+        app = App()
+        fake_ext = SimpleNamespace(CallbackQueryHandler=Handler)
+        values = {
+            "TELEGRAM_BOT_TOKEN": "fixture-token",
+            "TELEGRAM_ALLOWED_USERS": "123,456",
+        }
+        with patch.dict(sys.modules, {"telegram": SimpleNamespace(ext=fake_ext), "telegram.ext": fake_ext}), \
+             patch.object(pw_notify, "config_values", return_value=values), \
+             patch.object(pw_buttons, "approve", return_value="APPROVED"):
+            pw_plugin._factory(app, None)
+            authorized = Query(123, "private")
+            unauthorized = Query(999, "private")
+            group = Query(123, "group")
+            for query in (authorized, unauthorized, group):
+                asyncio.run(app.handler.callback(SimpleNamespace(callback_query=query), None))
+        self.assertTrue(app.handler.pattern.startswith("^pwa:[ar]:"))
+        self.assertEqual(authorized.answers, [("Recorded", {})])
+        self.assertEqual(authorized.edited, ["APPROVED"])
+        self.assertEqual(unauthorized.answers, [("Not authorized", {"show_alert": True})])
+        self.assertEqual(group.answers, [("Not authorized", {"show_alert": True})])
 
 
 if __name__ == "__main__":

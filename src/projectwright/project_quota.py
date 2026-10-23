@@ -6,6 +6,12 @@ import os
 import urllib.request
 from pathlib import Path
 
+# Optional gate: project config takes precedence; this environment default is
+# intentionally unset so a generic install is not bound to one HA instance.
+RATE_LIMITED_ENTITY_ENV = 'PROJECTWRIGHT_RATE_LIMITED_ENTITY'
+DEFAULT_RATE_LIMITED_ENTITY = None
+
+
 class QuotaError(RuntimeError):
     pass
 
@@ -68,9 +74,16 @@ def evaluate(settings: dict, *, home: Path | None = None) -> dict:
         import math
         if not math.isfinite(remaining) or not (0 <= remaining <= 100):
             raise QuotaError('invalid remaining quota reading')
-        limited_entity = settings.get('rate_limited_entity', 'binary_sensor.codex_rate_limited')
+        # Explicit project null disables the optional gate. Otherwise resolve
+        # the configured entity, then the installation environment default.
+        limited_entity = settings.get(
+            'rate_limited_entity',
+            os.environ.get(RATE_LIMITED_ENTITY_ENV, DEFAULT_RATE_LIMITED_ENTITY),
+        )
         limited = False
-        if limited_entity:
+        if limited_entity is not None:
+            if not isinstance(limited_entity, str) or not limited_entity:
+                raise QuotaError('quota.rate_limited_entity must be an entity ID or null')
             value = str(state(limited_entity)['state']).lower()
             if value not in ('on','off'): raise QuotaError('rate limited sensor state unknown')
             limited = value == 'on'

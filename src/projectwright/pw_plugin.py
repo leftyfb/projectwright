@@ -12,13 +12,13 @@ if str(SCRIPTS) not in sys.path:
 
 
 def _authorized_ids():
-    from pw_notify import config_values
-    vals = config_values(Path.home() / '.hermes' / '.env')
-    raw = vals.get('TELEGRAM_ALLOWED_USERS', '')
-    ids = [item.strip() for item in raw.split(',') if item.strip()]
-    if not ids or any(not item.isdecimal() for item in ids):
-        raise ValueError('Missing/invalid TELEGRAM_ALLOWED_USERS')
-    return frozenset(ids)
+    from pw_notify import config_values, parse_allowed_users
+    try:
+        vals = config_values(Path.home() / '.hermes' / '.env')
+        return frozenset(parse_allowed_users(vals.get('TELEGRAM_ALLOWED_USERS', '')))
+    except (OSError, ValueError):
+        # Invalid authorization configuration must deny every callback.
+        return frozenset()
 
 
 def _factory(app, adapter):
