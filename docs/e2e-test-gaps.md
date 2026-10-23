@@ -2,9 +2,35 @@
 
 Source baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. The original audit was read-only: no fixture was modified and no Projectwright worker was launched then. Host and external-fixture observations below are a snapshot from 2026-10-23, not current-state guarantees; recheck before relying on them. The current branch adds an isolated `unittest` suite; it still does not run live Hermes, Telegram, Home Assistant, or systemd integration.
 
+## Verified integration progress (development branch)
+
+GitHub Actions `Offline regression tests` run
+[40036531497](https://github.com/leftyfb/projectwright/actions/runs/40036531497)
+passed **100 offline tests**, with zero failures, skips, and expected failures,
+at commit `c72dff5`. Later commits require their own run confirmation.
+
+`tests/integration/test_subprocess_chain.py` now launches the real dispatcher,
+manager, planner (when requested), and worker through separate Python processes
+against a disposable Git repository, temporary project root, and fake Hermes
+executable. It verifies successful READ completion, idempotent subsequent tick,
+real planner queue replenishment, missing requirements blocking, held-project-lock
+deferment, quota refusal, and missing Hermes completion-report refusal.
+These tests **do not** invoke the real model, Telegram, Home Assistant, systemd,
+or any installed production script.
+
+The worker previously tried to run a second manager tick after being invoked by
+the dispatcher. The development branch now passes `PROJECTWRIGHT_DISPATCHED=1`
+to the worker subprocess and skips that redundant post-worker manager call.
+Standalone worker calls retain their historical post-worker manager behavior.
+This is covered indirectly by the real subprocess completion test.
+
+CI uses seven-day GitHub Actions log artifacts rather than Git commits.
+The separate tux self-hosted workflow is not yet operational because no isolated
+runner has been registered. Actual host integration is still outstanding.
+
 ## Existing evidence
 
-- At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The offline `tests/` suite and `scripts/validate-baseline.py` were introduced on `test/reproducible-baseline` and are present in this checkout; CI and dependency metadata remain absent.
+- At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The offline `tests/` suite and `scripts/validate-baseline.py` were introduced on `test/reproducible-baseline` and are present in this checkout; dependency metadata remains absent; offline CI has since been added.
 - External fixture projects exist under `~/.hermes/projects/`: `pw-sequence-test`, `pw-e2e-allow`, and `pw-e2e-deny`. Their queues were fully checked at inspection: 12, 4, and 3 checked task rows respectively. The allow fixture has historical completed result records for P101–P104; the deny fixture has completed result records for P101–P103. Those records do not by themselves establish that Telegram callback, stale-approval, or denial behavior was executed end to end.
 - The `pw-sequence-test` systemd worker timer is disabled, and there is no active worker cron job identified. The enabled approval-notification timer is not a worker test harness.
 - The original read-only AST inventory parsed all 18 source files. It was not behavioral coverage. Current syntax/import and offline-suite results are recorded in `docs/test-coverage-matrix.md`; historical claims remain separate in `docs/test-source-inventory.md`.
@@ -24,7 +50,7 @@ Covered offline contracts include source-manifest validation, strict manager/dis
 
 ### P0 — establish the safety contract
 
-1. **Dispatcher → manager → worker end-to-end.** Focused offline tests now reject malformed/ambiguous manager stdout and inconsistent exit codes before worker routing, and preserve valid `busy`/`no_op` behavior. Still run the full chain against a disposable project with fake Hermes: manager schema across every real decision, lock contention, one-task execution, and post-worker re-entry. Assert stdout/stderr remain machine-readable and no real Hermes provider is called.
+1. **Dispatcher → manager → worker end-to-end.** Focused offline tests now reject malformed/ambiguous manager stdout and inconsistent exit codes before worker routing, and preserve valid `busy`/`no_op` behavior. An initial real-subprocess fake-Hermes chain now covers lock contention, one-task execution, planner replenishment, and repeat execution. Additional manager decisions and crash recovery still need coverage. Assert stdout/stderr remain machine-readable and no real Hermes provider is called.
 2. **Human acceptance: allow and deny callbacks.** Exercise notifier scan, message/callback payload creation, plugin handler, approval/rejection, receipt creation/removal, and next-run gate behavior. Cover wrong project, duplicate callback, malformed request ID, missing bot configuration, and a declined request. Assert no receipt exists after rejection.
 3. **Stale approval and tamper cases.** Change HEAD, queue task list, requirements, policy, or allowed scope after a request is pinned; verify every stale request is refused without writing a valid receipt.
 4. **Current queue/config safety.** Test missing queue/requirements/config ID mismatch, disabled planning, invalid milestone policy, and unavailable required HA quota entity. The inspected `projectwright` config currently references a nonexistent `queue.md`; verify the dispatcher returns a clear fail-closed result rather than an unstructured traceback.
