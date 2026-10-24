@@ -109,6 +109,32 @@ class GuardPinnedEvidence(unittest.TestCase):
                 pw_buttons.approve(self.root, pw_buttons.callback_data("a", self.pinned))
         self.assertFalse((self.project / "planning_state.json").exists())
 
+    def test_real_guard_refuses_failing_acceptance_command(self):
+        self.cmd = [sys.executable, "-c", "import sys;sys.exit(5)"]
+        self.pinned["command"] = self.cmd
+        self.policy["milestones"]["DEMO-1-M1"]["command"] = self.cmd
+        (self.project / "telegram_acceptance.json").write_text(json.dumps(self.policy))
+        (self.project / "telegram_approval_pending.json").write_text(json.dumps(self.pinned))
+        with self.assertRaisesRegex(RuntimeError, "Acceptance command failed"):
+            self.approve(self.pinned)
+        self.assertFalse((self.project / "planning_state.json").exists())
+        self.assertTrue((self.project / "telegram_approval_pending.json").exists())
+
+    def test_real_guard_detects_queue_changed_by_acceptance_command(self):
+        command = (
+            "from pathlib import Path;Path(" +
+            repr(str(self.queue)) +
+            ").write_text('tampered\\n')"
+        )
+        self.cmd = [sys.executable, "-c", command]
+        self.pinned["command"] = self.cmd
+        self.policy["milestones"]["DEMO-1-M1"]["command"] = self.cmd
+        (self.project / "telegram_acceptance.json").write_text(json.dumps(self.policy))
+        (self.project / "telegram_approval_pending.json").write_text(json.dumps(self.pinned))
+        with self.assertRaisesRegex(RuntimeError, "State changed during acceptance"):
+            self.approve(self.pinned)
+        self.assertFalse((self.project / "planning_state.json").exists())
+
     def test_actual_guard_rejects_stale_head_without_receipt(self):
         stale = {**self.pinned, "head": "a" * 40}
         with self.assertRaisesRegex(ValueError, "Stale|stale"):
