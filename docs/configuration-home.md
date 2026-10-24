@@ -74,3 +74,23 @@ The created directory is mode 0700 and configuration is mode 0600.
 invent a Git worktree, credentials, provider, queue, approval policy, systemd
 unit or Telegram recipient. Enabling real execution remains an explicit
 separate configuration and authorization process.
+
+## Hardcoded runtime defaults (optional config file)
+
+`pw_config.load(project, root)` now constructs ordinary project paths and
+runtime settings from built-in defaults, whether or not `config.json` exists.
+A present JSON file overrides those defaults, including partial settings for
+planning, notes and execution. `pw defaults --project demo` also exposes
+`effective_config` so users can inspect the resulting values.
+
+The basic filesystem defaults are local to
+`<project-root>/<project-id>/`: `queue.md`, `work_log.md`,
+`worker.lock`, `worker.log`, `results/`, `git_cycle.json`, and
+`worker_journal.json`. Runtime timeout defaults to 900 seconds and the
+Hermes executable name defaults to `hermes`, which uses its own selected model.
+
+**Still pending:** connect the manager/planner/worker execution paths to the
+shared loader, select a default Git worktree or accept one explicitly, and
+distinguish ordinary task execution from authorization-sensitive operations.
+The installed worker currently retains its fail-closed absent-file guard, so
+this is not yet an end-to-end config-free execution claim.
