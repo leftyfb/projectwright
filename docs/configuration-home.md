@@ -59,3 +59,18 @@ describe behavior **when no project configuration exists**, not effective
 settings in an existing project. Actual config-free *execution* remains
 intentionally disabled until safe project initialization and policy validation
 are designed and tested.
+
+## Initialize a safe, disabled project
+
+`pw init --project demo` creates a new, private
+`<project-root>/demo/config.json` with execution, planning, and notes disabled.
+Use `--config-dir /absolute/config/projectwright` to select an XDG-style
+configuration home. Initialization refuses existing project directories
+(including symbolic links); it will not overwrite an existing configuration.
+The created directory is mode 0700 and configuration is mode 0600.
+
+`pw status --project demo` reports `disabled`; `pw worker --project demo
+--once` also refuses execution. Initialization deliberately does **not**
+invent a Git worktree, credentials, provider, queue, approval policy, systemd
+unit or Telegram recipient. Enabling real execution remains an explicit
+separate configuration and authorization process.
