@@ -222,7 +222,7 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
         if not available and not review:
             return {**out, 'decision': 'no_op', 'reason': 'Queue capacity exhausted'}
         if quota_evaluator is None:
-            from project_quota import evaluate
+            from pw_quota import evaluate
             quota_evaluator = evaluate
         quota = quota_evaluator(cfg.get('quota',{}))
         if not quota.get('allowed'):
