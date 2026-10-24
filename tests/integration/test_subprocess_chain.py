@@ -313,7 +313,7 @@ class RealSubprocessChain(unittest.TestCase):
         self.save_config()
         for task_id in ("P101", "P102", "P103"):
             result = self.dispatch()
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(result.returncode, 0, f"task={task_id} cycle={self.config['cycle_file']} "+result.stdout + result.stderr)
             self.assertIn("WORKER rc=0", result.stdout)
             self.assertIn(f"[x] **{task_id}", self.queue.read_text())
         self.assertEqual(git(self.repo, "status", "--porcelain"), "")
