@@ -42,6 +42,7 @@ EXPECTED_SOURCE_FILES = {
     "pw_plugin.py",
     "pw_project_timer.py",
 }
+DEVELOPMENT_ADDED_SOURCE_FILES = {'pw_worker_progress.py'}
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIR = ROOT / "src" / "projectwright"
 MANIFEST_PATH = ROOT / "installed-source-manifest.json"
@@ -90,7 +91,8 @@ def inspect_source(mode: str, manifest: dict) -> tuple[bool, bool, bool, bool]:
         if isinstance(size, bool) or not isinstance(size, int) or size < 0:
             invalid_manifest_records.append(f"{name}: invalid bytes")
     print(f"Expected source files: {len(EXPECTED_SOURCE_FILES)}; present: {len(actual_names)}")
-    print(f"Source file set: {'PASS' if not missing and not extra else 'FAIL'}")
+    permitted_extra = DEVELOPMENT_ADDED_SOURCE_FILES if mode == 'development' else set()
+    print(f"Source file set: {'PASS' if not missing and not (extra - permitted_extra) else 'FAIL'}")
     if missing:
         print("  missing: " + ", ".join(missing))
     if extra:
@@ -140,7 +142,7 @@ def inspect_source(mode: str, manifest: dict) -> tuple[bool, bool, bool, bool]:
         and not invalid_manifest_records
         and not drift
     )
-    source_set_ok = not missing and not extra
+    source_set_ok = not missing and not (extra - permitted_extra)
     if mode == "baseline":
         print(f"Original snapshot hash check: {'PASS' if baseline_ok else 'FAIL'}")
     else:
