@@ -540,7 +540,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
                 if journal_doc.get('current_task') is not None:
                     recovery_script = Path(__file__).resolve().parent / 'pw_recovery.py'
                     if not recovery_script.is_file():
-                        print('RECOVERY BLOCKED: project_recovery.py missing', file=sys.stderr)
+                        print('RECOVERY BLOCKED: packaged pw_recovery.py missing', file=sys.stderr)
                         return 2
                     fcntl.flock(lk, fcntl.LOCK_UN)
                     try:
