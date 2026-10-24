@@ -91,6 +91,33 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
                     self.assertNotEqual(proc.returncode,0)
                     self.assertIn("ValueError",proc.stderr)
 
+    def test_environment_worktree_and_branch_override_json(self):
+        with tempfile.TemporaryDirectory() as td:
+            env={**os.environ,"PYTHONPATH":str(SRC),
+                 "PROJECTWRIGHT_WORKTREE":str(Path(td)/"repo"),
+                 "PROJECTWRIGHT_BRANCH":"feature/my-work"}
+            command=("import json,sys; from pathlib import Path; "
+                     "from pw_config import load; "
+                     "print(json.dumps(load('demo',Path(sys.argv[1]))[1]))")
+            proc=subprocess.run([sys.executable,"-B","-c",command,td],
+                                capture_output=True,text=True,env=env)
+            self.assertEqual(proc.returncode,0,proc.stderr)
+            cfg=json.loads(proc.stdout)
+            self.assertEqual(cfg["worktree"],str(Path(td)/"repo"))
+            self.assertEqual(cfg["branch"],"feature/my-work")
+            self.assertFalse(Path(td,"demo").exists())
+            env["PROJECTWRIGHT_WORKTREE"]="relative/path"
+            invalid=subprocess.run([sys.executable,"-B","-c",command,td],
+                                   capture_output=True,text=True,env=env)
+            self.assertNotEqual(invalid.returncode,0)
+            self.assertIn("PROJECTWRIGHT_WORKTREE must be an absolute path",invalid.stderr)
+            env["PROJECTWRIGHT_WORKTREE"]=str(Path(td)/"repo")
+            env["PROJECTWRIGHT_BRANCH"]="../other"
+            invalid=subprocess.run([sys.executable,"-B","-c",command,td],
+                                   capture_output=True,text=True,env=env)
+            self.assertNotEqual(invalid.returncode,0)
+            self.assertIn("Invalid PROJECTWRIGHT_BRANCH",invalid.stderr)
+
     def test_json_overrides_take_precedence_without_losing_nested_defaults(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
