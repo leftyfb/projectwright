@@ -95,7 +95,7 @@ class DispatcherImportIsolationTests(unittest.TestCase):
             project.mkdir(parents=True)
             scripts = base / "scripts"
             scripts.mkdir()
-            shutil.copyfile(SRC / "project_queue_manager.py", scripts / "project_queue_manager.py")
+            shutil.copyfile(SRC / "pw_queue_manager.py", scripts / "pw_queue_manager.py")
             cycle_file = project / "cycle.json"
             cycle = {"version": 1, "phase": "active", "last_task": "P101",
                      "head": "abc", "branch": "main", "snapshot": ["foo.txt"],
