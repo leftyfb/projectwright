@@ -307,6 +307,11 @@ def main() -> int:
                 raise ValueError('Invalid project ID')
             print(json.dumps({'project': args.project, 'decision': 'disabled'}))
             return once_exit_code('disabled') if args.once else 0
+        config_path = args.config_root / args.project / 'config.json'
+        cfg = json.loads(config_path.read_text(encoding='utf-8'))
+        if cfg.get('projectwright_initialized') == 1 and cfg.get('execution') == {'enabled': False}:
+            print(json.dumps({'project': args.project, 'decision': 'disabled'}))
+            return once_exit_code('disabled') if args.once else 0
         mode = 'once' if args.once else 'status'
         if mode == 'once':
             from project_queue_planner import plan_once
