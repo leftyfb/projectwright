@@ -43,6 +43,17 @@ of the installed Hermes model, Telegram or production project state. The
 one-file smoke trigger was removed after verification; the self-hosted workflow
 is manual-only again.
 
+## tux verification of Git-cycle suite
+
+The full 113-test isolated suite also passed on the registered
+`tux-projectwright` self-hosted runner in
+[run 40043167593](https://github.com/leftyfb/projectwright/actions/runs/40043167593)
+with the development validator and ephemeral log upload successful.
+This was a source-checkout test within the unprivileged runner context; no
+installed Hermes binary or production project was executed. The one-file push
+trigger was removed and `tux-isolated.yml` returned to manual-only dispatch
+immediately afterward.
+
 ## Git-cycle integration checkpoint (2026-10-23)
 
 GitHub-hosted offline run
