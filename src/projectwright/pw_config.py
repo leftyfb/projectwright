@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 from pathlib import Path
 from pw_dispatch import default_project_root
 
@@ -62,3 +63,32 @@ def load(project: str, root: Path | None = None) -> tuple[Path, dict]:
             raise ValueError("Invalid PROJECTWRIGHT_BRANCH")
         result["branch"] = branch
     return path, result
+
+
+def ready_for_config_free_worker(cfg: dict) -> bool:
+    """Only an existing, explicitly prepared local repo and queue may run.
+
+    This never creates a repository or authorizes scheduling/approvals. A user
+    must invoke the worker; unattended configuration-free runs are disallowed.
+    """
+    repo = Path(cfg["worktree"]).expanduser()
+    queue = Path(cfg["queue"]).expanduser()
+    log = Path(cfg["work_log"]).expanduser()
+    if not repo.is_dir() or repo.is_symlink() or not queue.is_file() or not log.is_file():
+        return False
+    if queue.is_symlink() or log.is_symlink():
+        return False
+    try:
+        check = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+        branch = subprocess.run(
+            ["git", "-C", str(repo), "branch", "--show-current"],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return (check.returncode == 0 and branch.returncode == 0 and
+            Path(check.stdout.strip()).resolve() == repo.resolve() and
+            branch.stdout.strip() == cfg["branch"])
