@@ -297,7 +297,11 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument('--project',required=True)
     p.add_argument('--scripts',type=Path,default=Path(__file__).resolve().parent)
+    p.add_argument('--config-dir',type=Path,help='Projectwright configuration home (projects are in its projects/ subdirectory)')
     a=p.parse_args()
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',a.project):p.error('Invalid project ID')
+    if a.config_dir is not None:
+        if not a.config_dir.is_absolute(): p.error('--config-dir must be absolute')
+        os.environ['PROJECTWRIGHT_CONFIG_DIR'] = str(a.config_dir)
     return run_tick(a.project,a.scripts)
 if __name__=='__main__':raise SystemExit(main())
