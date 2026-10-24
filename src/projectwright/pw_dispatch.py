@@ -237,7 +237,7 @@ def authorized_cycle_task(project, scripts, report):
         return False
 
 
-def run_tick(project, scripts, *, runner=subprocess.run):
+def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False):
     manager = [sys.executable, '-B', str(scripts/'project_queue_manager.py'), '--project', project, '--once']
     m = runner(manager, capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1'}, timeout=650)
     try:
@@ -267,6 +267,8 @@ def run_tick(project, scripts, *, runner=subprocess.run):
         print('FAIL unexpected planning decision='+decision, file=sys.stderr)
         return 20
     worker = [sys.executable, '-B', str(scripts/'project_task_worker.py'), '--project', project, '--once']
+    if no_telegram:
+        worker.append('--no-telegram')
     w = runner(worker, capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1', 'PROJECTWRIGHT_DISPATCHED':'1'}, timeout=2700)
     print('WORKER rc='+str(w.returncode))
     if w.stdout: print(w.stdout[-4000:])
@@ -297,13 +299,14 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument('--project',required=True)
     p.add_argument('--scripts',type=Path,default=Path(__file__).resolve().parent)
+    p.add_argument('--no-telegram',action='store_true',help='Do not send worker progress through Hermes Telegram')
     p.add_argument('--config-dir',type=Path,help='Projectwright configuration home (projects are in its projects/ subdirectory)')
     a=p.parse_args()
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',a.project):p.error('Invalid project ID')
     if a.config_dir is not None:
         if not a.config_dir.is_absolute(): p.error('--config-dir must be absolute')
         os.environ['PROJECTWRIGHT_CONFIG_DIR'] = str(a.config_dir)
-    return run_tick(a.project,a.scripts)
+    return run_tick(a.project,a.scripts,no_telegram=a.no_telegram)
 def cli():
     """Preliminary unified command launcher; each service retains its own parser."""
     commands = {
