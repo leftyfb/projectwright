@@ -36,7 +36,7 @@ def load(project: str, root: Path | None = None) -> tuple[Path, dict]:
         "worker_journal_file": str(directory / "worker_journal.json"),
         "timeout_seconds": 900,
         "hermes": "hermes",
-        "planning": {"enabled": False},
+        "planning": {"enabled": False, "requirements_file": str(directory / "requirements.md")},
         "notes": {"enabled": False},
         "execution": {"enabled": False},
     }
