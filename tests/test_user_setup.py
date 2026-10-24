@@ -23,6 +23,9 @@ class ApprovalSetupTests(unittest.TestCase):
                  patch("pw_notify.config_values", return_value=values):
                 timer.setup_user_approvals(runner=runner, enable_plugin=True)
                 timer.setup_user_approvals(runner=runner)
+            plugin = home / ".hermes/plugins/projectwright-approvals"
+            self.assertTrue((plugin / "plugin.yaml").is_file())
+            self.assertIn("register", (plugin / "__init__.py").read_text())
             root = home / ".config/systemd/user"
             service = (root / "projectwright-approval-notify.service").read_text()
             unit = (root / "projectwright-approval-notify.timer").read_text()
@@ -34,6 +37,21 @@ class ApprovalSetupTests(unittest.TestCase):
                 ["systemctl", "--user", "daemon-reload"],
                 ["systemctl", "--user", "enable", "--now", "projectwright-approval-notify.timer"],
             ])
+
+    def test_modified_hermes_plugin_refused_before_enabling(self):
+        with tempfile.TemporaryDirectory(prefix="pw-plugin-conflict-") as temp:
+            home = Path(temp)
+            plugin = home / ".hermes/plugins/projectwright-approvals"
+            plugin.mkdir(parents=True)
+            (plugin / "plugin.yaml").write_text("custom manifest")
+            values = {"TELEGRAM_BOT_TOKEN": "fixture", "TELEGRAM_ALLOWED_USERS": "111"}
+            with patch.object(Path, "home", return_value=home), \
+                 patch.object(timer.os, "geteuid", return_value=1000), \
+                 patch("pw_notify.config_values", return_value=values):
+                with self.assertRaisesRegex(ValueError, "Refusing to overwrite"):
+                    timer.setup_user_approvals(
+                        enable_plugin=True, runner=lambda *args, **kw: self.fail("enabled"))
+            self.assertEqual((plugin / "plugin.yaml").read_text(), "custom manifest")
 
     def test_root_cannot_implicitly_configure_a_user(self):
         with patch.object(timer.os, "geteuid", return_value=0):
