@@ -6,11 +6,14 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import types
+from unittest.mock import patch
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "projectwright"
 sys.path.insert(0, str(SRC))
 import project_milestone_guard as guard
+import pw_buttons
 
 def run(*argv, cwd=None):
     return subprocess.check_output(argv, cwd=cwd, text=True).strip()
@@ -77,6 +80,34 @@ class GuardPinnedEvidence(unittest.TestCase):
         self.assertEqual(state["verified_milestones"]["DEMO-1-M1"], receipt)
         self.assertEqual(self.queue.read_text().count("[x]"), 1)
         self.assertEqual(run("git", "status", "--porcelain", cwd=self.repo), "")
+
+    def test_real_callback_to_guard_approves_then_blocks_replay(self):
+        bridge = types.ModuleType("project_telegram_approval")
+        bridge.project_data = lambda directory: (self.config, self.policy)
+        token = pw_buttons.callback_data("a", self.pinned)
+        with patch.dict(sys.modules, {"project_telegram_approval": bridge}):
+            message = pw_buttons.approve(self.root, token)
+            self.assertIn("APPROVED fixture / DEMO-1-M1", message)
+            receipt = json.loads(
+                (self.project / "planning_state.json").read_text()
+            )["verified_milestones"]["DEMO-1-M1"]
+            self.assertEqual(receipt["git_head"], self.head)
+            self.assertFalse(
+                (self.project / "telegram_approval_pending.json").exists()
+            )
+            with self.assertRaisesRegex(ValueError, "no longer pending"):
+                pw_buttons.approve(self.root, token)
+
+    def test_real_callback_rejected_request_does_not_approve(self):
+        bridge = types.ModuleType("project_telegram_approval")
+        bridge.project_data = lambda directory: (self.config, self.policy)
+        (self.project / "telegram_approval_rejected.json").write_text(
+            json.dumps(self.pinned)
+        )
+        with patch.dict(sys.modules, {"project_telegram_approval": bridge}):
+            with self.assertRaisesRegex(ValueError, "explicitly rejected"):
+                pw_buttons.approve(self.root, pw_buttons.callback_data("a", self.pinned))
+        self.assertFalse((self.project / "planning_state.json").exists())
 
     def test_actual_guard_rejects_stale_head_without_receipt(self):
         stale = {**self.pinned, "head": "a" * 40}
