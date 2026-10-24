@@ -60,9 +60,10 @@ def publish(config,config_path):
     return target
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--project',required=True);p.add_argument('--dry-run',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--project',required=True);p.add_argument('--dry-run',action='store_true');p.add_argument('--config-dir',type=Path,default=None,help='Projectwright config home');a=p.parse_args()
     from pw_dispatch import default_project_root
-    root=default_project_root()
+    if a.config_dir is not None and not a.config_dir.is_absolute(): p.error('--config-dir must be absolute')
+    root=a.config_dir / 'projects' if a.config_dir is not None else default_project_root()
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',a.project):p.error('Invalid project ID')
     path=root/a.project/'config.json'; cfg=json.loads(path.read_text())
     if cfg.get('id')!=a.project: raise ValueError('Project config ID mismatch')
