@@ -43,6 +43,17 @@ jobs:
           python3 -B scripts/validate-baseline.py --mode development \
             2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/validator.log"
 
+      - name: Build and smoke-test development wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/projectwright-wheels" . \
+            2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/wheel-build.log"
+          python3 -m pip install --no-deps --target "$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP"/projectwright-wheels/*.whl
+          PYTHONPATH="$RUNNER_TEMP/projectwright-install" python3 -B -c \
+            "import pw_dispatch, project_queue_manager, project_task_worker, pw_project_timer; print('wheel imports OK')"
+
       - name: Verify whitespace
         if: always()
         shell: bash
