@@ -53,6 +53,6 @@ py-modules = [
 pw = "pw_dispatch:cli"
 pw-dispatch = "pw_dispatch:main"
 pw-manager = "pw_queue_manager:main"
-pw-worker = "project_task_worker:main"
+pw-worker = "pw_task_worker:main"
 pw-notify = "pw_notify:main"
 pw-timer = "pw_project_timer:main"
