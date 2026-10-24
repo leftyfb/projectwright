@@ -92,7 +92,7 @@ def inspect_source(mode: str, manifest: dict) -> tuple[bool, bool, bool, bool]:
             invalid_manifest_records.append(f"{name}: invalid bytes")
     print(f"Expected source files: {len(EXPECTED_SOURCE_FILES)}; present: {len(actual_names)}")
     permitted_extra = DEVELOPMENT_ADDED_SOURCE_FILES if mode == 'development' else set()
-    print(f"Source file set: {'PASS' if not missing and not (extra - permitted_extra) else 'FAIL'}")
+    print(f"Source file set: {'PASS' if not missing and not (set(extra) - permitted_extra) else 'FAIL'}")
     if missing:
         print("  missing: " + ", ".join(missing))
     if extra:
