@@ -126,14 +126,17 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
             binary.chmod(0o755)
             env={**os.environ,"PYTHONPATH":str(SRC),
                  "PATH":str(folder)+os.pathsep+os.environ.get("PATH","")}
-            script=("from unittest.mock import patch; "
-                    "from project_queue_planner import run_planner; "
-                    "import subprocess; "
-                    "with patch('subprocess.Popen') as proc: pass")
-            # Provider resolution is verified without launching an agent.
-            src=(SRC/"project_queue_planner.py").read_text()
-            self.assertIn("shutil.which(cmd[0])",src)
-            self.assertTrue(binary.is_file())
+            code=(
+                "from unittest.mock import patch\\n"
+                "from project_queue_planner import run_planner\\n"
+                "with patch('project_queue_planner.subprocess.Popen') as proc:\\n"
+                "    proc.return_value.communicate.return_value=('{}','')\\n"
+                "    proc.return_value.returncode=0\\n"
+                "    assert run_planner({'hermes':'hermes'},'prompt',timeout=5)=={}\\n"
+            )
+            result=subprocess.run([sys.executable,"-B","-c",code],
+                                  env=env,capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
 
     def test_json_overrides_take_precedence_without_losing_nested_defaults(self):
         with tempfile.TemporaryDirectory() as td:
