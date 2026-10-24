@@ -132,7 +132,7 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
                 "with patch('project_queue_planner.subprocess.Popen') as proc:\n"
                 "    proc.return_value.communicate.return_value=('{}','')\n"
                 "    proc.return_value.returncode=0\n"
-                "    assert run_planner({'hermes':'hermes'},'prompt',timeout=5)=={}\n"
+                "    assert run_planner({'hermes':'hermes','worktree':'/tmp'},'prompt',timeout=5)=={}\n"
             )
             result=subprocess.run([sys.executable,"-B","-c",code],
                                   env=env,capture_output=True,text=True)
