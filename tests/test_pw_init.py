@@ -39,6 +39,26 @@ class SafeInitTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(),original)
             self.assertFalse((home/".hermes").exists())
 
+    def test_no_config_initializer_creates_queue_only(self):
+        with tempfile.TemporaryDirectory() as td:
+            home=Path(td)
+            config_home=home/"cfg"
+            args=("--project","demo","--config-dir",str(config_home),"--no-config")
+            made=self.invoke("pw_init",home,*args)
+            self.assertEqual(made.returncode,0,made.stderr)
+            output=json.loads(made.stdout)
+            self.assertIsNone(output["config"])
+            directory=config_home/"projects/demo"
+            self.assertTrue((directory/"queue.md").is_file())
+            self.assertTrue((directory/"work_log.md").is_file())
+            self.assertFalse((directory/"config.json").exists())
+            self.assertFalse((directory/"worktree").exists())
+            self.assertEqual(directory.stat().st_mode & 0o777,0o700)
+            self.assertEqual((directory/"queue.md").stat().st_mode & 0o777,0o600)
+            again=self.invoke("pw_init",home,*args)
+            self.assertNotEqual(again.returncode,0)
+            self.assertFalse((home/".hermes").exists())
+
     def test_invalid_project_id_and_relative_config_home_fail(self):
         with tempfile.TemporaryDirectory() as td:
             home=Path(td)
