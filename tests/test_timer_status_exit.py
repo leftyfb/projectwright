@@ -30,5 +30,16 @@ class TimerStatusTests(unittest.TestCase):
             self.assertIn("status", run.call_args.args[0])
             self.assertNotIn("enable", run.call_args.args[0])
 
+    def test_status_still_works_when_dispatcher_and_config_missing(self):
+        with tempfile.TemporaryDirectory(prefix="pw-missing-status-") as home:
+            root = Path(home)
+            argv = ["pw_project_timer.py", "status", "fixture", "--root", str(root / "missing")]
+            with patch.object(timer.Path, "home", return_value=root), \
+                 patch.object(timer.sys, "argv", argv), \
+                 patch.object(timer.subprocess, "run", return_value=subprocess.CompletedProcess([], 4)) as run:
+                self.assertEqual(timer.main(), 4)
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(run.call_args.args[0][:3], ["systemctl", "--user", "status"])
+
 if __name__ == "__main__":
     unittest.main()
