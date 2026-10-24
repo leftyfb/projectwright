@@ -1,1 +1,0 @@
-Run all offline checks for new CLI, config root and non-Hermes command provider.
