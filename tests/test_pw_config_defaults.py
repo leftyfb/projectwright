@@ -43,6 +43,8 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, proc.stderr)
             data = json.loads(proc.stdout)
             self.assertEqual(data["cfg"]["queue"], str(Path(td)/"demo/queue.md"))
+            self.assertEqual(data["cfg"]["worktree"], str(Path(td)/"demo/worktree"))
+            self.assertEqual(data["cfg"]["branch"], "main")
             self.assertEqual(data["cfg"]["timeout_seconds"], 900)
             self.assertFalse(data["cfg"]["execution"]["enabled"])
             self.assertFalse((Path(td)/"demo").exists())
