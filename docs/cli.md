@@ -1,0 +1,30 @@
+# Preliminary `pw` command interface
+
+The current development wheel and Debian preview include `pw` as a
+single command that routes to the existing, separately-tested flat-script
+entrypoints. It is **not yet** the final CLI or a proof of standalone
+harness independence.
+
+| Command | Delegates to | Purpose |
+|---|---|---|
+| `pw tick --project NAME` | `pw_dispatch` | One planning/worker dispatch tick |
+| `pw status --project NAME` | `project_queue_manager --status` | Inspect project decision and blockers |
+| `pw plan --project NAME` | `project_queue_manager --once` | One planning decision |
+| `pw worker --project NAME --once` | `project_task_worker` | Run at most one worker task |
+| `pw notify` | `pw_notify` | Preview approval notifications; send only if explicitly requested |
+| `pw timer ACTION PROJECT` | `pw_project_timer` | Inspect, install, enable or disable user timers |
+
+Each command has its own `--help`, which `pw` forwards. `pw --help`
+displays the routing summary without performing any action. The legacy
+`pw-dispatch`, `pw-manager`, `pw-worker`, `pw-notify`, and
+`pw-timer` entrypoints remain available during migration.
+
+An explicit configuration home can be provided to `pw tick`,
+`pw status`, `pw plan`, and `pw worker` through `--config-dir`.
+See [configuration home](configuration-home.md). The full set of
+subcommands still needs a shared configuration parser before 1.0.
+
+The `pw` command merely delegates; it does not bypass the worker journal,
+Git cycle validation, quota gate, acceptance guard or existing authorization
+rules. A missing project configuration yields a disabled manager decision,
+not permission to begin work.
