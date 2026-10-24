@@ -99,3 +99,21 @@ selecting and validating a Git worktree and the execution authorization policy,
 and distinguish ordinary task execution from approval-sensitive operations.
 The installed worker currently retains its fail-closed absent-file guard, so
 this is not yet an end-to-end config-free execution claim.
+
+## Manually running a prepared project without config.json
+
+A config file is not required for an explicitly invoked worker when the
+hardcoded project paths point to an existing, initialized Git worktree, the
+current branch matches the configured/default branch, and both `queue.md`
+and `work_log.md` already exist. For example, `pw worker --project demo
+--dry-run` can inspect the next task from this prepared directory without
+creating `config.json`. By default its worktree is
+`<project-root>/demo/worktree`, branch `main`. A different repository or
+branch can be selected with `PROJECTWRIGHT_WORKTREE` (absolute path) and
+`PROJECTWRIGHT_BRANCH`. These environment values override JSON fields.
+
+Explicit `--once` is also eligible after preflight validation, but all normal
+worker Git, journal and task-scope checks continue to apply. Projectwright does
+not create a Git repository, queue, or notes automatically, and will return
+`disabled` when these prerequisites are absent. Config-free automatic
+planning and scheduled execution are still disabled.
