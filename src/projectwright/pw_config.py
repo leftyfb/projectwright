@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from pw_dispatch import default_project_root
@@ -48,4 +49,16 @@ def load(project: str, root: Path | None = None) -> tuple[Path, dict]:
     for section in ("planning", "notes", "execution"):
         if isinstance(overrides.get(section), dict):
             result[section] = {**defaults[section], **overrides[section]}
+    # Explicit process environment overrides are optional. Never resolve a
+    # relative repository against an unspecified working directory.
+    selected = os.environ.get("PROJECTWRIGHT_WORKTREE")
+    if selected is not None:
+        if not selected or not Path(selected).expanduser().is_absolute():
+            raise ValueError("PROJECTWRIGHT_WORKTREE must be an absolute path")
+        result["worktree"] = str(Path(selected).expanduser())
+    branch = os.environ.get("PROJECTWRIGHT_BRANCH")
+    if branch is not None:
+        if not branch or branch.startswith("-") or not re.fullmatch(r"[A-Za-z0-9_./-]+", branch) or ".." in branch or branch.endswith("/"):
+            raise ValueError("Invalid PROJECTWRIGHT_BRANCH")
+        result["branch"] = branch
     return path, result
