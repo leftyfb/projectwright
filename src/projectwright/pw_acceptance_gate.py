@@ -5,7 +5,7 @@ acceptance receipt. It does not infer approval, mutate state, or call Hermes.
 """
 from __future__ import annotations
 import re
-from project_milestone_guard import milestone_ids, scoped_tasks
+from pw_milestone_guard import milestone_ids, scoped_tasks
 
 
 def awaiting_acceptance(queue: str, requirements: str, current: dict) -> list[str]:
