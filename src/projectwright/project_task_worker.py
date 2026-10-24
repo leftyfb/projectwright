@@ -40,6 +40,8 @@ def load_project(project_id: str) -> None:
     if cfg.get('id') != project_id:
         raise ValueError('Project configuration ID mismatch')
     required = ('queue','work_log','lock','run_log','result_dir','cycle_file','worktree','hermes','timeout_seconds')
+    if isinstance(cfg.get('provider'), dict) and cfg['provider'].get('type') == 'command':
+        required = tuple(k for k in required if k != 'hermes')
     missing = [k for k in required if not cfg.get(k)]
     if missing: raise ValueError(f'Missing project config: {missing}')
     PROJECT = cfg
@@ -53,7 +55,7 @@ def load_project(project_id: str) -> None:
     RESULT_DIR = Path(cfg['result_dir']).expanduser()
     CYCLE_FILE = Path(cfg['cycle_file']).expanduser()
     WORKTREE = Path(cfg['worktree']).expanduser()
-    HERMES = str(Path(cfg['hermes']).expanduser())
+    HERMES = str(Path(cfg.get('hermes', '')).expanduser())
     MODEL = None  # Hermes selects its configured model/provider.
     TIMEOUT = int(cfg['timeout_seconds'])
     if not 1 <= TIMEOUT <= 3600: raise ValueError('Invalid timeout')
@@ -435,7 +437,8 @@ def atomic_write(path: Path, text: str) -> None:
 
 
 def run_agent(prompt: str, log) -> tuple[int, str]:
-    cmd = [HERMES, 'chat', '--oneshot', '--query-file', '-', '--ignore-rules']
+    from project_queue_manager import provider_argv
+    cmd, _ = provider_argv(PROJECT, 'worker')
     env = os.environ.copy()
     env['PYTHONDONTWRITEBYTECODE'] = '1'
     proc = subprocess.Popen(cmd, cwd=WORKTREE, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
