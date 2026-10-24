@@ -13,6 +13,13 @@ config-free defaults, swappable execution harnesses, Telegram UI approvals,
 and Debian installation plus per-user Hermes/systemd onboarding. Preview builds
 are **not** considered production-ready until these items are verified.
 
+## Unified CLI and configuration locations (development)
+
+The development packages now include a preliminary `pw` launcher. See
+[CLI reference](docs/cli.md) and [configuration paths](docs/configuration-home.md).
+The XDG migration is partial; legacy projects remain available and missing
+project configuration leaves scheduling disabled by default.
+
 ## Development wheel preview
 
 A preliminary, non-production Python wheel can be built from the repository's
