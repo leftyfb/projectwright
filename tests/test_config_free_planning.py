@@ -25,18 +25,18 @@ class ConfigFreePlannerRoutingTests(unittest.TestCase):
                             "commit","-q","--allow-empty","-m","initial"],check=True)
             env={**os.environ,"PYTHONPATH":str(SOURCE),"PROJECTWRIGHT_CONFIG_DIR":str(config)}
             code=(
-                "import sys,project_queue_planner\\n"
+                "import sys,project_queue_planner\n"
                 "project_queue_planner.plan_once=lambda *a,**kw: "
-                "{'project':'demo','decision':'no_op','pending':0,'manual':kw.get('manual_config_free')}\\n"
-                "from project_queue_manager import main\\n"
-                "sys.argv=['pw-manager','--project','demo','--once']\\n"
-                "raise SystemExit(main())\\n"
+                "{'project':'demo','decision':'no_op','pending':0,'manual':kw.get('manual_config_free')}\n"
+                "from project_queue_manager import main\n"
+                "sys.argv=['pw-manager','--project','demo','--once']\n"
+                "raise SystemExit(main())\n"
             )
             before=subprocess.run([sys.executable,"-B","-c",code],
                                   env=env,capture_output=True,text=True)
             self.assertEqual(before.returncode,3,before.stderr)
             self.assertEqual(json.loads(before.stdout)["decision"],"disabled")
-            (project/"requirements.md").write_text("# Requirements\\n")
+            (project/"requirements.md").write_text("# Requirements\n")
             after=subprocess.run([sys.executable,"-B","-c",code],
                                  env=env,capture_output=True,text=True)
             self.assertEqual(after.returncode,3,after.stderr)
