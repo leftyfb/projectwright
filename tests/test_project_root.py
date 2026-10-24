@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "projectwright"))
 from project_queue_manager import default_project_root
+import pw_dispatch
 
 
 class ProjectRootSelection(unittest.TestCase):
@@ -31,6 +32,16 @@ class ProjectRootSelection(unittest.TestCase):
                 "XDG_CONFIG_HOME": tmp + "/xdg",
             }, clear=True):
                 self.assertEqual(default_project_root(), Path(tmp) / "new-home/projects")
+
+    def test_dispatcher_cli_passes_custom_config_to_child_processes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            argv = ["pw-dispatch", "--project", "fixture", "--config-dir", tmp]
+            with patch.object(sys, "argv", argv), patch.object(pw_dispatch, "run_tick", return_value=0) as run:
+                with patch.dict(os.environ, {}, clear=True):
+                    self.assertEqual(pw_dispatch.main(), 0)
+                    self.assertEqual(os.environ["PROJECTWRIGHT_CONFIG_DIR"], tmp)
+                    self.assertEqual(pw_dispatch.default_project_root(), Path(tmp) / "projects")
+            run.assert_called_once()
 
     def test_legacy_override_and_custom_xdg(self):
         with tempfile.TemporaryDirectory() as tmp:
