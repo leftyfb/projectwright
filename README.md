@@ -5,6 +5,14 @@ modules under `src/projectwright/`, together with an immutable source manifest
 and an offline `unittest` suite. Runtime scripts in `~/.hermes/scripts/` are not
 modified by this repository's tests.
 
+## Final release requirements
+
+The [final release checklist](docs/release-checklist.md) is the acceptance gate
+for naming consistency, complete file/workflow documentation, XDG config and
+config-free defaults, swappable execution harnesses, Telegram UI approvals,
+and Debian installation plus per-user Hermes/systemd onboarding. Preview builds
+are **not** considered production-ready until these items are verified.
+
 ## Development wheel preview
 
 A preliminary, non-production Python wheel can be built from the repository's
