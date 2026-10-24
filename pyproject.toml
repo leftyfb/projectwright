@@ -17,6 +17,7 @@ py-modules = [
     "project_milestone_guard",
     "project_milestone_sequence",
     "project_notes_publisher",
+    "pw_notes_publisher",
     "project_notes_sync",
     "project_queue_manager",
     "project_queue_planner",
