@@ -115,5 +115,7 @@ branch can be selected with `PROJECTWRIGHT_WORKTREE` (absolute path) and
 Explicit `--once` is also eligible after preflight validation, but all normal
 worker Git, journal and task-scope checks continue to apply. Projectwright does
 not create a Git repository, queue, or notes automatically, and will return
-`disabled` when these prerequisites are absent. Config-free automatic
-planning and scheduled execution are still disabled.
+`disabled` when these prerequisites are absent. The normal `pw tick --project demo` dispatcher also accepts this prepared
+config-free workspace: it skips automatic planning and dispatches one worker
+cycle directly. Config-free automatic planning and scheduled execution remain
+disabled until explicitly configured.
