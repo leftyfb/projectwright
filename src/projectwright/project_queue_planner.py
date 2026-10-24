@@ -96,15 +96,16 @@ def validate_proposal(raw: dict, *, available: int, queue: str,
 
 
 def run_planner(cfg: dict, prompt: str, *, timeout: int) -> dict:
-    hermes = str(Path(cfg['hermes']).expanduser())
-    if not Path(hermes).is_file():
-        raise ValueError(f'Hermes executable not found: {hermes}')
-    cmd = [hermes, '--ignore-rules', '-z', prompt]
+    from project_queue_manager import provider_argv
+    cmd, prompt_on_stdin = provider_argv(cfg, 'planner', prompt=prompt)
+    if not Path(cmd[0]).is_file():
+        raise ValueError(f'Planner provider executable not found: {cmd[0]}')
     proc = subprocess.Popen(cmd, cwd=str(Path(cfg['worktree']).expanduser()),
+                            stdin=subprocess.PIPE if prompt_on_stdin else None,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, text=True, start_new_session=True)
     try:
-        stdout, stderr = proc.communicate(timeout=timeout)
+        stdout, stderr = proc.communicate(input=prompt if prompt_on_stdin else None, timeout=timeout)
     except subprocess.TimeoutExpired:
         os.killpg(proc.pid, signal.SIGTERM)
         try:
