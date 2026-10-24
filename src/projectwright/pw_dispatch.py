@@ -261,7 +261,13 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False):
     if cycle_route:
         print('Active Git cycle: dispatching authorized next task to worker; planner remains blocked', flush=True)
     elif decision in SAFE_IDLE:
-        if decision != 'no_op' or report['pending'] == 0:
+        config_free_ready = False
+        if decision == 'disabled':
+            from pw_config import load as load_config, ready_for_config_free_worker
+            config_path, effective = load_config(project)
+            # A disabled configured project is never treated as config-free.
+            config_free_ready = not config_path.exists() and ready_for_config_free_worker(effective)
+        if not config_free_ready and (decision != 'no_op' or report['pending'] == 0):
             return 0
     elif decision != 'queued':
         print('FAIL unexpected planning decision='+decision, file=sys.stderr)
