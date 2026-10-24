@@ -301,15 +301,21 @@ def main() -> int:
     try:
         from pw_config import load as load_config
         _, cfg = load_config(args.project, args.config_root)
-        # Built-in settings work without config.json. Until a project is
-        # explicitly enabled, never launch a planner or touch Git state.
-        if not (args.config_root / args.project / 'config.json').is_file() or (cfg.get('projectwright_initialized') == 1 and cfg['execution']['enabled'] is False):
+        from pw_config import ready_for_config_free_worker
+        config_missing = not (args.config_root / args.project / 'config.json').is_file()
+        req_file = Path(cfg['planning']['requirements_file'])
+        manual_config_free = (args.once and config_missing and
+                              req_file.is_file() and not req_file.is_symlink() and
+                              ready_for_config_free_worker(cfg))
+        if (config_missing and not manual_config_free) or (
+            cfg.get('projectwright_initialized') == 1 and cfg['execution']['enabled'] is False
+        ):
             print(json.dumps({'project': args.project, 'decision': 'disabled'}))
             return once_exit_code('disabled') if args.once else 0
         mode = 'once' if args.once else 'status'
         if mode == 'once':
             from project_queue_planner import plan_once
-            result = plan_once(args.project, args.config_root)
+            result = plan_once(args.project, args.config_root, manual_config_free=manual_config_free)
         else:
             result = inspect(args.project, args.config_root, mode=mode)
         print(json.dumps(result, indent=2, sort_keys=True))
