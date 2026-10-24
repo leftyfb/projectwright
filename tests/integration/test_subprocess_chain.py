@@ -304,9 +304,9 @@ class RealSubprocessChain(unittest.TestCase):
 
     def test_real_edit_test_commit_cycle_preserves_git_scope(self):
         self.queue.write_text(
-            "- [ ] **P101 — EDIT** modify fixture file\\n"
-            "- [ ] **P102 — TEST** test fixture change\\n"
-            "- [ ] **P103 — COMMIT** commit validated fixture\\n"
+            "- [ ] **P101 — EDIT** modify fixture file\n"
+            "- [ ] **P102 — TEST** test fixture change\n"
+            "- [ ] **P103 — COMMIT** commit validated fixture\n"
         )
         self.env["PW_FAKE_MODE"] = "git_cycle"
         self.config["planning"]["enabled"] = True
