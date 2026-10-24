@@ -18,7 +18,7 @@ class PackageManifestContract(unittest.TestCase):
         modules = data["tool"]["setuptools"]["py-modules"]
         manifest = json.loads((ROOT / "installed-source-manifest.json").read_text())
         expected = {Path(name).stem for name in manifest["files"]}
-        canonical_additions = {'pw_worker_progress', 'pw_milestone_sequence'}
+        canonical_additions = {'pw_worker_progress', 'pw_milestone_sequence', 'pw_acceptance_gate'}
         self.assertEqual(set(modules), expected | canonical_additions)
         self.assertEqual(len(modules), len(set(modules)))
         self.assertEqual(set(modules), {p.stem for p in (ROOT / "src" / "projectwright").glob("*.py")})
