@@ -4,7 +4,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "src" / "projectwright"
-WORKER = SOURCE / "project_task_worker.py"
+WORKER = SOURCE / "pw_task_worker.py"
 
 
 class PackagedWorkerUtilities(unittest.TestCase):
