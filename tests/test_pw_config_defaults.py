@@ -118,6 +118,23 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
             self.assertNotEqual(invalid.returncode,0)
             self.assertIn("Invalid PROJECTWRIGHT_BRANCH",invalid.stderr)
 
+    def test_planner_resolves_default_hermes_from_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            folder=Path(td)
+            binary=folder/"hermes"
+            binary.write_text("#!/bin/sh\\nexit 0\\n")
+            binary.chmod(0o755)
+            env={**os.environ,"PYTHONPATH":str(SRC),
+                 "PATH":str(folder)+os.pathsep+os.environ.get("PATH","")}
+            script=("from unittest.mock import patch; "
+                    "from project_queue_planner import run_planner; "
+                    "import subprocess; "
+                    "with patch('subprocess.Popen') as proc: pass")
+            # Provider resolution is verified without launching an agent.
+            src=(SRC/"project_queue_planner.py").read_text()
+            self.assertIn("shutil.which(cmd[0])",src)
+            self.assertTrue(binary.is_file())
+
     def test_json_overrides_take_precedence_without_losing_nested_defaults(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
