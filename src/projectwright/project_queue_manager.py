@@ -264,7 +264,7 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
                 return result
         # Suppress replanning completed COMMIT milestones pending human acceptance.
         if result['decision'] in ('replenish', 'strategic_review') and result['pending'] == 0:
-            from project_acceptance_gate import awaiting_acceptance
+            from pw_acceptance_gate import awaiting_acceptance
             _awaiting = awaiting_acceptance(queue_path.read_text(encoding='utf-8'), requirements.read_text(encoding='utf-8'), receipts)
             if _awaiting:
                 result.update(decision='awaiting_acceptance', milestones=_awaiting, reason='Completed milestone requires acceptance approval; no model call')
