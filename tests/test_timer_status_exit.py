@@ -41,5 +41,19 @@ class TimerStatusTests(unittest.TestCase):
             self.assertEqual(run.call_count, 1)
             self.assertEqual(run.call_args.args[0][:3], ["systemctl", "--user", "status"])
 
+    def test_check_uses_projectwright_config_home_by_default(self):
+        with tempfile.TemporaryDirectory(prefix="pw-timer-xdg-") as base:
+            root = Path(base)
+            project = root / "projects" / "fixture"
+            project.mkdir(parents=True)
+            (project / "config.json").write_text(json.dumps({"id": "fixture"}))
+            argv = ["pw_project_timer.py", "check", "fixture"]
+            with patch.object(timer.sys, "argv", argv), \
+                 patch.dict(timer.os.environ, {"PROJECTWRIGHT_CONFIG_DIR": str(root)}, clear=True), \
+                 patch.object(timer.subprocess, "run") as runner, \
+                 patch("builtins.print"):
+                self.assertEqual(timer.main(), 0)
+            runner.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
