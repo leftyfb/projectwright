@@ -34,11 +34,8 @@ def load_project(project_id: str) -> None:
     global HERMES, MODEL, TIMEOUT, PROJECT, PROJECT_ID, PROJECT_CONFIG
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', project_id):
         raise ValueError('Invalid project ID')
-    cfg_root = __import__('project_queue_manager').default_project_root()
-    cfg_path = cfg_root / project_id / 'config.json'
-    cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-    if cfg.get('id') != project_id:
-        raise ValueError('Project configuration ID mismatch')
+    from pw_config import load as load_config
+    cfg_path, cfg = load_config(project_id)
     required = ('queue','work_log','lock','run_log','result_dir','cycle_file','worktree','hermes','timeout_seconds')
     if isinstance(cfg.get('provider'), dict) and cfg['provider'].get('type') == 'command':
         required = tuple(k for k in required if k != 'hermes')
