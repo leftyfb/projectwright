@@ -24,6 +24,7 @@ def load(project: str, root: Path | None = None) -> tuple[Path, dict]:
         raise ValueError("Project configuration ID mismatch")
     defaults = {
         "id": project,
+        "display_name": project,
         "base": str(directory),
         "queue": str(directory / "queue.md"),
         "work_log": str(directory / "work_log.md"),
