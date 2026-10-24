@@ -190,9 +190,9 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
         if blockers:
             return {**out, 'decision': 'blocked', 'reason': ', '.join(blockers)}
         planning_state = read_json_optional(directory / 'planning_state.json')
-        from project_milestone_guard import current_receipts, milestone_ids
+        from pw_milestone_guard import current_receipts, milestone_ids
         receipt_map = current_receipts(planning_state, req_bytes, queue, head, repo=repo, strict=cfg.get('planning', {}).get('milestone_sequence') == 'strict',
-                                       policy=__import__('project_milestone_guard').policy_for_project(directory), journal=journal)
+                                       policy=__import__('pw_milestone_guard').policy_for_project(directory), journal=journal)
         all_milestones = milestone_ids(requirements)
         if all_milestones and all_milestones <= set(receipt_map) and summary['pending_count'] == 0:
             return {**out, 'decision': 'no_op', 'reason': 'All declared milestones verified; no model call'}
@@ -202,7 +202,7 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
         if strict:
             from pw_milestone_sequence import evaluate
             sequencing = evaluate(requirements, queue, receipt_map,
-                                  __import__('project_milestone_guard').policy_for_project(directory))
+                                  __import__('pw_milestone_guard').policy_for_project(directory))
             if sequencing['decision'] in ('blocked', 'awaiting_acceptance'):
                 return {**out, 'decision': sequencing['decision'], 'reason': sequencing['reason'],
                         'milestone': sequencing.get('milestone')}
