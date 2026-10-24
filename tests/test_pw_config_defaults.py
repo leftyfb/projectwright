@@ -27,6 +27,7 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
             self.assertEqual(effective["result_dir"], str(root/"results"))
             self.assertEqual(effective["lock"], str(root/"worker.lock"))
             self.assertFalse(effective["execution"]["enabled"])
+            self.assertFalse(effective["quota"]["enabled"])
             self.assertFalse(root.exists())
 
     def test_manager_loader_consumes_defaults_without_a_file(self):
@@ -157,6 +158,7 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
             self.assertFalse(cfg["planning"]["enabled"])
             self.assertEqual(cfg["planning"]["trigger"]["pending_below"], 2)
             self.assertEqual(cfg["id"], "demo")
+            self.assertTrue(cfg["quota"]["enabled"])
 
 if __name__ == "__main__":
     unittest.main()
