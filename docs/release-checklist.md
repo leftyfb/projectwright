@@ -82,13 +82,15 @@ a disposable account before a stable tag or deployment.
 
 - [ ] Ship a packaged Hermes plugin named `projectwright-approvals` and a
   `projectwright-approval-notify.service` plus `.timer`.
-- [ ] During **explicit per-user onboarding**, run
-  `hermes plugins enable projectwright-approvals` as the intended non-root
-  account, without replacing the user's Hermes/provider configuration.
-- [ ] During that same per-user setup, create
-  `~/.config/systemd/user`, install the shipped notify units, run
-  `systemctl --user daemon-reload`, then
-  `systemctl --user enable --now projectwright-approval-notify.timer`.
+- [ ] Complete per-user Hermes plugin onboarding. An explicit
+  `pw setup-user --enable-hermes-plugin` implementation now runs
+  `hermes plugins enable projectwright-approvals` under the selected non-root
+  account, but packaging/registration of the plugin itself is outstanding.
+- [x] **Per-user command implementation:** `pw setup-user` generates
+  `~/.config/systemd/user/projectwright-approval-notify.*`, runs
+  `systemctl --user daemon-reload`, and enables/starts the user timer.
+  Config and non-root checks are enforced and changes are idempotent;
+  installed-service/live-operation tests remain outside the offline suite.
 - [ ] The requested setup should happen as part of the Debian installation
   **only when the target user is unambiguously selected and user-session
   systemd/Hermes are available**. A Debian `postinst` runs as root and cannot
