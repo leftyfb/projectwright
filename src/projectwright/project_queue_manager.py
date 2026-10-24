@@ -315,7 +315,8 @@ def main() -> int:
         mode = 'once' if args.once else 'status'
         if mode == 'once':
             from project_queue_planner import plan_once
-            result = plan_once(args.project, args.config_root, manual_config_free=manual_config_free)
+            result = (plan_once(args.project, args.config_root, manual_config_free=True)
+                      if manual_config_free else plan_once(args.project, args.config_root))
         else:
             result = inspect(args.project, args.config_root, mode=mode)
         print(json.dumps(result, indent=2, sort_keys=True))
