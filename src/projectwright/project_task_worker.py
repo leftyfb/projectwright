@@ -779,7 +779,7 @@ def main() -> int:
     config_file, effective = load_config(args.project)
     if not config_file.is_file():
         print(json.dumps({'project': args.project, 'decision': 'disabled',
-                          'reason': 'default execution policy disabled'}))
+                          'reason': 'project config missing'}))
         return 3
     if effective.get('projectwright_initialized') == 1 and effective['execution']['enabled'] is False:
         print(json.dumps({'project': args.project, 'decision': 'disabled',
