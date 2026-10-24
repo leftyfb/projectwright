@@ -63,6 +63,23 @@ class PluginAuthorization(unittest.TestCase):
         self.assertEqual(q.answers[0][0], ("Not authorized",))
         self.assertEqual(q.edits, [])
 
+    def test_authorized_private_callback_records_result(self):
+        q = FakeQuery(111, "private")
+        calls = []
+        async def immediate(fn, *args):
+            calls.append((fn.__name__, args))
+            return "APPROVED fixture / DEMO-1-M1"
+        with patch.dict(sys.modules, {"telegram": types.ModuleType("telegram"),
+                                      "telegram.ext": self.fake_ext}), \
+             patch.object(pw_plugin, "_authorized_ids", return_value=frozenset({"111"})), \
+             patch.object(pw_plugin.asyncio, "to_thread", side_effect=immediate):
+            pw_plugin._factory(self.app, None)
+            asyncio.run(self.handlers[-1].callback(
+                types.SimpleNamespace(callback_query=q), None))
+        self.assertEqual(q.answers[0][0], ("Recorded",))
+        self.assertEqual(q.edits, ["APPROVED fixture / DEMO-1-M1"])
+        self.assertEqual(calls[0][0], "approve")
+
     def test_bad_allowlist_fails_closed(self):
         with patch.object(pw_plugin, "SCRIPTS", SRC), \
              patch("pw_notify.config_values", return_value={"TELEGRAM_ALLOWED_USERS": "111,bad"}):
