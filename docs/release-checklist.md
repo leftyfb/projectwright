@@ -30,12 +30,13 @@ a disposable account before a stable tag or deployment.
   and milestone acceptance gating have passing disposable tests. This does
   **not** establish live Hermes compatibility, all CLI combinations, or a
   production release.
-- **Next priorities:** (1) final naming/reference audit and file-by-file
-  workflow documentation; (2) Debian installation/upgrade/uninstall and
-  per-user `pw setup-user` plus Hermes approval plugin registration,
+- **Next priorities:** (1) finalize per-user setup hardening and disposable
+  Debian install/upgrade/uninstall coverage (symlink refusal now has tests);
+  (2) final naming/reference audit and file-by-file
+  workflow documentation; (3) Hermes approval plugin registration,
   systemd timer and Telegram callback tests under a disposable account;
-  (3) harness-neutral provider contract and a live, isolated Hermes
-  end-to-end run; (4) release/security and migration verification.
+  (4) harness-neutral provider contract and a live, isolated Hermes
+  end-to-end run; (5) release/security and migration verification.
 - **Method:** Continue implementation on this branch, use compatibility
   adapters where needed, run GitHub Actions, and fix failures before marking
   each acceptance gate complete. Update this handoff and checkboxes as work
@@ -137,7 +138,8 @@ a disposable account before a stable tag or deployment.
 - [x] **Per-user command implementation:** `pw setup-user` generates
   `~/.config/systemd/user/projectwright-approval-notify.*`, runs
   `systemctl --user daemon-reload`, and enables/starts the user timer.
-  Config and non-root checks are enforced and changes are idempotent;
+  Config and non-root checks are enforced; symlinked units and plugin files
+  are refused (disposable regression tests). Changes are idempotent;
   installed-service/live-operation tests remain outside the offline suite.
 - [ ] The requested setup should happen as part of the Debian installation
   **only when the target user is unambiguously selected and user-session
