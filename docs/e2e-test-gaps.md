@@ -43,6 +43,17 @@ of the installed Hermes model, Telegram or production project state. The
 one-file smoke trigger was removed after verification; the self-hosted workflow
 is manual-only again.
 
+## Commit scope refusal checkpoint
+
+GitHub-hosted offline run
+[40043306899](https://github.com/leftyfb/projectwright/actions/runs/40043306899)
+passed **114/114 tests**, with successful development validation and artifact
+upload. A new fake-Hermes end-to-end test intentionally inserts and commits
+`extra.txt` outside the active cycle's allowed paths. The worker detects the
+unapproved path after Git has committed, refuses to advance the COMMIT queue
+item, and leaves the cycle journal for manual recovery. The test does not
+claim to automatically revert such an unauthorized commit.
+
 ## tux verification of Git-cycle suite
 
 The full 113-test isolated suite also passed on the registered
