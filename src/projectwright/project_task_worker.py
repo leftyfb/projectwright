@@ -591,7 +591,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
         if dry_run:
             print(f'{task.task_id} — {task.kind}: {task.description}')
             return 0
-        from project_quota import evaluate
+        from pw_quota import evaluate
         quota = evaluate(PROJECT.get('quota', {}))
         if not quota['allowed']:
             print('Quota gate BLOCKED: ' + json.dumps(quota, sort_keys=True), file=log, flush=True)
@@ -792,7 +792,7 @@ def main() -> int:
         print('Retry authorized for ' + args.authorize_retry)
         return 0
     if args.quota_check:
-        from project_quota import evaluate
+        from pw_quota import evaluate
         result = evaluate(PROJECT.get('quota', {}))
         print(json.dumps(result, sort_keys=True))
         return 0 if result['allowed'] else 3
