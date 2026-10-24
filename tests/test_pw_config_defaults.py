@@ -47,6 +47,31 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
             self.assertFalse(data["cfg"]["execution"]["enabled"])
             self.assertFalse((Path(td)/"demo").exists())
 
+    def test_manager_loader_preserves_legacy_explicit_fields(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            directory = base / "demo"
+            directory.mkdir()
+            (directory / "config.json").write_text(json.dumps({
+                "id": "demo", "queue": "/explicit/queue.md",
+                "worktree": "/explicit/repo", "branch": "test",
+                "cycle_file": "/explicit/cycle.json", "lock": "/explicit/lock",
+                "planning": {"enabled": True}
+            }))
+            env = {**os.environ, "PYTHONPATH": str(SRC)}
+            cmd = ("import json,sys; from pathlib import Path; "
+                   "from project_queue_manager import project_config; "
+                   "_,cfg=project_config('demo',Path(sys.argv[1])); "
+                   "print(json.dumps(cfg))")
+            proc = subprocess.run([sys.executable,"-B","-c",cmd,td],env=env,
+                                  capture_output=True,text=True)
+            self.assertEqual(proc.returncode,0,proc.stderr)
+            cfg = json.loads(proc.stdout)
+            self.assertEqual(cfg["queue"],"/explicit/queue.md")
+            self.assertEqual(cfg["worktree"],"/explicit/repo")
+            self.assertTrue(cfg["planning"]["enabled"])
+            self.assertEqual(cfg["timeout_seconds"],900)
+
     def test_json_overrides_take_precedence_without_losing_nested_defaults(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
