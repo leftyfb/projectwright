@@ -78,6 +78,8 @@ jobs:
           PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" \
             "$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw" --help > /dev/null
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals.py"
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals/plugin.yaml"
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals/__init__.py"
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.service"
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.timer"
           grep -Fq 'ExecStart=/usr/bin/pw-notify --send' "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.service"
