@@ -789,6 +789,8 @@ def main() -> int:
                           'reason': 'project not configured for execution'}))
         return 3
     load_project(args.project)
+    if config_free:
+        args.no_telegram = True  # no implicit external delivery without configuration
     if args.journal_status or args.authorize_retry:
         from pw_worker_journal import (journal_path, read as journal_read,
                                             clear_reviewed as journal_clear_reviewed)
