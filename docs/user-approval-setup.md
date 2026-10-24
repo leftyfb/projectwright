@@ -42,3 +42,16 @@ mechanism, explicit target-user selection from Debian installation, migration
 of Hermes bot credentials to a generic Projectwright config, upgrades and
 uninstalls are not complete. No live setup or Telegram send is part of CI;
 tests substitute the systemctl and Hermes executables.
+
+## Debian preview integration files
+
+The development Debian package now includes **inactive** reference assets at
+`/usr/share/projectwright/systemd/user/projectwright-approval-notify.service`,
+`/usr/share/projectwright/systemd/user/projectwright-approval-notify.timer`,
+and `/usr/share/projectwright/hermes/projectwright-approvals.py`.
+The timer unit calls the packaged `/usr/bin/pw-notify --send` entry point.
+These are package-managed source/template files, not automatically deployed
+into any individual account, and the Hermes plugin source is **not yet a
+registered Hermes plugin installation**. The explicit `pw setup-user`
+command still generates its own per-user units, because automatic installation
+and upgrades must handle existing user modifications safely.
