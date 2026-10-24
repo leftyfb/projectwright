@@ -59,7 +59,8 @@ jobs:
           done
           PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
             "$RUNNER_TEMP/projectwright-install/bin/pw" setup-user --help > /dev/null
-          echo "Wheel entrypoint help checks OK"
+          PYTHONPATH="$RUNNER_TEMP/projectwright-install" python3 -B -c "import project_worker_progress as oldp, pw_worker_progress as newp, project_milestone_sequence as oldm, pw_milestone_sequence as newm, project_acceptance_gate as olda, pw_acceptance_gate as newa; assert oldp.record_completed is newp.record_completed; assert oldm.evaluate is newm.evaluate; assert olda.awaiting_acceptance is newa.awaiting_acceptance"
+          echo "Wheel canonical and legacy module checks OK"
 
       - name: Build and inspect development Debian package
         shell: bash
@@ -83,7 +84,8 @@ jobs:
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.service"
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.timer"
           grep -Fq 'ExecStart=/usr/bin/pw-notify --send' "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.service"
-          echo "Debian integration asset checks OK"
+          PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" python3 -B -c "import project_worker_progress as oldp, pw_worker_progress as newp, project_milestone_sequence as oldm, pw_milestone_sequence as newm, project_acceptance_gate as olda, pw_acceptance_gate as newa; assert oldp.record_completed is newp.record_completed; assert oldm.evaluate is newm.evaluate; assert olda.awaiting_acceptance is newa.awaiting_acceptance"
+          echo "Debian canonical, legacy and integration asset checks OK"
 
       - name: Upload development Debian package
         if: success()
