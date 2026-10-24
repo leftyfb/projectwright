@@ -34,7 +34,7 @@ def load_project(project_id: str) -> None:
     global HERMES, MODEL, TIMEOUT, PROJECT, PROJECT_ID, PROJECT_CONFIG
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', project_id):
         raise ValueError('Invalid project ID')
-    cfg_root = Path(os.environ.get('HERMES_PROJECT_CONFIG_DIR', str(HERMES_HOME / 'projects')))
+    cfg_root = __import__('project_queue_manager').default_project_root()
     cfg_path = cfg_root / project_id / 'config.json'
     cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
     if cfg.get('id') != project_id:
