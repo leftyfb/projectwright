@@ -7,7 +7,8 @@ a disposable account before a stable tag or deployment.
 
 ## 1. Consistent filenames, modules, and commands
 
-- [ ] Select one canonical internal naming scheme. **Proposed:** `pw_*.py` for
+- [ ] Select one canonical internal naming scheme. A preliminary unified `pw`
+  CLI now routes the legacy entrypoints. **Proposed:** `pw_*.py` for
   the existing flat Python scripts, `projectwright` for the installable package
   namespace, and `pw` for the primary CLI. Remove mixed `project_*.py` names.
 - [ ] Refactor all internal imports, subprocess entrypoints, plugin registration,
@@ -51,12 +52,14 @@ a disposable account before a stable tag or deployment.
 
 ## 4. Harness-independent execution
 
-- [ ] Define a provider interface for planning, task execution, health checks,
-  result envelopes, timeouts and cancellation.
+- [ ] Complete a versioned provider interface covering planning, execution,
+  health checks, result envelopes, timeouts and cancellation. A first validated
+  `command` argv/stdin adapter exists for planning and tasks, alongside Hermes.
 - [ ] Keep Hermes as one adapter; select a different provider via configuration
   or CLI, without source changes or forced legacy model IDs.
-- [ ] Implement and test at least one non-Hermes provider with equal task and
-  journal validation. Providers must not bypass approval, scope or Git checks.
+- [ ] Fully validate a non-Hermes provider across EDIT/TEST/COMMIT and approval.
+  The current disposable command provider passes unit tests and a READ
+  subprocess chain; task/journal/Git checks remain in the shared worker.
 - [ ] Provider-specific dependencies and secrets remain outside core state.
 
 ## 5. Telegram approval experience
