@@ -777,10 +777,13 @@ def main() -> int:
         parser.error('Invalid project ID')
     from pw_config import load as load_config
     config_file, effective = load_config(args.project)
-    if not config_file.is_file():
-        print(json.dumps({'project': args.project, 'decision': 'disabled',
-                          'reason': 'project config missing'}))
-        return 3
+    config_free = not config_file.is_file()
+    if config_free:
+        from pw_config import ready_for_config_free_worker
+        if not (args.once or args.dry_run) or not ready_for_config_free_worker(effective):
+            print(json.dumps({'project': args.project, 'decision': 'disabled',
+                              'reason': 'project config missing'}))
+            return 3
     if effective.get('projectwright_initialized') == 1 and effective['execution']['enabled'] is False:
         print(json.dumps({'project': args.project, 'decision': 'disabled',
                           'reason': 'project not configured for execution'}))
@@ -816,7 +819,7 @@ def main() -> int:
         # progress while another process holds the project lock.
         if LOCK_CONTENDED:
             return rc
-        if rc == 0 and os.environ.get('PROJECTWRIGHT_DISPATCHED') != '1':
+        if rc == 0 and not config_free and os.environ.get('PROJECTWRIGHT_DISPATCHED') != '1':
             # process_once has released its project lock before returning.
             # Never plan inside an active EDIT/TEST/COMMIT Git cycle.
             if CYCLE_FILE.exists():
