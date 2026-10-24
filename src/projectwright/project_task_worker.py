@@ -775,13 +775,13 @@ def main() -> int:
     from pw_dispatch import default_project_root
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', args.project):
         parser.error('Invalid project ID')
-    config_file = default_project_root() / args.project / 'config.json'
+    from pw_config import load as load_config
+    config_file, effective = load_config(args.project)
     if not config_file.is_file():
         print(json.dumps({'project': args.project, 'decision': 'disabled',
-                          'reason': 'project config missing'}))
+                          'reason': 'default execution policy disabled'}))
         return 3
-    initial = json.loads(config_file.read_text(encoding='utf-8'))
-    if initial.get('projectwright_initialized') == 1 and initial.get('execution') == {'enabled': False}:
+    if effective.get('projectwright_initialized') == 1 and effective['execution']['enabled'] is False:
         print(json.dumps({'project': args.project, 'decision': 'disabled',
                           'reason': 'project not configured for execution'}))
         return 3
