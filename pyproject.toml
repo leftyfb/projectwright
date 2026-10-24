@@ -23,6 +23,7 @@ py-modules = [
     "pw_notes_sync",
     "project_queue_manager",
     "project_queue_planner",
+    "pw_queue_planner",
     "project_quota",
     "pw_quota",
     "project_recovery",
