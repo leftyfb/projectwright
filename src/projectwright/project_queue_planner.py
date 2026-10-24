@@ -195,7 +195,7 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
         strict = cfg.get('planning', {}).get('milestone_sequence') == 'strict'
         active_milestone = None
         if strict:
-            from project_milestone_sequence import evaluate
+            from pw_milestone_sequence import evaluate
             sequencing = evaluate(requirements, queue, receipt_map,
                                   __import__('project_milestone_guard').policy_for_project(directory))
             if sequencing['decision'] in ('blocked', 'awaiting_acceptance'):
