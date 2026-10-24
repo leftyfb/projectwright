@@ -395,6 +395,28 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertTrue((self.project / "cycle.json").exists())
         self.assertIn("extra.txt", git(self.repo, "show", "--format=", "--name-only", "HEAD"))
 
+    def test_failed_task_retry_requires_review_not_duplicate_execution(self):
+        self.env["PW_FAKE_MODE"] = "missing_report"
+        first = self.dispatch()
+        self.assertNotEqual(first.returncode, 0, first.stdout + first.stderr)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        journal_file = self.project / "worker_journal.json"
+        self.assertTrue(journal_file.exists())
+        original_journal = journal_file.read_bytes()
+        result_files = sorted((self.project / "results").glob("*"))
+        self.assertTrue(result_files)
+
+        # Even if a subsequent fake Hermes run would succeed, Projectwright
+        # must not silently replay an unresolved attempt.
+        self.env.pop("PW_FAKE_MODE")
+        second = self.dispatch()
+        self.assertNotEqual(second.returncode, 0, second.stdout + second.stderr)
+        self.assertNotIn("WORKER rc=0", second.stdout)
+        self.assertEqual(journal_file.read_bytes(), original_journal)
+        self.assertEqual(sorted((self.project / "results").glob("*")), result_files)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
         self.save_config()
