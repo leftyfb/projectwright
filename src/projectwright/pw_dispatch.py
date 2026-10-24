@@ -8,6 +8,20 @@ import re
 import subprocess
 import sys
 
+def default_project_root():
+    """Select project-root path without loading potentially injected modules."""
+    custom = os.environ.get('PROJECTWRIGHT_CONFIG_DIR')
+    if custom:
+        return Path(custom).expanduser() / 'projects'
+    legacy_override = os.environ.get('HERMES_PROJECT_CONFIG_DIR')
+    if legacy_override:
+        return Path(legacy_override).expanduser()
+    xdg = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
+    root = xdg / 'projectwright' / 'projects'
+    legacy = Path.home() / '.hermes' / 'projects'
+    return legacy if legacy.is_dir() and not root.is_dir() else root
+
+
 SAFE_IDLE = {'awaiting_acceptance', 'disabled', 'no_op'}
 CYCLE_BLOCKERS = {'branch_or_worktree', 'active_git_cycle'}
 MANAGER_EXIT_CODES = {
@@ -154,7 +168,7 @@ def authorized_cycle_task(project, scripts, report):
         return False
     try:
         import importlib.util
-        root = __import__('project_queue_manager').default_project_root()
+        root = default_project_root()
         cfg = json.loads((root / project / 'config.json').read_text())
         if cfg.get('id') != project or not cfg.get('cycle_file'):
             return False
