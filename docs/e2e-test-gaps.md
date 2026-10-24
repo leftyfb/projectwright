@@ -108,6 +108,22 @@ is unchanged, and a worker journal remains for review. The previous 115-test
 checkpoint also verified a failed agent attempt could not be silently replayed
 on a subsequent tick.
 
+## Offline callback and replay validation
+
+GitHub-hosted offline run
+[40044409429](https://github.com/leftyfb/projectwright/actions/runs/40044409429)
+passed **123/123 tests** with successful validator and artifact upload.
+The callback test module exercises rejection persistence without deleting the
+pending request, stale request replacement, callbacks after pending removal,
+invalid/tampered tokens, callback action mismatch, approval evidence passed
+unchanged to the guard, successful request consumption with replay refusal,
+and preservation of pending evidence when the guard refuses approval.
+
+The guard and bridge are stubbed for selected cases, so these tests prove
+callback routing, state cleanup and handoff contracts, not the full real
+acceptance-command execution or Telegram SDK/network delivery. Live Telegram
+authorization, provider events and concurrency still require separate tests.
+
 ## Existing evidence
 
 - At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The offline `tests/` suite and `scripts/validate-baseline.py` were introduced on `test/reproducible-baseline` and are present in this checkout; dependency metadata remains absent; offline CI has since been added.
