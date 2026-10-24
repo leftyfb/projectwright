@@ -86,6 +86,17 @@ JSON, wrong task ID, blocked reports, READ-task Git mutation, and queue-file
 tampering during execution. These are real subprocess tests against disposable
 repositories, **not live Hermes/Telegram/Home Assistant/systemd tests**.
 
+## Failed-attempt retry gate checkpoint
+
+GitHub-hosted offline run
+[40043692279](https://github.com/leftyfb/projectwright/actions/runs/40043692279)
+passed **115/115 tests** with validator and log upload successful.
+A subprocess regression now executes a failed fake-Hermes attempt, then retries
+with fake Hermes configured to succeed. The dispatcher refuses the retry
+until the unresolved task journal is reviewed; no second result artifact is
+created, the original journal is unchanged, and the queue remains pending.
+No production project, Hermes provider, or systemd service was used.
+
 ## Existing evidence
 
 - At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The offline `tests/` suite and `scripts/validate-baseline.py` were introduced on `test/reproducible-baseline` and are present in this checkout; dependency metadata remains absent; offline CI has since been added.
