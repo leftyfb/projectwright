@@ -304,4 +304,27 @@ def main():
         if not a.config_dir.is_absolute(): p.error('--config-dir must be absolute')
         os.environ['PROJECTWRIGHT_CONFIG_DIR'] = str(a.config_dir)
     return run_tick(a.project,a.scripts)
+def cli():
+    """Preliminary unified command launcher; each service retains its own parser."""
+    commands = {
+        'tick': ('pw_dispatch', []),
+        'status': ('project_queue_manager', ['--status']),
+        'plan': ('project_queue_manager', ['--once']),
+        'worker': ('project_task_worker', []),
+        'notify': ('pw_notify', []),
+        'timer': ('pw_project_timer', []),
+    }
+    usage = 'usage: pw {tick|status|plan|worker|notify|timer} [options]'
+    if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
+        print(usage)
+        return 0 if len(sys.argv) > 1 else 2
+    command = sys.argv[1]
+    if command not in commands:
+        print(f'Unknown Projectwright command: {command}\\n{usage}', file=sys.stderr)
+        return 2
+    module, fixed = commands[command]
+    return subprocess.run([sys.executable, '-B', '-m', module, *fixed, *sys.argv[2:]],
+                          check=False).returncode
+
+
 if __name__=='__main__':raise SystemExit(main())
