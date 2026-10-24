@@ -34,9 +34,10 @@ behavior. Use an explicit `--config-dir` to select a new location.
 
 **Missing configuration behavior:** `pw status` or `pw plan` for a
 project without `config.json` returns a `disabled` decision and does not
-create project data, run a provider, or send a message. The rest of the
-config-free runtime defaults remain to be implemented; worker execution still
-requires a validated project configuration. A missing configuration is never
+create project data, run a provider, or send a message. The remaining config-free runtime defaults are not yet implemented. The worker
+now also returns a non-executing `disabled` JSON decision (exit code 3) when the
+project has no `config.json`, rather than reading an implicit Hermes config.
+Actual worker execution still requires a validated project configuration. A missing configuration is never
 interpreted as permission to start a task.
 
 Current migration gaps: individual utilities (notifier, approval helpers,
