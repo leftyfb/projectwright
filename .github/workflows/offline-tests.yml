@@ -70,6 +70,14 @@ jobs:
           python3 -B -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['configured'] is False and d['defaults']['worker_execution_enabled'] is False and d['defaults']['telegram_delivery_enabled'] is False" \
             "$RUNNER_TEMP/projectwright-test-logs/defaults.json"
           PYTHONPATH="$RUNNER_TEMP/projectwright-install" python3 -B -c "import project_recovery as oldr, pw_recovery as newr, project_worker_journal as oldj, pw_worker_journal as newj, project_quota as oldq, pw_quota as newq, project_worker_progress as oldp, pw_worker_progress as newp, project_milestone_sequence as oldm, pw_milestone_sequence as newm, project_acceptance_gate as olda, pw_acceptance_gate as newa; assert oldq.evaluate is newq.evaluate; assert oldp.record_completed is newp.record_completed; assert oldm.evaluate is newm.evaluate; assert olda.awaiting_acceptance is newa.awaiting_acceptance; assert oldr.evidence is newr.evidence; assert oldj.journal_path is newj.journal_path"
+          HOME="$RUNNER_TEMP/pw-empty-home" PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP/projectwright-install/bin/pw" init --project scaffold \
+            --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" \
+            > "$RUNNER_TEMP/projectwright-test-logs/init.json"
+          HOME="$RUNNER_TEMP/pw-empty-home" PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP/projectwright-install/bin/pw" status --project scaffold \
+            --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" \
+            | python3 -B -c "import json,sys; assert json.load(sys.stdin)['decision']=='disabled'"
           echo "Wheel canonical and legacy module checks OK"
 
       - name: Build and inspect development Debian package
