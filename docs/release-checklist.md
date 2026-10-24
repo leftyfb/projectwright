@@ -7,12 +7,14 @@ a disposable account before a stable tag or deployment.
 
 ## Current development handoff (2026-10-24)
 
+**Up-to-date canonical module reference:** [module-naming-current.md](module-naming-current.md). Historical inventories document the original baseline, not the current naming.
+
 - **Repository:** `leftyfb/projectwright`; **working branch:**
   `test/review-followups`. Do not modify `main`, the user's installed
   Hermes environment, or production project data without explicit direction.
-- **Last verified CI:** GitHub Actions run
-  [40108350920](https://github.com/leftyfb/projectwright/actions/runs/40108350920)
-  at commit `83f2bd257c3089473c5fd68e80da3d50f29c32e3`
+- **Last verified CI prior to this documentation update:** GitHub Actions run
+  [40108809150](https://github.com/leftyfb/projectwright/actions/runs/40108809150)
+  (verify the actual branch run rather than relying on this reference)
   (successful offline tests, development wheel and Debian preview checks).
 - **Naming migration:** `pw_task_worker.py`, `pw_queue_manager.py`,
   `pw_queue_planner.py`, `pw_milestone_guard.py`,
@@ -41,17 +43,17 @@ a disposable account before a stable tag or deployment.
 
 ## 1. Consistent filenames, modules, and commands
 
-- [ ] Select one canonical internal naming scheme. A preliminary unified `pw`
-  CLI now routes the legacy entrypoints. Seven canonical modules now have compatibility shims and tests:
+- [x] Select one canonical internal naming scheme. The unified `pw`
+  CLI now routes canonical implementations; `pw_*` is standard, with legacy shims documented in [module-naming-current.md](module-naming-current.md). Initially seven canonical modules had shims and tests:
   `pw_worker_progress.py`, `pw_milestone_sequence.py`,
   `pw_acceptance_gate.py`, `pw_quota.py`, `pw_recovery.py`,
   `pw_worker_journal.py`, and `pw_notes_publisher.py`. **Proposed:** `pw_*.py` for
   the existing flat Python scripts, `projectwright` for the installable package
-  namespace, and `pw` for the primary CLI. Remove mixed `project_*.py` names.
+  namespace, and `pw` for the primary CLI. Retain `project_*.py` only as documented compatibility modules pending an upgrade/deprecation policy.
 - [ ] Refactor all internal imports, subprocess entrypoints, plugin registration,
   timer units, packaging manifests and fixtures in one versioned migration.
-- [ ] Provide explicitly documented compatibility wrappers/aliases for existing
-  Hermes project scripts during migration, then retire them by policy.
+- [x] Provide explicitly documented compatibility wrappers/aliases for existing
+  Hermes project scripts during migration; see [module-naming-current.md](module-naming-current.md). Retirement by policy remains an open release decision.
 - [ ] Test all entrypoints in a freshly installed wheel and Debian package,
   including cross-module imports and absent legacy script paths.
 
@@ -82,9 +84,9 @@ a disposable account before a stable tag or deployment.
 - [ ] Work **without `config.json`**: shared built-in defaults and a
   prepared-worktree manual `pw worker` / `pw tick` path are implemented,
   alongside `pw init --no-config` and read-only `pw defaults` preflight.
-  Remaining gate: validate actual READ/EDIT/TEST/COMMIT workflows end-to-end
-  without a JSON file, complete default planner inputs, and prove unattended
-  execution, messaging, and approvals never become enabled implicitly.
+  Disposable READ, EDIT/TEST/COMMIT and milestone-gating tests now pass without
+  a JSON file. Remaining: live-provider and install tests, full CLI combinations,
+  and positive/negative unattended authorization proofs.
 - [ ] Preserve explicit project-specific overrides and provide migration from
   existing `~/.hermes/projects` configurations without overwriting files.
 - [ ] Fail closed when a required credential or authorizing policy is missing;
