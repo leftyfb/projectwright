@@ -23,6 +23,9 @@ rm -rf "$stage/usr/lib/python3/dist-packages/bin"
 mkdir -p "$stage/usr/share/projectwright/hermes"
 install -m 0644 "$(dirname "$0")/../src/projectwright/pw_plugin.py" \
   "$stage/usr/share/projectwright/hermes/projectwright-approvals.py"
+mkdir -p "$stage/usr/share/projectwright/hermes/projectwright-approvals"
+install -m 0644 "$(dirname "$0")/../packaging/hermes-plugin/projectwright-approvals/plugin.yaml" "$stage/usr/share/projectwright/hermes/projectwright-approvals/plugin.yaml"
+install -m 0644 "$(dirname "$0")/../packaging/hermes-plugin/projectwright-approvals/__init__.py" "$stage/usr/share/projectwright/hermes/projectwright-approvals/__init__.py"
 mkdir -p "$stage/usr/share/projectwright/systemd/user"
 cat > "$stage/usr/share/projectwright/systemd/user/projectwright-approval-notify.service" <<'EOF'
 [Unit]
