@@ -141,3 +141,12 @@ next task using normal quota, Git, journal and acceptance checks. Planner
 invocation still requires a working, locally installed provider (default:
 `hermes` on `PATH`). If requirements are absent, planning stays disabled;
 nothing invents a requirements document or auto-approves a milestone.
+
+### Defaults for external integrations
+
+For a project with no `config.json`, Home Assistant quota telemetry is
+disabled by default, and the worker does not send Telegram progress messages.
+This avoids requiring unrelated Hermes/HA credentials for local operation.
+Existing configured projects retain their prior quota default (enabled unless
+overridden) and notification behavior. Automatic milestone approval is never
+inferred from missing configuration.
