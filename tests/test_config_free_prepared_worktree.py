@@ -20,6 +20,9 @@ class ConfigFreePreparedWorkerTests(unittest.TestCase):
             (project/"queue.md").write_text("")
             (project/"work_log.md").write_text("")
             subprocess.run(["git","-C",str(repo),"init","-q","-b","main"],check=True)
+            subprocess.run(["git","-C",str(repo),"-c","user.name=Test",
+                            "-c","user.email=test@example.invalid",
+                            "commit","-q","--allow-empty","-m","initial"],check=True)
             env={**os.environ,"PYTHONPATH":str(SRC),
                  "PROJECTWRIGHT_CONFIG_DIR":str(cfg_home)}
             command=(
@@ -33,6 +36,10 @@ class ConfigFreePreparedWorkerTests(unittest.TestCase):
             self.assertEqual(result.returncode,0,result.stderr)
             data=json.loads(result.stdout)
             self.assertEqual(data,{"exists":False,"ready":True})
+            smoke=subprocess.run([sys.executable,"-B","-m","project_task_worker",
+                 "--project","demo","--dry-run"],env=env,capture_output=True,text=True)
+            self.assertEqual(smoke.returncode,0,smoke.stderr)
+            self.assertFalse((project/"config.json").exists())
             (project/"queue.md").unlink()
             denied=subprocess.run([sys.executable,"-B","-m","project_task_worker",
                  "--project","demo","--once"],env=env,capture_output=True,text=True)
