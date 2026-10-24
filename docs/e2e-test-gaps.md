@@ -43,6 +43,27 @@ of the installed Hermes model, Telegram or production project state. The
 one-file smoke trigger was removed after verification; the self-hosted workflow
 is manual-only again.
 
+## Git-cycle integration checkpoint (2026-10-23)
+
+GitHub-hosted offline run
+[40043063749](https://github.com/leftyfb/projectwright/actions/runs/40043063749)
+passed **113/113 tests**, with zero failures, skips, or XFAILs.
+
+The disposable fake-Hermes suite now performs a complete EDIT -> TEST -> COMMIT
+sequence through the real dispatcher, manager, worker and Git commands, verifies
+the final commit only includes approved paths, confirms the cycle file is removed,
+and verifies an unrelated unapproved file introduced in the active cycle blocks
+further dispatch. Separately, a directly invoked worker starts an EDIT cycle
+with a pre-existing untracked file, and the test verifies that the original file
+is restored after TEST and COMMIT. The dispatcher correctly refuses to *start*
+a cycle when the worktree is dirty; the direct-worker stash path is explicitly
+separate from dispatcher behavior.
+
+Additional fake-Hermes subprocess tests cover nonzero exit, invalid completion
+JSON, wrong task ID, blocked reports, READ-task Git mutation, and queue-file
+tampering during execution. These are real subprocess tests against disposable
+repositories, **not live Hermes/Telegram/Home Assistant/systemd tests**.
+
 ## Existing evidence
 
 - At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The offline `tests/` suite and `scripts/validate-baseline.py` were introduced on `test/reproducible-baseline` and are present in this checkout; dependency metadata remains absent; offline CI has since been added.
