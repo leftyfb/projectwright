@@ -31,11 +31,14 @@ a disposable account before a stable tag or deployment.
 
 ## 3. XDG-compatible local configuration and defaults
 
-- [ ] Default per-user config home is
-  `$XDG_CONFIG_HOME/projectwright` or `~/.config/projectwright`.
-- [ ] Support explicit override through `--config-dir` and
-  `PROJECTWRIGHT_CONFIG_DIR`; define/verify precedence:
-  CLI argument > environment > XDG default.
+- [x] **Initial project-root resolver:** defaults to
+  `$XDG_CONFIG_HOME/projectwright/projects` or `~/.config/projectwright/projects`,
+  with a legacy-root fallback. Remaining components still require migration.
+- [ ] Expand explicit `--config-dir` support beyond dispatcher; current
+  dispatcher supports it and `PROJECTWRIGHT_CONFIG_DIR` is recognized by its
+  manager and worker subprocesses. Precedence: dispatcher CLI argument >
+  `PROJECTWRIGHT_CONFIG_DIR` > legacy `HERMES_PROJECT_CONFIG_DIR` > XDG default.
+  This is partial until all entry points and utilities share one resolver.
 - [ ] Keep state, cache, log and project-root locations separate, with
   documented overrides (prefer XDG state/cache conventions).
 - [ ] Work **without `config.json`**: validated built-in defaults for every
