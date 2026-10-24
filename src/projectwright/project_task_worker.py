@@ -852,7 +852,7 @@ def main() -> int:
                         rc = 5
         # Publishing is best-effort and must never change a task's result.
         try:
-            from project_notes_publisher import publish
+            from pw_notes_publisher import publish
             import fcntl as _fcntl
             with LOCK.open('a+') as _publication_lock:
                 _fcntl.flock(_publication_lock, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
