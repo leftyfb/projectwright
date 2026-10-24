@@ -44,3 +44,18 @@ Current migration gaps: individual utilities (notifier, approval helpers,
 notes sync, timer setup) still have legacy `~/.hermes` assumptions. The release
 checklist tracks consolidating these behind one shared configuration API,
 separating XDG data/state/cache directories, and adding first-run setup.
+
+## Inspect defaults without initializing a project
+
+`pw defaults --project demo` prints the selected project root, optional
+configuration-file location and an explicit fail-closed set of defaults.
+`pw defaults --project demo --config-dir /absolute/config/projectwright`
+inspects another configuration home. Neither command creates files, starts a
+provider, sends Telegram messages, enables systemd services, or approves tasks.
+
+The `configured` field reports only whether `config.json` exists; it is not
+an authorization decision or validation of its contents. The reported defaults
+describe behavior **when no project configuration exists**, not effective
+settings in an existing project. Actual config-free *execution* remains
+intentionally disabled until safe project initialization and policy validation
+are designed and tested.
