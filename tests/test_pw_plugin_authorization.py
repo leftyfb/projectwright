@@ -1,6 +1,8 @@
 """Hermes Telegram plugin authorization at callback time, no Telegram network."""
 from __future__ import annotations
 import asyncio
+import os
+import tempfile
 import importlib.util
 import sys
 import types
@@ -79,6 +81,19 @@ class PluginAuthorization(unittest.TestCase):
         self.assertEqual(q.answers[0][0], ("Recorded",))
         self.assertEqual(q.edits, ["APPROVED fixture / DEMO-1-M1"])
         self.assertEqual(calls[0][0], "approve")
+
+    def test_allowed_user_config_is_reloaded_and_revoked(self):
+        with tempfile.TemporaryDirectory(prefix="pw-auth-env-") as root:
+            hermes = Path(root) / ".hermes"
+            hermes.mkdir()
+            envfile = hermes / ".env"
+            with patch.dict(os.environ, {"HOME": root}):
+                envfile.write_text("TELEGRAM_ALLOWED_USERS=111,222\\n")
+                self.assertEqual(pw_plugin._authorized_ids(), frozenset({"111", "222"}))
+                envfile.write_text("TELEGRAM_ALLOWED_USERS=222\\n")
+                self.assertEqual(pw_plugin._authorized_ids(), frozenset({"222"}))
+                envfile.write_text("TELEGRAM_ALLOWED_USERS=bad-id\\n")
+                self.assertEqual(pw_plugin._authorized_ids(), frozenset())
 
     def test_bad_allowlist_fails_closed(self):
         with patch.object(pw_plugin, "SCRIPTS", SRC), \
