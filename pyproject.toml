@@ -32,6 +32,7 @@ py-modules = [
     "pw_plugin",
     "pw_worker_progress",
     "pw_milestone_sequence",
+    "pw_acceptance_gate",
     "pw_project_timer",
 ]
 
