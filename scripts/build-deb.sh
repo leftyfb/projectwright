@@ -18,6 +18,30 @@ python3 -m pip install --no-deps --no-compile --target "$stage/usr/lib/python3/d
 # Pip may generate Python-version-specific command launchers and a bin folder.
 # Debian executables must instead use the distribution's /usr/bin/python3.
 rm -rf "$stage/usr/lib/python3/dist-packages/bin"
+# Ship reference integration assets in /usr/share, never activate user services
+# from the privileged Debian installation context.
+mkdir -p "$stage/usr/share/projectwright/hermes"
+install -m 0644 "$(dirname "$0")/../src/projectwright/pw_plugin.py" \
+  "$stage/usr/share/projectwright/hermes/projectwright-approvals.py"
+mkdir -p "$stage/usr/share/projectwright/systemd/user"
+cat > "$stage/usr/share/projectwright/systemd/user/projectwright-approval-notify.service" <<'EOF'
+[Unit]
+Description=Projectwright approval notification scan
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/pw-notify --send
+EOF
+cat > "$stage/usr/share/projectwright/systemd/user/projectwright-approval-notify.timer" <<'EOF'
+[Unit]
+Description=Projectwright approval notification timer
+[Timer]
+OnBootSec=3min
+OnUnitInactiveSec=10min
+Persistent=false
+[Install]
+WantedBy=timers.target
+EOF
+
 for name in dispatch manager worker notify timer; do
   case "$name" in
     dispatch) module=pw_dispatch ;;
