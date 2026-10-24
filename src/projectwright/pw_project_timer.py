@@ -72,14 +72,16 @@ def main() -> int:
         setup_user_approvals(minutes=a.minutes, enable_plugin=a.enable_hermes_plugin)
         print('User approval timer enabled')
         return 0
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['check','install-disabled','enable','disable','status']);p.add_argument('project');p.add_argument('--minutes',type=int,default=20);p.add_argument('--root',type=Path,default=Path.home()/'.hermes/projects')
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['check','install-disabled','enable','disable','status']);p.add_argument('project');p.add_argument('--minutes',type=int,default=20);p.add_argument('--root',type=Path,default=None)
     a=p.parse_args()
     if not ID.fullmatch(a.project):p.error('Invalid project ID')
     unit='projectwright-worker-'+a.project
     # Query systemd even if the project config or dispatcher script is gone.
     if a.action=='status':
         return subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False).returncode
-    directory=a.root/a.project
+    from project_queue_manager import default_project_root
+    root = a.root if a.root is not None else default_project_root()
+    directory=root/a.project
     cfg=json.loads((directory/'config.json').read_text())
     if cfg.get('id')!=a.project: raise ValueError('Project config mismatch')
     script=Path(__file__).resolve().parent/'pw_dispatch.py'
