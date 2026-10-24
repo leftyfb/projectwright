@@ -169,6 +169,29 @@ inspection and extraction, and upload of seven-day artifacts for both
 installed on `tux` or published to an APT repository. A follow-up CI change
 smoke-tests each of the five extracted Debian executable wrappers.
 
+## XDG configuration and alternate provider checkpoint
+
+GitHub-hosted [run 40049231548](https://github.com/leftyfb/projectwright/actions/runs/40049231548)
+passed **156/156 tests**, developer validation, wheel build/installed CLI
+smoke tests, Debian build/extracted wrapper smoke tests, and both artifact
+uploads. Config resolution now supports an explicit Projectwright
+configuration home and XDG defaults while preserving installed legacy
+Hermes project roots when no XDG project tree exists.
+
+The dispatcher, manager, and worker expose an explicit `--config-dir`
+configuration-home option. Missing manager project config is reported as
+`disabled` without creating project data or invoking providers; a runnable
+configuration-free worker remains a future release task.
+
+The preliminary unified `pw` launcher routes existing CLI entrypoints.
+A validated `command` provider can invoke another local executable for
+planning and task execution using stdin, with the existing planner and
+worker evidence checks. The fake provider now completes a READ through
+the real dispatcher and worker subprocesses without a Hermes executable
+configured, using explicit `--no-telegram` to suppress the *separate*
+Hermes-based worker progress message. This does not demonstrate complete
+notification/approval transport independence or arbitrary real providers.
+
 ## Existing evidence
 
 - At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The offline `tests/` suite and `scripts/validate-baseline.py` were introduced on `test/reproducible-baseline` and are present in this checkout; dependency metadata remains absent; offline CI has since been added.
