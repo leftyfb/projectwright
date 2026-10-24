@@ -129,10 +129,22 @@ def record_incident(directory: Path, result: dict) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--project', required=True)
-    parser.add_argument('--config-root', type=Path, default=Path.home() / '.hermes/projects')
+    parser.add_argument('--config-root', type=Path, default=None, help='Legacy project-root override')
+    parser.add_argument('--config-dir', type=Path, default=None, help='Projectwright config home (contains projects/)')
     parser.add_argument('--record', action='store_true', help='Record incident if needed; never change worker state')
     args = parser.parse_args()
-    directory, cfg = project_config(args.project, args.config_root.expanduser())
+    if args.config_dir is not None and args.config_root is not None:
+        parser.error('--config-dir and --config-root are mutually exclusive')
+    if args.config_dir is not None:
+        if not args.config_dir.is_absolute():
+            parser.error('--config-dir must be absolute')
+        root = args.config_dir.expanduser() / 'projects'
+    elif args.config_root is not None:
+        root = args.config_root.expanduser()
+    else:
+        from pw_dispatch import default_project_root
+        root = default_project_root()
+    directory, cfg = project_config(args.project, root)
     if args.record:
         lock_path = path_of(cfg['lock'])
         lock_path.parent.mkdir(parents=True, exist_ok=True)
