@@ -83,7 +83,10 @@ A present JSON file overrides those defaults, including partial settings for
 planning, notes and execution. `pw defaults --project demo` also exposes
 `effective_config` so users can inspect the resulting values.
 
-The basic filesystem defaults are local to
+A missing worktree setting resolves to the project's `worktree/` directory
+and a missing branch setting defaults to `main`; neither default creates or
+initializes a Git repository. A worker must still pass its Git-state and
+execution checks before acting. The basic filesystem defaults are local to
 `<project-root>/<project-id>/`: `queue.md`, `work_log.md`,
 `worker.lock`, `worker.log`, `results/`, `git_cycle.json`, and
 `worker_journal.json`. Runtime timeout defaults to 900 seconds and the
