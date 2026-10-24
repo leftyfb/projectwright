@@ -13,8 +13,8 @@ a disposable account before a stable tag or deployment.
   `test/review-followups`. Do not modify `main`, the user's installed
   Hermes environment, or production project data without explicit direction.
 - **Last verified CI prior to this documentation update:** GitHub Actions run
-  [40108809150](https://github.com/leftyfb/projectwright/actions/runs/40108809150)
-  (verify the actual branch run rather than relying on this reference)
+  [40108642704](https://github.com/leftyfb/projectwright/actions/runs/40108642704)
+  at commit `7af7ff9a319c058a9750453961bb13b767bdf145`
   (successful offline tests, development wheel and Debian preview checks).
 - **Naming migration:** `pw_task_worker.py`, `pw_queue_manager.py`,
   `pw_queue_planner.py`, `pw_milestone_guard.py`,
