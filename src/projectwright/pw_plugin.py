@@ -24,7 +24,8 @@ def _authorized_ids():
 def _factory(app, adapter):
     from telegram.ext import CallbackQueryHandler
     from pw_buttons import approve, reject
-    root = Path.home() / '.hermes' / 'projects'
+    from project_queue_manager import default_project_root
+    root = default_project_root()
 
     async def on_press(update, context):
         q = update.callback_query
