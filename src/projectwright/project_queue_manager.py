@@ -314,7 +314,7 @@ def main() -> int:
             return once_exit_code('disabled') if args.once else 0
         mode = 'once' if args.once else 'status'
         if mode == 'once':
-            from project_queue_planner import plan_once
+            from pw_queue_planner import plan_once
             result = (plan_once(args.project, args.config_root, manual_config_free=True)
                       if manual_config_free else plan_once(args.project, args.config_root))
         else:
