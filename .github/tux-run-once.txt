@@ -1,1 +1,0 @@
-Run the new Git-cycle regression tests on tux.
