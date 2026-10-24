@@ -29,6 +29,24 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
             self.assertFalse(effective["execution"]["enabled"])
             self.assertFalse(root.exists())
 
+    def test_manager_loader_consumes_defaults_without_a_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            env = {**os.environ, "PYTHONPATH": str(SRC)}
+            script = (
+                "import json,sys; from pathlib import Path; "
+                "from project_queue_manager import project_config; "
+                "path,cfg=project_config('demo',Path(sys.argv[1])); "
+                "print(json.dumps({'path':str(path),'cfg':cfg}))"
+            )
+            proc = subprocess.run([sys.executable, "-B", "-c", script, td],
+                                  capture_output=True, text=True, env=env)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            data = json.loads(proc.stdout)
+            self.assertEqual(data["cfg"]["queue"], str(Path(td)/"demo/queue.md"))
+            self.assertEqual(data["cfg"]["timeout_seconds"], 900)
+            self.assertFalse(data["cfg"]["execution"]["enabled"])
+            self.assertFalse((Path(td)/"demo").exists())
+
     def test_json_overrides_take_precedence_without_losing_nested_defaults(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
