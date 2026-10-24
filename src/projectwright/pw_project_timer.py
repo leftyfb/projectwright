@@ -28,7 +28,7 @@ def main() -> int:
     directory=a.root/a.project
     cfg=json.loads((directory/'config.json').read_text())
     if cfg.get('id')!=a.project: raise ValueError('Project config mismatch')
-    script=Path.home()/'.hermes/scripts/pw_dispatch.py'
+    script=Path(__file__).resolve().parent/'pw_dispatch.py'
     if not script.is_file(): raise ValueError('Dispatcher script missing')
     service,timer=unit_strings(a.project,a.minutes,script)
     dest=Path.home()/'.config/systemd/user'
