@@ -90,10 +90,9 @@ def default_project_root() -> Path:
 def project_config(project: str, root: Path) -> tuple[Path, dict]:
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', project):
         raise ValueError('Invalid project ID')
+    from pw_config import load as load_config
+    _, cfg = load_config(project, root)
     directory = root / project
-    cfg = json.loads((directory / 'config.json').read_text(encoding='utf-8'))
-    if cfg.get('id') != project:
-        raise ValueError('Project config ID mismatch')
     for k in ('queue', 'lock', 'worktree', 'branch', 'cycle_file'):
         if not cfg.get(k):
             raise ValueError(f'Missing configuration key: {k}')
