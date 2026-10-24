@@ -36,8 +36,11 @@ approval sender validation and deduplication rules. To stop it:
 systemctl --user disable --now projectwright-approval-notify.timer
 ```
 
-**Limitations:** The Hermes approval plugin must already be installed and
-registered before `--enable-hermes-plugin` can succeed. A plugin installation
+**Limitations:** When `--enable-hermes-plugin` is selected, setup copies the shipped native
+`plugin.yaml` and `__init__.py` to the current user's
+`~/.hermes/plugins/projectwright-approvals/` (refusing to overwrite custom
+changes) before invoking `hermes plugins enable`. Gateway restart and live
+registration are not automatically verified. A plugin installation
 mechanism, explicit target-user selection from Debian installation, migration
 of Hermes bot credentials to a generic Projectwright config, upgrades and
 uninstalls are not complete. No live setup or Telegram send is part of CI;
@@ -55,3 +58,12 @@ into any individual account, and the Hermes plugin source is **not yet a
 registered Hermes plugin installation**. The explicit `pw setup-user`
 command still generates its own per-user units, because automatic installation
 and upgrades must handle existing user modifications safely.
+
+The package now ships the native Hermes plugin directory under
+`/usr/share/projectwright/hermes/projectwright-approvals/`, including
+`plugin.yaml` and `__init__.py`. The latter calls Projectwright's existing
+Telegram callback registration code and handles Debian modules not visible
+inside a Hermes virtual environment. These integration assets are still
+installed **inertly** by dpkg; the explicit non-root onboarding action is
+required for each account. Live Hermes discovery/registration remains to be
+verified before final release.
