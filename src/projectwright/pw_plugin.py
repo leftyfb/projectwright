@@ -8,7 +8,8 @@ import sys
 LOG = logging.getLogger('projectwright.telegram')
 SCRIPTS = Path.home() / '.hermes' / 'scripts'
 if str(SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS))
+    # Prefer installed package modules; retain legacy scripts as a fallback only.
+    sys.path.append(str(SCRIPTS))
 
 
 def _authorized_ids():
