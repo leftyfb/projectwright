@@ -47,6 +47,11 @@ class ConfigFreePreparedWorkerTests(unittest.TestCase):
                  "--project","demo","--dry-run"],env=env,capture_output=True,text=True)
             self.assertEqual(smoke.returncode,0,smoke.stderr)
             self.assertFalse((project/"config.json").exists())
+            tick=subprocess.run([sys.executable,"-B","-m","pw_dispatch",
+                 "--project","demo"],env=env,capture_output=True,text=True)
+            self.assertEqual(tick.returncode,0,tick.stderr)
+            self.assertIn("WORKER rc=0",tick.stdout)
+            self.assertFalse((project/"config.json").exists())
             (project/"queue.md").unlink()
             denied=subprocess.run([sys.executable,"-B","-m","project_task_worker",
                  "--project","demo","--once"],env=env,capture_output=True,text=True)
