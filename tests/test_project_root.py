@@ -9,6 +9,9 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "projectwright"))
 from project_queue_manager import default_project_root
 import pw_dispatch
+import project_queue_manager as manager
+import io
+from contextlib import redirect_stdout
 
 
 class ProjectRootSelection(unittest.TestCase):
@@ -32,6 +35,19 @@ class ProjectRootSelection(unittest.TestCase):
                 "XDG_CONFIG_HOME": tmp + "/xdg",
             }, clear=True):
                 self.assertEqual(default_project_root(), Path(tmp) / "new-home/projects")
+
+    def test_missing_config_is_disabled_without_creating_project_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for mode, expected_rc in (("--status", 0), ("--once", 3)):
+                argv = ["pw-manager", "--project", "fixture", "--config-dir", tmp, mode]
+                output = io.StringIO()
+                with patch.object(sys, "argv", argv), redirect_stdout(output):
+                    self.assertEqual(manager.main(), expected_rc)
+                self.assertEqual(
+                    __import__("json").loads(output.getvalue()),
+                    {"project": "fixture", "decision": "disabled"}
+                )
+                self.assertFalse((Path(tmp) / "projects").exists())
 
     def test_dispatcher_cli_passes_custom_config_to_child_processes(self):
         with tempfile.TemporaryDirectory() as tmp:
