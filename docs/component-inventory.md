@@ -1,6 +1,6 @@
 # Component inventory
 
-Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. All 18 tracked Python files under `src/projectwright/` were AST-parsed and inventoried. The checked-in source manifest pins the 18 source hashes and expected installed paths; a separate read-only audit compared installed copies and reported all 18 matching source at audit time. “Used” below means direct call/launcher evidence, not merely import reachability.
+Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. The baseline inventory is historical; development now includes a canonical `pw_worker_progress.py` implementation and a compatibility-only `project_worker_progress.py` shim. Both ship during migration. All 18 tracked Python files under `src/projectwright/` were AST-parsed and inventoried. The checked-in source manifest pins the 18 source hashes and expected installed paths; a separate read-only audit compared installed copies and reported all 18 matching source at audit time. “Used” below means direct call/launcher evidence, not merely import reachability.
 
 | File | Classification | Imports / dependencies | Runtime or actual-usage evidence |
 |---|---|---|---|
@@ -57,3 +57,13 @@ The following is generated from AST parsing of the source, including imports ins
 - `project_notes_publisher.py`, `project_telegram_approval.py`, `pw_buttons.py` and `pw_plugin.py` modify `sys.path` for sibling-module resolution. `pw_notify.py` uses ordinary sibling imports with its script directory on the interpreter path. This assumes the installed flat-script layout.
 - Static imports alone do not establish runtime use. In particular, the timer utility is a manual operations command with no normal-flow caller observed; it is not called “unused” or “legacy” absent direct evidence.
 - No module is positively classified as legacy or unused. The active/optional classifications above are based on direct call/launcher evidence and the enabled plugin/timer observations.
+
+## Filename migration ledger
+
+| Canonical module | Legacy alias | State | Notes |
+|---|---|---|---|
+| `pw_worker_progress.py` | `project_worker_progress.py` | Migrated | Worker imports canonical module; shim re-exports the API. Persisted `worker_state.json` schema and semantics are unchanged and covered by compatibility tests. |
+
+Remaining `project_*.py` files are pending canonical renaming. Do not remove
+legacy import aliases until installation, project upgrade and rollback paths
+have been verified.
