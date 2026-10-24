@@ -256,11 +256,18 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', required=True)
-    parser.add_argument('--config-root', type=Path, default=default_project_root())
+    parser.add_argument('--config-root', type=Path, default=None)
+    parser.add_argument('--config-dir', type=Path, default=None, help='Projectwright configuration home')
     commands = parser.add_mutually_exclusive_group(required=True)
     commands.add_argument('--status', action='store_true')
     commands.add_argument('--once', action='store_true')
     args = parser.parse_args()
+    if args.config_dir is not None:
+        if not args.config_dir.is_absolute(): parser.error('--config-dir must be absolute')
+        if args.config_root is not None: parser.error('--config-dir and --config-root are mutually exclusive')
+    args.config_root = (args.config_dir / 'projects' if args.config_dir is not None
+                        else args.config_root if args.config_root is not None
+                        else default_project_root())
     try:
         mode = 'once' if args.once else 'status'
         if mode == 'once':
