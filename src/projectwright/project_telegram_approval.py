@@ -116,7 +116,7 @@ def scan(root):
             except BlockingIOError: continue
             options=[]
             if cfg.get('planning', {}).get('milestone_sequence') == 'strict':
-                from project_milestone_sequence import evaluate
+                from pw_milestone_sequence import evaluate
                 from project_milestone_guard import current_receipts
                 reqdata = Path(cfg['planning']['requirements_file']).expanduser().read_bytes()
                 queuedata = Path(cfg['queue']).expanduser().read_text()
