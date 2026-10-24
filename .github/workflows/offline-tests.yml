@@ -80,7 +80,8 @@ jobs:
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals.py"
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.service"
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.timer"
-          grep -q '^ExecStart=/usr/bin/pw-notify --send
+          grep -Fq 'ExecStart=/usr/bin/pw-notify --send' "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.service"
+          echo "Debian integration asset checks OK"
 
       - name: Upload development Debian package
         if: success()
