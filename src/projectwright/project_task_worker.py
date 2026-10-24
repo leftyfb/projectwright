@@ -757,7 +757,8 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument('--project', required=True, help='Project ID in ~/.hermes/projects/')
+    parser.add_argument('--project', required=True, help='Project ID in selected projects directory')
+    parser.add_argument('--config-dir', type=Path, help='Projectwright configuration home')
     parser.add_argument('--once', action='store_true')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--quota-check', action='store_true', help='Check quota without executing tasks')
@@ -766,6 +767,9 @@ def main() -> int:
     parser.add_argument('--authorize-retry', metavar='TASK_ID')
     parser.add_argument('--detached', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.config_dir is not None:
+        if not args.config_dir.is_absolute(): parser.error('--config-dir must be absolute')
+        os.environ['PROJECTWRIGHT_CONFIG_DIR'] = str(args.config_dir)
     load_project(args.project)
     if args.journal_status or args.authorize_retry:
         from project_worker_journal import (journal_path, read as journal_read,
