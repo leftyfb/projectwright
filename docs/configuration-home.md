@@ -89,8 +89,10 @@ The basic filesystem defaults are local to
 `worker_journal.json`. Runtime timeout defaults to 900 seconds and the
 Hermes executable name defaults to `hermes`, which uses its own selected model.
 
-**Still pending:** connect the manager/planner/worker execution paths to the
-shared loader, select a default Git worktree or accept one explicitly, and
-distinguish ordinary task execution from authorization-sensitive operations.
+**Current integration:** the manager's project-config loader and worker's
+load_project now consume the shared hardcoded defaults and optional overrides.
+**Still pending:** remove the CLI-level absent-file execution guard only after
+selecting and validating a Git worktree and the execution authorization policy,
+and distinguish ordinary task execution from approval-sensitive operations.
 The installed worker currently retains its fail-closed absent-file guard, so
 this is not yet an end-to-end config-free execution claim.
