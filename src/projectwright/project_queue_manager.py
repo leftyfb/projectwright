@@ -255,7 +255,7 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
                   'blockers': blockers, 'planning_enabled': policy['enabled']}
         # Strict milestone sequencing is opt-in and checked before quota / AI.
         if cfg.get('planning', {}).get('milestone_sequence') == 'strict' and not blockers and req_exists:
-            from project_milestone_sequence import evaluate
+            from pw_milestone_sequence import evaluate
             sequencing = evaluate(requirements.read_text(encoding='utf-8'), queue_path.read_text(encoding='utf-8'), receipts,
                                   __import__('project_milestone_guard').policy_for_project(directory))
             if sequencing['decision'] in ('blocked', 'awaiting_acceptance'):
