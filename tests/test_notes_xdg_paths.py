@@ -43,7 +43,7 @@ class NotesRootTests(unittest.TestCase):
         self.assertIn("--config-dir must be absolute",proc.stderr)
 
     def test_publisher_uses_shared_resolver_and_canonical_imports(self):
-        src=(SOURCE/"project_notes_publisher.py").read_text()
+        src=(SOURCE/"pw_notes_publisher.py").read_text()
         self.assertIn("else default_project_root()",src)
         self.assertIn("from pw_worker_journal import",src)
         self.assertIn("from pw_worker_progress import",src)
