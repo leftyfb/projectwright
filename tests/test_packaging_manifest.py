@@ -31,7 +31,7 @@ class PackageManifestContract(unittest.TestCase):
             module, sep, attr = entry.partition(":")
             self.assertEqual(sep, ":")
             self.assertIn(module, modules)
-            self.assertEqual(attr, "main")
+            self.assertEqual(attr, "cli" if module == "pw_dispatch" and entry == "pw_dispatch:cli" else "main")
 
 
 if __name__ == "__main__":
