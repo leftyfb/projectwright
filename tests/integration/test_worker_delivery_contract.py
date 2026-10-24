@@ -19,7 +19,7 @@ SOURCE = Path(__file__).resolve().parents[2] / "src" / "projectwright"
 if str(SOURCE) not in sys.path:
     sys.path.insert(0, str(SOURCE))
 
-import project_quota
+import pw_quota
 import project_worker_journal
 import project_worker_progress
 import project_task_worker as worker
@@ -80,7 +80,7 @@ class WorkerDeliveryPersistenceTests(unittest.TestCase):
             with patch.dict(os.environ, env):
                 worker.load_project("fixture")
                 with (
-                    patch.object(project_quota, "evaluate", return_value={"allowed": True}),
+                    patch.object(pw_quota, "evaluate", return_value={"allowed": True}),
                     patch.object(worker, "prompt_for", side_effect=lambda task, report: str(report)),
                     patch.object(worker, "run_agent", side_effect=fake_run_agent),
                     patch.object(worker, "verify", return_value=(True, "fixture verified")),
