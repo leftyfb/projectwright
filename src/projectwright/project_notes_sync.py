@@ -103,13 +103,20 @@ def perform(root, project, mode):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--project', required=True)
-    p.add_argument('--config-root', type=Path, default=Path.home() / '.hermes/projects')
+    p.add_argument('--config-root', type=Path, default=None)
+    p.add_argument('--config-dir', type=Path, default=None, help='Projectwright config home')
     modes = p.add_mutually_exclusive_group(required=True)
     modes.add_argument('--status', action='store_true')
     modes.add_argument('--init', action='store_true')
     modes.add_argument('--publish', action='store_true')
     a = p.parse_args()
-    perform(a.config_root, a.project, 'init' if a.init else 'publish' if a.publish else 'status')
+    if a.config_dir is not None and a.config_root is not None:
+        p.error('--config-dir and --config-root are mutually exclusive')
+    if a.config_dir is not None and not a.config_dir.is_absolute():
+        p.error('--config-dir must be absolute')
+    from pw_dispatch import default_project_root
+    root = a.config_dir / 'projects' if a.config_dir is not None else a.config_root if a.config_root is not None else default_project_root()
+    perform(root, a.project, 'init' if a.init else 'publish' if a.publish else 'status')
 
 
 if __name__ == '__main__':
