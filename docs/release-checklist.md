@@ -8,9 +8,10 @@ a disposable account before a stable tag or deployment.
 ## 1. Consistent filenames, modules, and commands
 
 - [ ] Select one canonical internal naming scheme. A preliminary unified `pw`
-  CLI now routes the legacy entrypoints. Four canonical modules now have compatibility shims and tests:
+  CLI now routes the legacy entrypoints. Seven canonical modules now have compatibility shims and tests:
   `pw_worker_progress.py`, `pw_milestone_sequence.py`,
-  `pw_acceptance_gate.py`, and `pw_quota.py`. **Proposed:** `pw_*.py` for
+  `pw_acceptance_gate.py`, `pw_quota.py`, `pw_recovery.py`,
+  `pw_worker_journal.py`, and `pw_notes_publisher.py`. **Proposed:** `pw_*.py` for
   the existing flat Python scripts, `projectwright` for the installable package
   namespace, and `pw` for the primary CLI. Remove mixed `project_*.py` names.
 - [ ] Refactor all internal imports, subprocess entrypoints, plugin registration,
