@@ -154,7 +154,7 @@ def authorized_cycle_task(project, scripts, report):
         return False
     try:
         import importlib.util
-        root = Path(os.environ.get('HERMES_PROJECT_CONFIG_DIR', str(Path.home()/'.hermes/projects')))
+        root = __import__('project_queue_manager').default_project_root()
         cfg = json.loads((root / project / 'config.json').read_text())
         if cfg.get('id') != project or not cfg.get('cycle_file'):
             return False
