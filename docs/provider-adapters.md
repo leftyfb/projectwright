@@ -42,3 +42,9 @@ working-directory isolation, and live provider tests remain release gates.
 The command adapter's explicit executable is trusted as a locally configured
 program and can perform actions within the invoking user's OS permissions;
 it must be run under an appropriately constrained account.
+
+For a command provider without an independent task-progress notification transport,
+use `pw tick --project NAME --no-telegram` (or `pw-dispatch` with that flag).
+This suppresses the legacy Hermes `send` call for task progress; it does **not**
+bypass any milestone approval requirement. A fully decoupled notification
+provider remains part of the 1.0 release work.
