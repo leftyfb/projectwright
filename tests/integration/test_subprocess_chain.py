@@ -67,6 +67,10 @@ class RealSubprocessChain(unittest.TestCase):
             "if len(sys.argv) < 2 or sys.argv[1] != 'chat':\n"
             "    sys.exit(30)\n"
             "prompt = sys.stdin.read()\n"
+            "if os.environ.get('PW_FAKE_MODE') == 'timeout':\n"
+            "    import time\n"
+            "    time.sleep(4)\n"
+            "    sys.exit(0)\n"
             "if os.environ.get('PW_FAKE_MODE') == 'nonzero_exit':\n"
             "    print('fixture failed')\n"
             "    sys.exit(19)\n"
@@ -416,6 +420,20 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertEqual(sorted((self.project / "results").glob("*")), result_files)
         self.assertIn("[ ] **P101", self.queue.read_text())
         self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+
+    def test_timed_out_hermes_cannot_advance_task(self):
+        self.env["PW_FAKE_MODE"] = "timeout"
+        self.config["timeout_seconds"] = 1
+        self.save_config()
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=", result.stdout)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+        self.assertTrue((self.project / "worker_journal.json").exists())
+        self.assertFalse(any(
+            row.startswith("- [x]") for row in self.queue.read_text().splitlines()
+        ))
 
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
