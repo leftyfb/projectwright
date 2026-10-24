@@ -313,7 +313,13 @@ class RealSubprocessChain(unittest.TestCase):
         self.save_config()
         for task_id in ("P101", "P102", "P103"):
             result = self.dispatch()
-            self.assertEqual(result.returncode, 0, f"task={task_id} cycle={self.config['cycle_file']} "+result.stdout + result.stderr)
+            detail = ""
+            if result.returncode and (self.project / "cycle.json").exists():
+                detail = " cycle_state=" + (self.project / "cycle.json").read_text()
+                detail += " status=" + git(self.repo, "status", "--porcelain")
+                manager = subprocess.run([sys.executable, str(self.scripts / "project_queue_manager.py"), "--project", "fixture", "--once"], env=self.env, capture_output=True, text=True)
+                detail += " manager=" + manager.stdout + manager.stderr
+            self.assertEqual(result.returncode, 0, f"task={task_id} "+result.stdout + result.stderr + detail)
             self.assertIn("WORKER rc=0", result.stdout)
             self.assertIn(f"[x] **{task_id}", self.queue.read_text())
         self.assertEqual(git(self.repo, "status", "--porcelain"), "")
