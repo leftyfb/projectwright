@@ -21,13 +21,16 @@ def main() -> int:
     p=argparse.ArgumentParser();p.add_argument('action',choices=['check','install-disabled','enable','disable','status']);p.add_argument('project');p.add_argument('--minutes',type=int,default=20);p.add_argument('--root',type=Path,default=Path.home()/'.hermes/projects')
     a=p.parse_args()
     if not ID.fullmatch(a.project):p.error('Invalid project ID')
+    unit='projectwright-worker-'+a.project
+    # Query systemd even if the project config or dispatcher script is gone.
+    if a.action=='status':
+        return subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False).returncode
     directory=a.root/a.project
     cfg=json.loads((directory/'config.json').read_text())
     if cfg.get('id')!=a.project: raise ValueError('Project config mismatch')
     script=Path.home()/'.hermes/scripts/pw_dispatch.py'
     if not script.is_file(): raise ValueError('Dispatcher script missing')
     service,timer=unit_strings(a.project,a.minutes,script)
-    unit='projectwright-worker-'+a.project
     dest=Path.home()/'.config/systemd/user'
     service_path=dest/(unit+'.service');timer_path=dest/(unit+'.timer')
     if a.action=='check':print(service);print(timer);return 0
@@ -42,7 +45,7 @@ def main() -> int:
         # Explicit user action only. Never silently enable on install.
         subprocess.run(['systemctl','--user','enable','--now',unit+'.timer'],check=True);return 0
     if a.action=='disable':subprocess.run(['systemctl','--user','disable','--now',unit+'.timer'],check=True);return 0
-    return subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False).returncode
+    return 0
 
 if __name__=='__main__':
     try:raise SystemExit(main())
