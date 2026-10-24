@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "projectwri
 from project_queue_manager import default_project_root
 import pw_dispatch
 import project_queue_manager as manager
+import pw_notify
+import types
 import io
 from contextlib import redirect_stdout
 
@@ -35,6 +37,19 @@ class ProjectRootSelection(unittest.TestCase):
                 "XDG_CONFIG_HOME": tmp + "/xdg",
             }, clear=True):
                 self.assertEqual(default_project_root(), Path(tmp) / "new-home/projects")
+
+    def test_notify_scanner_uses_projectwright_config_home(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            seen = []
+            bridge = types.ModuleType("project_telegram_approval")
+            bridge.scan = lambda root: seen.append(root)
+            with patch.dict(os.environ, {"PROJECTWRIGHT_CONFIG_DIR": tmp}, clear=True), \
+                 patch.dict(sys.modules, {"project_telegram_approval": bridge}), \
+                 patch.object(sys, "argv", ["pw-notify"]), \
+                 patch.object(pw_notify, "notify_pending", return_value=[]), \
+                 redirect_stdout(io.StringIO()):
+                pw_notify.main()
+            self.assertEqual(seen, [Path(tmp) / "projects"])
 
     def test_missing_config_is_disabled_without_creating_project_files(self):
         with tempfile.TemporaryDirectory() as tmp:
