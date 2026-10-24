@@ -328,6 +328,24 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertEqual(git(self.repo, "show", "--format=", "--name-only", "HEAD"), "probe.txt")
         self.assertEqual(self.queue.read_text().count("[x]"), 3)
 
+    def test_git_cycle_rejects_unapproved_midcycle_file(self):
+        self.queue.write_text(
+            "- [ ] **P101 — EDIT** modify fixture file\n"
+            "- [ ] **P102 — TEST** test fixture change\n"
+            "- [ ] **P103 — COMMIT** commit validated fixture\n"
+        )
+        self.env["PW_FAKE_MODE"] = "git_cycle"
+        first = self.dispatch()
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        self.assertIn("[x] **P101", self.queue.read_text())
+        (self.repo / "unapproved.txt").write_text("unapproved\n")
+        second = self.dispatch()
+        self.assertNotEqual(second.returncode, 0, second.stdout + second.stderr)
+        self.assertNotIn("WORKER rc=", second.stdout)
+        self.assertIn("[ ] **P102", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
+        self.assertTrue((self.project / "cycle.json").exists())
+
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
         self.save_config()
