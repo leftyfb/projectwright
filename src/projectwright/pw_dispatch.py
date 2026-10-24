@@ -190,7 +190,7 @@ def authorized_cycle_task(project, scripts, report):
         # Load the manager helpers from the selected scripts tree, not sys.modules.
         # This read-only gate must not trust an unrelated pre-imported manager.
         import runpy
-        manager_helpers = runpy.run_path(str(scripts / 'project_queue_manager.py'))
+        manager_helpers = runpy.run_path(str(scripts / 'pw_queue_manager.py'))
         summary = manager_helpers['queue_summary'](queue)
         if summary['invalid_lines'] or summary['blocked_count'] or not summary['pending']:
             return False
@@ -238,7 +238,7 @@ def authorized_cycle_task(project, scripts, report):
 
 
 def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False):
-    manager = [sys.executable, '-B', str(scripts/'project_queue_manager.py'), '--project', project, '--once']
+    manager = [sys.executable, '-B', str(scripts/'pw_queue_manager.py'), '--project', project, '--once']
     m = runner(manager, capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1'}, timeout=650)
     try:
         report = parse_manager_response(m.stdout, project, m.returncode)
@@ -287,7 +287,7 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False):
             journal = json.loads((root/'worker_journal.json').read_text())
             queue = (root/'queue.md').read_text(encoding='utf-8')
             import importlib.util
-            spec = importlib.util.spec_from_file_location('pw_dispatch_manager_summary', scripts/'project_queue_manager.py')
+            spec = importlib.util.spec_from_file_location('pw_dispatch_manager_summary', scripts/'pw_queue_manager.py')
             manager_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(manager_module)
             summary = manager_module.queue_summary(queue)
@@ -317,8 +317,8 @@ def cli():
     """Preliminary unified command launcher; each service retains its own parser."""
     commands = {
         'tick': ('pw_dispatch', []),
-        'status': ('project_queue_manager', ['--status']),
-        'plan': ('project_queue_manager', ['--once']),
+        'status': ('pw_queue_manager', ['--status']),
+        'plan': ('pw_queue_manager', ['--once']),
         'worker': ('project_task_worker', []),
         'notify': ('pw_notify', []),
         'timer': ('pw_project_timer', []),
