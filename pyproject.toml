@@ -33,6 +33,7 @@ py-modules = [
     "pw_buttons",
     "pw_dispatch",
     "pw_defaults",
+    "pw_init",
     "pw_notify",
     "pw_plugin",
     "pw_worker_progress",
