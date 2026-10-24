@@ -272,7 +272,7 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
         # --status never contacts Home Assistant.
         if mode == 'once' and decision in ('replenish', 'strategic_review'):
             if quota_evaluator is None:
-                from project_quota import evaluate
+                from pw_quota import evaluate
                 quota_evaluator = evaluate
             quota = quota_evaluator(cfg.get('quota', {}))
             result['quota'] = quota
