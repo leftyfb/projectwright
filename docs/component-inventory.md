@@ -63,6 +63,7 @@ The following is generated from AST parsing of the source, including imports ins
 | Canonical module | Legacy alias | State | Notes |
 |---|---|---|---|
 | `pw_worker_progress.py` | `project_worker_progress.py` | Migrated | Worker imports canonical module; shim re-exports the API. Persisted `worker_state.json` schema and semantics are unchanged and covered by compatibility tests. |
+| `pw_milestone_sequence.py` | `project_milestone_sequence.py` | Migrated | Manager, planner and approval scanner use the canonical module. Legacy import remains as a compatibility alias; pure sequencing behavior is unchanged. |
 
 Remaining `project_*.py` files are pending canonical renaming. Do not remove
 legacy import aliases until installation, project upgrade and rollback paths
