@@ -175,7 +175,7 @@ def authorized_cycle_task(project, scripts, report):
         cycle = json.loads(Path(cfg['cycle_file']).expanduser().read_text())
         if not isinstance(cycle, dict) or cycle.get('version') != 1 or cycle.get('phase') != 'active':
             return False
-        spec = importlib.util.spec_from_file_location('pw_cycle_worker_gate', scripts/'project_task_worker.py')
+        spec = importlib.util.spec_from_file_location('pw_cycle_worker_gate', scripts/'pw_task_worker.py')
         if spec is None or spec.loader is None:
             return False
         # Import the authoritative worker implementation, not a duplicated Git validator.
@@ -272,7 +272,7 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False):
     elif decision != 'queued':
         print('FAIL unexpected planning decision='+decision, file=sys.stderr)
         return 20
-    worker = [sys.executable, '-B', str(scripts/'project_task_worker.py'), '--project', project, '--once']
+    worker = [sys.executable, '-B', str(scripts/'pw_task_worker.py'), '--project', project, '--once']
     if no_telegram or not (default_project_root() / project / 'config.json').is_file():
         worker.append('--no-telegram')
     w = runner(worker, capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1', 'PROJECTWRIGHT_DISPATCHED':'1'}, timeout=2700)
@@ -319,7 +319,7 @@ def cli():
         'tick': ('pw_dispatch', []),
         'status': ('pw_queue_manager', ['--status']),
         'plan': ('pw_queue_manager', ['--once']),
-        'worker': ('project_task_worker', []),
+        'worker': ('pw_task_worker', []),
         'notify': ('pw_notify', []),
         'timer': ('pw_project_timer', []),
         'setup-user': ('pw_project_timer', []),
