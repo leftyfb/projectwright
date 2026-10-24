@@ -517,7 +517,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
             LOCK_CONTENDED = True
             print('Another project worker is already running', file=log, flush=True)
             return 1
-        from project_worker_journal import (journal_path, inspect as inspect_journal,
+        from pw_worker_journal import (journal_path, inspect as inspect_journal,
                                            read as read_journal, start as journal_start,
                                            phase as journal_phase, finalize as journal_finalize,
                                            clear_reviewed as journal_clear_reviewed)
@@ -538,7 +538,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
                     print('RECOVERY BLOCKED: invalid journal document', file=sys.stderr)
                     return 2
                 if journal_doc.get('current_task') is not None:
-                    recovery_script = HERMES_HOME / 'scripts/project_recovery.py'
+                    recovery_script = Path(__file__).resolve().parent / 'pw_recovery.py'
                     if not recovery_script.is_file():
                         print('RECOVERY BLOCKED: project_recovery.py missing', file=sys.stderr)
                         return 2
@@ -775,7 +775,7 @@ def main() -> int:
         os.environ['PROJECTWRIGHT_CONFIG_DIR'] = str(args.config_dir)
     load_project(args.project)
     if args.journal_status or args.authorize_retry:
-        from project_worker_journal import (journal_path, read as journal_read,
+        from pw_worker_journal import (journal_path, read as journal_read,
                                             clear_reviewed as journal_clear_reviewed)
         path = journal_path(PROJECT, PROJECT_CONFIG)
         if args.journal_status:
