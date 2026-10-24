@@ -17,7 +17,7 @@ class UnifiedCommandTests(unittest.TestCase):
             "tick": ("pw_dispatch", []),
             "status": ("pw_queue_manager", ["--status"]),
             "plan": ("pw_queue_manager", ["--once"]),
-            "worker": ("project_task_worker", []),
+            "worker": ("pw_task_worker", []),
             "notify": ("pw_notify", []),
             "timer": ("pw_project_timer", []),
         }
