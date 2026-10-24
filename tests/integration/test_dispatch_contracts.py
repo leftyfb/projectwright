@@ -370,7 +370,7 @@ class DispatcherHardening(DispatchFixture):
 
 class NoOpContract(unittest.TestCase):
     def test_pending_assigned_from_validated_queue_inside_lock(self):
-        tree = ast.parse((SRC / "project_queue_planner.py").read_text())
+        tree = ast.parse((SRC / "pw_queue_planner.py").read_text())
         func = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "plan_once")
         assigns = [
             n for n in ast.walk(func)
@@ -453,7 +453,7 @@ class BusyContract(unittest.TestCase):
             fixture.doCleanups()
 
     def test_only_intended_planner_line_changed(self):
-        text = (SRC / "project_queue_planner.py").read_text()
+        text = (SRC / "pw_queue_planner.py").read_text()
         self.assertEqual(text.count("return {**out, 'decision': 'busy', 'reason': 'Project lock held; skip planning'}"), 1)
 
 
