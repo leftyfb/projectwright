@@ -67,6 +67,17 @@ class GuardPinnedEvidence(unittest.TestCase):
             self.cmd, self.scope, expected=expected,
         )
 
+    def test_real_acceptance_command_creates_scoped_receipt(self):
+        receipt = self.approve(self.pinned)
+        self.assertEqual(receipt["git_head"], self.head)
+        self.assertEqual(receipt["completed_task_ids"], ["P101"])
+        self.assertEqual(receipt["scope_paths"], ["probe.txt"])
+        self.assertEqual(receipt["acceptance_exit_code"], 0)
+        state = json.loads((self.project / "planning_state.json").read_text())
+        self.assertEqual(state["verified_milestones"]["DEMO-1-M1"], receipt)
+        self.assertEqual(self.queue.read_text().count("[x]"), 1)
+        self.assertEqual(run("git", "status", "--porcelain", cwd=self.repo), "")
+
     def test_actual_guard_rejects_stale_head_without_receipt(self):
         stale = {**self.pinned, "head": "a" * 40}
         with self.assertRaisesRegex(ValueError, "Stale|stale"):
