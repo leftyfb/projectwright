@@ -42,7 +42,7 @@ EXPECTED_SOURCE_FILES = {
     "pw_plugin.py",
     "pw_project_timer.py",
 }
-DEVELOPMENT_ADDED_SOURCE_FILES = {'pw_worker_progress.py', 'pw_milestone_sequence.py', 'pw_acceptance_gate.py', 'pw_quota.py', 'pw_recovery.py', 'pw_worker_journal.py', 'pw_notes_publisher.py', 'pw_defaults.py', 'pw_init.py', 'pw_config.py', 'pw_notes_sync.py'}
+DEVELOPMENT_ADDED_SOURCE_FILES = {'pw_worker_progress.py', 'pw_milestone_sequence.py', 'pw_acceptance_gate.py', 'pw_quota.py', 'pw_recovery.py', 'pw_worker_journal.py', 'pw_notes_publisher.py', 'pw_defaults.py', 'pw_init.py', 'pw_config.py', 'pw_notes_sync.py', 'pw_milestone_guard.py'}
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIR = ROOT / "src" / "projectwright"
 MANIFEST_PATH = ROOT / "installed-source-manifest.json"
