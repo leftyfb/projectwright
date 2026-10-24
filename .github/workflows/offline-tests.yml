@@ -53,6 +53,11 @@ jobs:
             "$RUNNER_TEMP"/projectwright-wheels/*.whl
           PYTHONPATH="$RUNNER_TEMP/projectwright-install" python3 -B -c \
             "import pw_dispatch, project_queue_manager, project_task_worker, pw_project_timer; print('wheel imports OK')"
+          for cmd in pw-dispatch pw-manager pw-worker pw-notify pw-timer; do
+            PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+              "$RUNNER_TEMP/projectwright-install/bin/$cmd" --help > /dev/null
+          done
+          echo "Wheel entrypoint help checks OK"
 
       - name: Verify whitespace
         if: always()
