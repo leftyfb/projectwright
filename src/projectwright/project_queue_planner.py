@@ -137,8 +137,12 @@ def run_planner(cfg: dict, prompt: str, *, timeout: int) -> dict:
         ) from exc
 
 
-def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=None) -> dict:
+def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=None, manual_config_free=False) -> dict:
     directory, cfg = project_config(project, root)
+    if manual_config_free:
+        # This flag comes only from manager preflight for a configless,
+        # prepared local project with an existing requirements file.
+        cfg = {**cfg, 'planning': {**cfg['planning'], 'enabled': True}}
     policy = planning_policy(cfg)
     out = {'project': project}
     lock = Path(cfg['lock']).expanduser()
