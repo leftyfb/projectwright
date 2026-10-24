@@ -810,7 +810,7 @@ def main() -> int:
             if CYCLE_FILE.exists():
                 print('Queue manager skipped: active Git cycle', file=sys.stderr)
             else:
-                manager = HERMES_HOME / 'scripts/project_queue_manager.py'
+                manager = Path(__file__).resolve().parent / 'project_queue_manager.py'
                 if not manager.is_file():
                     print('Queue manager unavailable: script missing', file=sys.stderr)
                     rc = 5
