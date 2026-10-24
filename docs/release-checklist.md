@@ -45,9 +45,12 @@ a disposable account before a stable tag or deployment.
   This is partial until all entry points and utilities share one resolver.
 - [ ] Keep state, cache, log and project-root locations separate, with
   documented overrides (prefer XDG state/cache conventions).
-- [ ] Work **without `config.json`**: validated built-in defaults for every
-  optional setting; defaults must never implicitly enable unsafe execution,
-  unattended Git commits, external messaging or timers.
+- [ ] Work **without `config.json`**: shared built-in defaults and a
+  prepared-worktree manual `pw worker` / `pw tick` path are implemented,
+  alongside `pw init --no-config` and read-only `pw defaults` preflight.
+  Remaining gate: validate actual READ/EDIT/TEST/COMMIT workflows end-to-end
+  without a JSON file, complete default planner inputs, and prove unattended
+  execution, messaging, and approvals never become enabled implicitly.
 - [ ] Preserve explicit project-specific overrides and provide migration from
   existing `~/.hermes/projects` configurations without overwriting files.
 - [ ] Fail closed when a required credential or authorizing policy is missing;
