@@ -282,7 +282,7 @@ def run_tick(project, scripts, *, runner=subprocess.run):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--project',required=True)
-    p.add_argument('--scripts',type=Path,default=Path.home()/'.hermes/scripts')
+    p.add_argument('--scripts',type=Path,default=Path(__file__).resolve().parent)
     a=p.parse_args()
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',a.project):p.error('Invalid project ID')
     return run_tick(a.project,a.scripts)
