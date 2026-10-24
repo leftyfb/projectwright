@@ -206,7 +206,7 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
         # Strict evaluation above must run before generic awaiting_acceptance.
         # Completed COMMIT work needs human acceptance before any new planning.
         # Never clear or infer a verified receipt here.
-        from project_acceptance_gate import awaiting_acceptance
+        from pw_acceptance_gate import awaiting_acceptance
         pending_acceptance = awaiting_acceptance(queue, requirements, receipt_map)
         if pending_acceptance and summary['pending_count'] == 0:
             return {**out, 'decision': 'awaiting_acceptance',
