@@ -25,6 +25,8 @@ def load(project: str, root: Path | None = None) -> tuple[Path, dict]:
         "base": str(directory),
         "queue": str(directory / "queue.md"),
         "work_log": str(directory / "work_log.md"),
+        "worktree": str(directory / "worktree"),
+        "branch": "main",
         "lock": str(directory / "worker.lock"),
         "run_log": str(directory / "worker.log"),
         "result_dir": str(directory / "results"),
