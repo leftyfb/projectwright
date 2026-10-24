@@ -34,3 +34,18 @@ installed module when generating a disabled-by-default unit, rather than
 assuming the user's Hermes scripts directory. These changes let source-tree
 use and wheel-based invocation select coherent sibling modules. No timers are
 enabled by packaging.
+
+## Debian development preview
+
+CI also uses `scripts/build-deb.sh` to assemble
+`projectwright_0.1.0~dev0-1_all.deb` from the tested pure-Python wheel.
+The package has five `/usr/bin/pw-*` wrappers using the distribution's
+`/usr/bin/python3`, Python files under `/usr/lib/python3/dist-packages`,
+and basic `python3` and `git` dependencies. A CI job inspects the package
+file listing and extracts it into a temporary directory for an import/CLI
+smoke check; it does **not** install the package on a real host or publish
+an APT repository.
+
+This preview is not approved for deployment. Hermes CLI availability,
+configuration migration, Python/Telegram optional integrations, supported
+Ubuntu releases, and upgrade/uninstall behavior remain unverified.
