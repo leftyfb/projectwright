@@ -130,3 +130,14 @@ the default `worktree/` subdirectory (with a real HEAD commit), then use
 `pw worker --project demo --dry-run` or `pw tick --project demo`.
 The prepared repository must be on the expected branch (default `main`).
 Existing projects are never overwritten.
+
+### Default requirements file and planning
+
+The default requirements path is `<project-root>/<id>/requirements.md`.
+When that file and the prepared Git worktree, queue, and work log exist,
+an explicit `pw plan --project demo` can invoke the planner without
+`config.json`. `pw tick --project demo` may then plan and execute the
+next task using normal quota, Git, journal and acceptance checks. Planner
+invocation still requires a working, locally installed provider (default:
+`hermes` on `PATH`). If requirements are absent, planning stays disabled;
+nothing invents a requirements document or auto-approves a milestone.
