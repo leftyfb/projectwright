@@ -42,7 +42,7 @@ def main() -> int:
         # Explicit user action only. Never silently enable on install.
         subprocess.run(['systemctl','--user','enable','--now',unit+'.timer'],check=True);return 0
     if a.action=='disable':subprocess.run(['systemctl','--user','disable','--now',unit+'.timer'],check=True);return 0
-    subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False);return 0
+    return subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False).returncode
 
 if __name__=='__main__':
     try:raise SystemExit(main())
