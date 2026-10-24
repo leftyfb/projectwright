@@ -20,12 +20,12 @@ def unit_strings(project: str, minutes: int, script: Path) -> tuple[str,str]:
 def approval_notify_units(notifier: Path, *, minutes: int = 10) -> tuple[str, str]:
     if not notifier.is_absolute() or not 5 <= minutes <= 1440:
         raise ValueError('Invalid notifier path or timer interval')
-    service = ('[Unit]\\nDescription=Projectwright approval notification scan\\n'
-               '[Service]\\nType=oneshot\\nExecStart=/usr/bin/python3 -B '
-               + str(notifier) + ' --send\\n')
-    timer = ('[Unit]\\nDescription=Projectwright approval notification timer\\n'
-             '[Timer]\\nOnBootSec=3min\\nOnUnitInactiveSec=' + str(minutes)
-             + 'min\\nPersistent=false\\n[Install]\\nWantedBy=timers.target\\n')
+    service = ('[Unit]\nDescription=Projectwright approval notification scan\n'
+               '[Service]\nType=oneshot\nExecStart=/usr/bin/python3 -B '
+               + str(notifier) + ' --send\n')
+    timer = ('[Unit]\nDescription=Projectwright approval notification timer\n'
+             '[Timer]\nOnBootSec=3min\nOnUnitInactiveSec=' + str(minutes)
+             + 'min\nPersistent=false\n[Install]\nWantedBy=timers.target\n')
     return service, timer
 
 
