@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -98,7 +99,7 @@ def validate_proposal(raw: dict, *, available: int, queue: str,
 def run_planner(cfg: dict, prompt: str, *, timeout: int) -> dict:
     from project_queue_manager import provider_argv
     cmd, prompt_on_stdin = provider_argv(cfg, 'planner', prompt=prompt)
-    if not Path(cmd[0]).is_file():
+    if (not Path(cmd[0]).is_file() and shutil.which(cmd[0]) is None):
         raise ValueError(f'Planner provider executable not found: {cmd[0]}')
     proc = subprocess.Popen(cmd, cwd=str(Path(cfg['worktree']).expanduser()),
                             stdin=subprocess.PIPE if prompt_on_stdin else None,
