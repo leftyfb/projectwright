@@ -3,7 +3,7 @@ from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-WORKER = ROOT / "src/projectwright/project_task_worker.py"
+WORKER = ROOT / "src/projectwright/pw_task_worker.py"
 MANAGER = ROOT / "src/projectwright/pw_queue_manager.py"
 
 class PackagedManagerHandoffTests(unittest.TestCase):
