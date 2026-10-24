@@ -773,6 +773,16 @@ def main() -> int:
     if args.config_dir is not None:
         if not args.config_dir.is_absolute(): parser.error('--config-dir must be absolute')
         os.environ['PROJECTWRIGHT_CONFIG_DIR'] = str(args.config_dir)
+    # An unconfigured project is inert. Never infer a worktree, provider or
+    # authorization from the surrounding user's Hermes installation.
+    from pw_dispatch import default_project_root
+    if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', args.project):
+        parser.error('Invalid project ID')
+    config_file = default_project_root() / args.project / 'config.json'
+    if not config_file.is_file():
+        print(json.dumps({'project': args.project, 'decision': 'disabled',
+                          'reason': 'project config missing'}))
+        return 3
     load_project(args.project)
     if args.journal_status or args.authorize_retry:
         from pw_worker_journal import (journal_path, read as journal_read,
