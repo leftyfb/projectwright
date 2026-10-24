@@ -23,6 +23,7 @@ py-modules = [
     "project_quota",
     "pw_quota",
     "project_recovery",
+    "pw_recovery",
     "project_task_worker",
     "project_telegram_approval",
     "project_worker_journal",
