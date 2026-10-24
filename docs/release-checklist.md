@@ -5,6 +5,40 @@ considered done merely because a development wheel or Debian preview builds.
 A production release requires tests, docs, and an install/upgrade test against
 a disposable account before a stable tag or deployment.
 
+## Current development handoff (2026-10-24)
+
+- **Repository:** `leftyfb/projectwright`; **working branch:**
+  `test/review-followups`. Do not modify `main`, the user's installed
+  Hermes environment, or production project data without explicit direction.
+- **Last verified CI:** GitHub Actions run
+  [40108350920](https://github.com/leftyfb/projectwright/actions/runs/40108350920)
+  at commit `83f2bd257c3089473c5fd68e80da3d50f29c32e3`
+  (successful offline tests, development wheel and Debian preview checks).
+- **Naming migration:** `pw_task_worker.py`, `pw_queue_manager.py`,
+  `pw_queue_planner.py`, `pw_milestone_guard.py`,
+  `pw_telegram_approval.py`, `pw_notes_sync.py` and previously migrated
+  `pw_*` utilities are canonical. Legacy `project_*` modules remain as
+  compatibility shims; the worker shim aliases the canonical module so
+  runtime globals and mocks retain identity. Review *all remaining* mixed
+  names, service units and documentation before checking off section 1.
+- **Config-free tests:** Missing `config.json` is supported for explicitly
+  prepared projects with an existing Git worktree, HEAD commit, queue and work
+  log; `requirements.md` enables explicit planning. `pw init --no-config`,
+  `pw defaults`, manual worker/dispatcher, READ and EDIT/TEST/COMMIT cycle,
+  and milestone acceptance gating have passing disposable tests. This does
+  **not** establish live Hermes compatibility, all CLI combinations, or a
+  production release.
+- **Next priorities:** (1) final naming/reference audit and file-by-file
+  workflow documentation; (2) Debian installation/upgrade/uninstall and
+  per-user `pw setup-user` plus Hermes approval plugin registration,
+  systemd timer and Telegram callback tests under a disposable account;
+  (3) harness-neutral provider contract and a live, isolated Hermes
+  end-to-end run; (4) release/security and migration verification.
+- **Method:** Continue implementation on this branch, use compatibility
+  adapters where needed, run GitHub Actions, and fix failures before marking
+  each acceptance gate complete. Update this handoff and checkboxes as work
+  is verified; no deploy/merge without user direction.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [ ] Select one canonical internal naming scheme. A preliminary unified `pw`
