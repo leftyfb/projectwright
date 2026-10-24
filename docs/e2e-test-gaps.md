@@ -159,6 +159,16 @@ the dispatcher's explicit `--scripts` override. This is a wheel *preview*:
 it does not install anything on the user's Hermes host or demonstrate
 independence from all Hermes runtime services and config paths.
 
+## Debian development artifact checkpoint
+
+GitHub-hosted offline [run 40046622257](https://github.com/leftyfb/projectwright/actions/runs/40046622257)
+passed its 143-test offline suite, development validator, pure Python wheel
+build/import checks, Debian package creation via `scripts/build-deb.sh`,
+inspection and extraction, and upload of seven-day artifacts for both
+`projectwright_0.1.0~dev0-1_all.deb` and the wheel. Neither artifact was
+installed on `tux` or published to an APT repository. A follow-up CI change
+smoke-tests each of the five extracted Debian executable wrappers.
+
 ## Existing evidence
 
 - At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The offline `tests/` suite and `scripts/validate-baseline.py` were introduced on `test/reproducible-baseline` and are present in this checkout; dependency metadata remains absent; offline CI has since been added.
