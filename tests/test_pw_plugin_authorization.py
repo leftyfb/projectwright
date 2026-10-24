@@ -88,11 +88,11 @@ class PluginAuthorization(unittest.TestCase):
             hermes.mkdir()
             envfile = hermes / ".env"
             with patch.dict(os.environ, {"HOME": root}):
-                envfile.write_text("TELEGRAM_ALLOWED_USERS=111,222\\n")
+                envfile.write_text("TELEGRAM_ALLOWED_USERS=111,222\n")
                 self.assertEqual(pw_plugin._authorized_ids(), frozenset({"111", "222"}))
-                envfile.write_text("TELEGRAM_ALLOWED_USERS=222\\n")
+                envfile.write_text("TELEGRAM_ALLOWED_USERS=222\n")
                 self.assertEqual(pw_plugin._authorized_ids(), frozenset({"222"}))
-                envfile.write_text("TELEGRAM_ALLOWED_USERS=bad-id\\n")
+                envfile.write_text("TELEGRAM_ALLOWED_USERS=bad-id\n")
                 self.assertEqual(pw_plugin._authorized_ids(), frozenset())
 
     def test_bad_allowlist_fails_closed(self):
