@@ -97,6 +97,17 @@ until the unresolved task journal is reviewed; no second result artifact is
 created, the original journal is unchanged, and the queue remains pending.
 No production project, Hermes provider, or systemd service was used.
 
+## Timeout refusal checkpoint
+
+GitHub-hosted offline run
+[40043800027](https://github.com/leftyfb/projectwright/actions/runs/40043800027)
+passed **116/116 tests**, with development validation and artifact upload
+successful. The new fake-Hermes subprocess test deliberately exceeds a one-second
+worker timeout and confirms that the queue item remains pending, the Git HEAD
+is unchanged, and a worker journal remains for review. The previous 115-test
+checkpoint also verified a failed agent attempt could not be silently replayed
+on a subsequent tick.
+
 ## Existing evidence
 
 - At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The offline `tests/` suite and `scripts/validate-baseline.py` were introduced on `test/reproducible-baseline` and are present in this checkout; dependency metadata remains absent; offline CI has since been added.
