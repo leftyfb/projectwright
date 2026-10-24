@@ -140,6 +140,25 @@ transport tests verify cancellation during delivery prevents remaining recipient
 and prevents writing a stale delivery receipt. No production Telegram message
 is sent or production project touched.
 
+## Development wheel and installed-module checkpoint
+
+GitHub-hosted [run 40046359510](https://github.com/leftyfb/projectwright/actions/runs/40046359510)
+successfully ran **143/143** offline tests, passed baseline development
+validation, built a `projectwright` wheel, installed it into a disposable
+directory, checked all five console-script `--help` entrypoints, and uploaded
+the wheel as a seven-day Actions artifact. The wheel includes all 18
+historical Python modules (validated by an explicit manifest contract).
+
+The isolated `tux-projectwright` source checkout in
+[run 40046438890](https://github.com/leftyfb/projectwright/actions/runs/40046438890)
+also passed **143/143** tests, validator, and log upload. The one-time tux
+push trigger was removed; self-hosted verification is manual-only again.
+The source now resolves dispatcher/worker siblings and generated timer
+dispatcher paths relative to their installed modules, while supporting
+the dispatcher's explicit `--scripts` override. This is a wheel *preview*:
+it does not install anything on the user's Hermes host or demonstrate
+independence from all Hermes runtime services and config paths.
+
 ## Existing evidence
 
 - At the original source baseline, the repository had 18 Python scripts and no `tests/` directory, runner, CI workflow, or dependency manifest. The offline `tests/` suite and `scripts/validate-baseline.py` were introduced on `test/reproducible-baseline` and are present in this checkout; dependency metadata remains absent; offline CI has since been added.
