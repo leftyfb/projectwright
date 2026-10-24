@@ -31,6 +31,17 @@ class NotesRootTests(unittest.TestCase):
             self.assertEqual(proc.returncode,2)
             self.assertIn("mutually exclusive",proc.stderr)
 
+    def test_publisher_explicit_config_dir(self):
+        with tempfile.TemporaryDirectory() as td:
+            proc=subprocess.run([sys.executable,"-B",str(SOURCE/"project_notes_publisher.py"),"--project","fixture","--dry-run","--config-dir",td],capture_output=True,text=True)
+            self.assertNotEqual(proc.returncode,0)
+            self.assertIn(str(Path(td)/"projects/fixture/config.json"),proc.stderr)
+
+    def test_publisher_rejects_relative_config_dir(self):
+        proc=subprocess.run([sys.executable,"-B",str(SOURCE/"project_notes_publisher.py"),"--project","fixture","--config-dir","relative"],capture_output=True,text=True)
+        self.assertEqual(proc.returncode,2)
+        self.assertIn("--config-dir must be absolute",proc.stderr)
+
     def test_publisher_uses_shared_resolver_and_canonical_imports(self):
         src=(SOURCE/"project_notes_publisher.py").read_text()
         self.assertIn("else default_project_root()",src)
