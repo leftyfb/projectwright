@@ -1,6 +1,6 @@
 """Manage disabled-by-default per-project systemd user schedules."""
 from __future__ import annotations
-import argparse, json, os, re, subprocess, sys
+import argparse, json, os, re, subprocess, sys, shutil
 from pathlib import Path
 
 ID = re.compile(r'[a-z][a-z0-9_-]{0,63}\Z')
@@ -29,6 +29,12 @@ def approval_notify_units(notifier: Path, *, minutes: int = 10) -> tuple[str, st
     return service, timer
 
 
+def approval_plugin_assets() -> Path:
+    shipped = Path('/usr/share/projectwright/hermes/projectwright-approvals')
+    source = Path(__file__).resolve().parents[2] / 'packaging/hermes-plugin/projectwright-approvals'
+    return shipped if shipped.is_dir() else source
+
+
 def setup_user_approvals(*, minutes=10, enable_plugin=False, runner=subprocess.run) -> None:
     """Per-user setup; never called automatically from root-owned dpkg postinst."""
     if os.geteuid() == 0:
@@ -52,6 +58,20 @@ def setup_user_approvals(*, minutes=10, enable_plugin=False, runner=subprocess.r
         if path.exists() and path.read_text() != contents:
             raise ValueError(f'Refusing to overwrite custom user unit: {path}')
     if enable_plugin:
+        source = approval_plugin_assets()
+        plugin_dest = Path.home() / '.hermes/plugins/projectwright-approvals'
+        for name in ('plugin.yaml', '__init__.py'):
+            origin = source / name
+            if not origin.is_file():
+                raise ValueError(f'Hermes plugin asset missing: {origin}')
+            target = plugin_dest / name
+            if target.exists() and target.read_bytes() != origin.read_bytes():
+                raise ValueError(f'Refusing to overwrite modified Hermes plugin: {target}')
+        plugin_dest.mkdir(parents=True, exist_ok=True)
+        for name in ('plugin.yaml', '__init__.py'):
+            target = plugin_dest / name
+            if not target.exists():
+                shutil.copyfile(source / name, target)
         runner(['hermes', 'plugins', 'enable', 'projectwright-approvals'], check=True)
     dest.mkdir(parents=True, exist_ok=True)
     for path, contents in targets.items():
