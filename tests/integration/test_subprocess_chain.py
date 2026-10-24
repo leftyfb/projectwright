@@ -355,7 +355,17 @@ class RealSubprocessChain(unittest.TestCase):
         original = "private original content\n"
         (self.repo / "preexisting.txt").write_text(original)
         self.env["PW_FAKE_MODE"] = "git_cycle"
-        for task_id in ("P101", "P102", "P103"):
+        # The dispatcher rejects an initially dirty worktree; invoke the
+        # worker directly for the first EDIT to exercise its stash journal.
+        first = subprocess.run(
+            [sys.executable, "-B", str(self.scripts / "project_task_worker.py"),
+             "--project", "fixture", "--once", "--no-telegram"],
+            env={**self.env, "PROJECTWRIGHT_DISPATCHED": "1"},
+            capture_output=True, text=True, timeout=35,
+        )
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        self.assertIn("[x] **P101", self.queue.read_text())
+        for task_id in ("P102", "P103"):
             result = self.dispatch()
             self.assertEqual(result.returncode, 0, f"{task_id}: {result.stdout}{result.stderr}")
             self.assertIn(f"[x] **{task_id}", self.queue.read_text())
