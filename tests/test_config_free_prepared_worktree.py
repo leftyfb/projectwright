@@ -20,6 +20,13 @@ class ConfigFreePreparedWorkerTests(unittest.TestCase):
             (project/"queue.md").write_text("")
             (project/"work_log.md").write_text("")
             subprocess.run(["git","-C",str(repo),"init","-q","-b","main"],check=True)
+            env_for_probe={**os.environ,"PYTHONPATH":str(SRC),
+                           "PROJECTWRIGHT_CONFIG_DIR":str(cfg_home)}
+            unborn=subprocess.run([sys.executable,"-B","-c",
+                "from pw_config import load,ready_for_config_free_worker; print(ready_for_config_free_worker(load('demo')[1]))"],
+                env=env_for_probe,capture_output=True,text=True)
+            self.assertEqual(unborn.returncode,0,unborn.stderr)
+            self.assertEqual(unborn.stdout.strip(),"False")
             subprocess.run(["git","-C",str(repo),"-c","user.name=Test",
                             "-c","user.email=test@example.invalid",
                             "commit","-q","--allow-empty","-m","initial"],check=True)
