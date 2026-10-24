@@ -289,7 +289,7 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
         except Exception as exc:
             return {**out, 'decision': 'planner_failed', 'reason': f'{type(exc).__name__}: {exc}'}
     # Lock has been released. Sync acquires its own lock, as agreed.
-    sync = Path.home()/'.hermes/scripts/project_notes_sync.py'
+    sync = Path(__file__).resolve().parent / 'project_notes_sync.py'
     sync_status = 'not_configured'
     if cfg.get('notes',{}).get('mirrors'):
         try:
