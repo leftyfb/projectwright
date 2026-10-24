@@ -30,6 +30,7 @@ py-modules = [
     "pw_dispatch",
     "pw_notify",
     "pw_plugin",
+    "pw_worker_progress",
     "pw_project_timer",
 ]
 
