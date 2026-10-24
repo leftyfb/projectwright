@@ -43,6 +43,10 @@ class ConfigFreePreparedWorkerTests(unittest.TestCase):
             self.assertEqual(result.returncode,0,result.stderr)
             data=json.loads(result.stdout)
             self.assertEqual(data,{"exists":False,"ready":True})
+            defaults=subprocess.run([sys.executable,"-B","-m","pw_defaults",
+                 "--project","demo"],env=env,capture_output=True,text=True)
+            self.assertEqual(defaults.returncode,0,defaults.stderr)
+            self.assertTrue(json.loads(defaults.stdout)["config_free_worktree_ready"])
             smoke=subprocess.run([sys.executable,"-B","-m","project_task_worker",
                  "--project","demo","--dry-run"],env=env,capture_output=True,text=True)
             self.assertEqual(smoke.returncode,0,smoke.stderr)
