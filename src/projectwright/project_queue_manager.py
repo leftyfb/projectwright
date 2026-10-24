@@ -37,6 +37,25 @@ def once_exit_code(decision: object) -> int:
     return ONCE_EXIT_CODES.get(decision, 4)
 
 
+def default_project_root() -> Path:
+    """Resolve project storage without changing existing Hermes installations.
+
+    Explicit PROJECTWRIGHT_CONFIG_DIR denotes an XDG-style configuration home,
+    with project directories beneath its projects/ child. The legacy environment
+    variable remains an explicit direct project-root override.
+    """
+    direct = os.environ.get('HERMES_PROJECT_CONFIG_DIR')
+    selected = os.environ.get('PROJECTWRIGHT_CONFIG_DIR')
+    if selected:
+        return Path(selected).expanduser() / 'projects'
+    if direct:
+        return Path(direct).expanduser()
+    xdg = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
+    target = xdg / 'projectwright' / 'projects'
+    legacy = Path.home() / '.hermes' / 'projects'
+    return legacy if legacy.is_dir() and not target.is_dir() else target
+
+
 def project_config(project: str, root: Path) -> tuple[Path, dict]:
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', project):
         raise ValueError('Invalid project ID')
@@ -237,7 +256,7 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', required=True)
-    parser.add_argument('--config-root', type=Path, default=Path(os.environ.get('HERMES_PROJECT_CONFIG_DIR', str(Path.home()/'.hermes/projects'))))
+    parser.add_argument('--config-root', type=Path, default=default_project_root())
     commands = parser.add_mutually_exclusive_group(required=True)
     commands.add_argument('--status', action='store_true')
     commands.add_argument('--once', action='store_true')
