@@ -37,6 +37,37 @@ def once_exit_code(decision: object) -> int:
     return ONCE_EXIT_CODES.get(decision, 4)
 
 
+def provider_argv(cfg: dict, phase: str, *, prompt: str | None = None) -> tuple[list[str], bool]:
+    """Return explicit argv and whether to deliver the prompt on stdin.
+
+    Command adapters receive plain text on stdin; planner JSON and worker
+    completion artifacts retain their existing schemas and safety checks.
+    """
+    if phase not in ('planner', 'worker'):
+        raise ValueError('Unsupported provider phase')
+    provider = cfg.get('provider', {'type': 'hermes'})
+    if not isinstance(provider, dict):
+        raise ValueError('provider must be an object')
+    kind = provider.get('type', 'hermes')
+    if kind == 'hermes':
+        path = str(Path(cfg['hermes']).expanduser())
+        if phase == 'planner':
+            if not isinstance(prompt, str):
+                raise ValueError('Hermes planner requires a prompt')
+            return [path, '--ignore-rules', '-z', prompt], False
+        return [path, 'chat', '--oneshot', '--query-file', '-', '--ignore-rules'], True
+    if kind == 'command':
+        key = phase + '_argv'
+        argv = provider.get(key)
+        if not isinstance(argv, list) or not argv or not all(
+                isinstance(x, str) and x and '\\x00' not in x for x in argv):
+            raise ValueError(f'Command provider requires nonempty {key} list')
+        if not Path(argv[0]).is_absolute():
+            raise ValueError(f'Command provider {key} executable must be absolute')
+        return list(argv), True
+    raise ValueError(f'Unknown execution provider type: {kind}')
+
+
 def default_project_root() -> Path:
     """Resolve project storage without changing existing Hermes installations.
 
