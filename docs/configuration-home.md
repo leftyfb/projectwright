@@ -119,3 +119,14 @@ not create a Git repository, queue, or notes automatically, and will return
 config-free workspace: it skips automatic planning and dispatches one worker
 cycle directly. Config-free automatic planning and scheduled execution remain
 disabled until explicitly configured.
+
+### Creating a project with no config.json
+
+`pw init --project demo --no-config` creates private empty `queue.md`
+and `work_log.md` files in the default project directory, with **no**
+`config.json`. It does not initialize a Git repository, invoke Hermes or
+enable automatic execution. Clone or initialize the intended repository into
+the default `worktree/` subdirectory (with a real HEAD commit), then use
+`pw worker --project demo --dry-run` or `pw tick --project demo`.
+The prepared repository must be on the expected branch (default `main`).
+Existing projects are never overwritten.
