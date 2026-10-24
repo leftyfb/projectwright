@@ -142,9 +142,9 @@ class RealSubprocessChain(unittest.TestCase):
     def save_config(self):
         (self.project / "config.json").write_text(json.dumps(self.config))
 
-    def dispatch(self):
+    def dispatch(self, *extra):
         return subprocess.run([sys.executable, "-B", str(self.scripts / "pw_dispatch.py"),
-                               "--project", "fixture", "--scripts", str(self.scripts)],
+                               "--project", "fixture", "--scripts", str(self.scripts), *extra],
                               env=self.env, capture_output=True, text=True, timeout=35)
 
     def test_real_subprocess_chain_finishes_read_and_is_idempotent(self):
@@ -445,7 +445,7 @@ class RealSubprocessChain(unittest.TestCase):
         }
         self.save_config()
         self.env["PW_FAKE_MODE"] = "command_provider"
-        result = self.dispatch()
+        result = self.dispatch('--no-telegram')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("WORKER rc=0", result.stdout)
         self.assertIn("[x] **P101", self.queue.read_text())
