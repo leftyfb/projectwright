@@ -25,8 +25,9 @@ Standalone worker calls retain their historical post-worker manager behavior.
 This is covered indirectly by the real subprocess completion test.
 
 CI uses seven-day GitHub Actions log artifacts rather than Git commits.
-The separate tux self-hosted workflow is not yet operational because no isolated
-runner has been registered. Actual host integration is still outstanding.
+The tux self-hosted source-checkout workflow is operational on the registered
+unprivileged `tux-projectwright` runner. This still does not validate the
+installed Hermes environment or production services.
 
 ## Host runner validation (2026-10-23)
 
@@ -123,6 +124,21 @@ The guard and bridge are stubbed for selected cases, so these tests prove
 callback routing, state cleanup and handoff contracts, not the full real
 acceptance-command execution or Telegram SDK/network delivery. Live Telegram
 authorization, provider events and concurrency still require separate tests.
+
+## Real acceptance and callback verification (2026-10-23)
+
+GitHub-hosted offline [run 40045055013](https://github.com/leftyfb/projectwright/actions/runs/40045055013)
+and isolated tux [run 40045160995](https://github.com/leftyfb/projectwright/actions/runs/40045160995)
+both passed **139/139 tests** with zero failures/skips, passing validator and
+artifact upload. This phase adds actual Git-backed approval guard tests, including
+execution of a harmless acceptance command, receipt persistence, callback-to-guard
+approval and replay denial, stale HEAD/queue evidence, explicit rejection, failing
+acceptance commands, and a changed queue during acceptance. Telegram callback
+authorization tests verify private-chat scope, fail-closed invalid user lists,
+and reading newly revoked users from a disposable `.env` file. Injected notification
+transport tests verify cancellation during delivery prevents remaining recipients
+and prevents writing a stale delivery receipt. No production Telegram message
+is sent or production project touched.
 
 ## Existing evidence
 
