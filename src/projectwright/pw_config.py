@@ -87,8 +87,12 @@ def ready_for_config_free_worker(cfg: dict) -> bool:
             ["git", "-C", str(repo), "branch", "--show-current"],
             capture_output=True, text=True, timeout=10, check=False,
         )
+        head = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--verify", "HEAD"],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
     except (OSError, subprocess.TimeoutExpired):
         return False
-    return (check.returncode == 0 and branch.returncode == 0 and
+    return (check.returncode == 0 and branch.returncode == 0 and head.returncode == 0 and
             Path(check.stdout.strip()).resolve() == repo.resolve() and
             branch.stdout.strip() == cfg["branch"])
