@@ -69,8 +69,11 @@ jobs:
             | tee "$RUNNER_TEMP/projectwright-test-logs/deb-contents.log"
           mkdir -p "$RUNNER_TEMP/projectwright-deb-extract"
           dpkg-deb --extract "$RUNNER_TEMP"/projectwright-debs/*.deb "$RUNNER_TEMP/projectwright-deb-extract"
-          PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" \
-            python3 -B -m pw_dispatch --help > /dev/null
+          for name in dispatch manager worker notify timer; do
+            PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" \
+              "$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw-$name" --help > /dev/null
+          done
+          echo "Debian wrapper smoke checks OK"
 
       - name: Upload development Debian package
         if: success()
