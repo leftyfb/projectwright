@@ -64,7 +64,7 @@ class RealSubprocessChain(unittest.TestCase):
             "        'description':'Inspect the disposable fixture read-only',\n"
             "        'requirement_id':'DEMO-1', 'milestone_id':'DEMO-1-M1'}]}))\n"
             "    sys.exit(0)\n"
-            "if len(sys.argv) < 2 or sys.argv[1] != 'chat':\n"
+            "if (len(sys.argv) < 2 or sys.argv[1] != 'chat') and os.environ.get('PW_FAKE_MODE') != 'command_provider':\n"
             "    sys.exit(30)\n"
             "prompt = sys.stdin.read()\n"
             "if os.environ.get('PW_FAKE_MODE') == 'timeout':\n"
@@ -434,6 +434,22 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertFalse(any(
             row.startswith("- [x]") for row in self.queue.read_text().splitlines()
         ))
+
+    def test_generic_command_provider_runs_real_subprocess_without_hermes_field(self):
+        # Same fake implementation, invoked without Hermes CLI arguments.
+        self.config.pop("hermes")
+        self.config["provider"] = {
+            "type": "command",
+            "worker_argv": [str(self.hermes)],
+            "planner_argv": [str(self.hermes)],
+        }
+        self.save_config()
+        self.env["PW_FAKE_MODE"] = "command_provider"
+        result = self.dispatch()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=0", result.stdout)
+        self.assertIn("[x] **P101", self.queue.read_text())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
 
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
