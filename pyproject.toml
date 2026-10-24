@@ -15,6 +15,7 @@ package-dir = {"" = "src/projectwright"}
 py-modules = [
     "project_acceptance_gate",
     "project_milestone_guard",
+    "pw_milestone_guard",
     "project_milestone_sequence",
     "project_notes_publisher",
     "pw_notes_publisher",
