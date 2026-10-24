@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 from pw_dispatch import default_project_root
+from pw_config import load as load_config
 
 _PROJECT_ID = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
@@ -30,6 +31,7 @@ def defaults(project: str | None = None) -> dict:
         result["project"] = project
         result["project_config"] = str(root / project / "config.json")
         result["configured"] = (root / project / "config.json").is_file()
+        result["effective_config"] = load_config(project, root)[1]
         result["missing_config_decision"] = "disabled"
     return result
 
