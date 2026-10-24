@@ -9,8 +9,8 @@ MARKER='<!-- generated-by: project_notes_publisher; manual edits will be overwri
 ROW=re.compile(r'^\s*- \[([ x!])\]\s+\*\*([A-Z]+\d+)\s+[—-]\s+([A-Z]+)\*\*\s*(.*)$')
 
 def render(config, config_path):
-    from project_worker_journal import journal_path, read as read_journal
-    from project_worker_progress import read_state, state_path
+    from pw_worker_journal import journal_path, read as read_journal
+    from pw_worker_progress import read_state, state_path
     q=Path(config['queue']).expanduser(); log=Path(config['work_log']).expanduser()
     rows=[m.groups() for line in q.read_text(encoding='utf-8').splitlines() if (m:=ROW.match(line))]
     count=lambda st:sum(1 for row in rows if row[0]==st)
@@ -61,7 +61,8 @@ def publish(config,config_path):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--project',required=True);p.add_argument('--dry-run',action='store_true');a=p.parse_args()
-    root=Path(os.environ.get('HERMES_PROJECT_CONFIG_DIR',str(Path.home()/'.hermes/projects')))
+    from pw_dispatch import default_project_root
+    root=default_project_root()
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',a.project):p.error('Invalid project ID')
     path=root/a.project/'config.json'; cfg=json.loads(path.read_text())
     if cfg.get('id')!=a.project: raise ValueError('Project config ID mismatch')
