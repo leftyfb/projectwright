@@ -77,13 +77,16 @@ class RealSubprocessChain(unittest.TestCase):
             "if not match:\n"
             "    sys.exit(31)\n"
             "dest = pathlib.Path(match.group(1).strip())\n"
-            "mode = os.environ.get('PW_FAKE_MODE')\n"            "if mode == 'git_cycle':\n"
+            "mode = os.environ.get('PW_FAKE_MODE')\n"            "if mode in ('git_cycle', 'git_cycle_extra_commit'):\n"
             "    import subprocess\n"
             "    task = re.search(r'Assignment: (P[0-9]+) [—-] (EDIT|TEST|COMMIT)', prompt)\n"
             "    if not task: sys.exit(32)\n"
             "    tid, kind = task.groups()\n"
             "    if kind == 'EDIT': pathlib.Path('probe.txt').write_text('edited\\\\n')\n"
             "    if kind == 'COMMIT':\n"
+            "        if mode == 'git_cycle_extra_commit':\n"
+            "            pathlib.Path('extra.txt').write_text('unauthorized')\n"
+            "            subprocess.run(['git','add','extra.txt'], check=True)\n"
             "        subprocess.run(['git','add','probe.txt'], check=True)\n"
             "        subprocess.run(['git','commit','-qm','fixture cycle'],check=True)\n"
             "    dest.write_text(json.dumps({'task_id':tid,'status':'completed',\n"
@@ -373,6 +376,24 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertEqual(git(self.repo, "status", "--porcelain"), "?? preexisting.txt")
         self.assertEqual(git(self.repo, "show", "--format=", "--name-only", "HEAD"), "probe.txt")
         self.assertFalse((self.project / "cycle.json").exists())
+
+    def test_unapproved_file_in_commit_is_not_accepted(self):
+        self.queue.write_text(
+            "- [ ] **P101 — EDIT** modify fixture file\n"
+            "- [ ] **P102 — TEST** test fixture change\n"
+            "- [ ] **P103 — COMMIT** commit validated fixture\n"
+        )
+        self.env["PW_FAKE_MODE"] = "git_cycle_extra_commit"
+        for task_id in ("P101", "P102"):
+            result = self.dispatch()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"[x] **{task_id}", self.queue.read_text())
+        third = self.dispatch()
+        self.assertNotEqual(third.returncode, 0, third.stdout + third.stderr)
+        self.assertIn("WORKER rc=", third.stdout)
+        self.assertIn("[ ] **P103", self.queue.read_text())
+        self.assertTrue((self.project / "cycle.json").exists())
+        self.assertIn("extra.txt", git(self.repo, "show", "--format=", "--name-only", "HEAD"))
 
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
