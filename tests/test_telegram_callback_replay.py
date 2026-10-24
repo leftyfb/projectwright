@@ -63,6 +63,57 @@ class TelegramCallbackReplay(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Not an approval"):
             pw_buttons.approve(self.root, pw_buttons.callback_data("r", self.record))
 
+    def test_approval_receipt_consumes_pending_and_replay_is_refused(self):
+        bridge = types.ModuleType("project_telegram_approval")
+        guard = types.ModuleType("project_milestone_guard")
+        policy = {"milestones": {
+            "DEMO-1-M1": {
+                "requirement": "DEMO-1",
+                "command": ["python3", "-m", "unittest"],
+                "scope_paths": ["probe.txt"],
+            }
+        }}
+        bridge.project_data = lambda directory: ({"id": "fixture"}, policy)
+        received = []
+        def approve(cfg, directory, req, milestone, command, scope, *, expected):
+            received.append((cfg, directory, req, milestone, command, scope, expected))
+            return {"git_head": self.record["head"]}
+        guard.approve = approve
+        token = pw_buttons.callback_data("a", self.record)
+        with patch.dict(sys.modules, {
+            "project_telegram_approval": bridge,
+            "project_milestone_guard": guard,
+        }):
+            response = pw_buttons.approve(self.root, token)
+            self.assertIn("APPROVED", response)
+            self.assertEqual(received[0][-1], self.record)
+            self.assertEqual(received[0][1], self.project)
+            self.assertFalse(self.pending.exists())
+            with self.assertRaisesRegex(ValueError, "no longer pending"):
+                pw_buttons.approve(self.root, token)
+            self.assertEqual(len(received), 1)
+
+    def test_failed_approval_keeps_pending_for_review(self):
+        bridge = types.ModuleType("project_telegram_approval")
+        guard = types.ModuleType("project_milestone_guard")
+        bridge.project_data = lambda directory: (
+            {"id": "fixture"}, {"milestones": {"DEMO-1-M1": {
+                "requirement": "DEMO-1",
+                "command": ["python3", "-m", "unittest"],
+                "scope_paths": ["probe.txt"],
+            }}},
+        )
+        def refuse(*args, **kwargs):
+            raise ValueError("stale acceptance evidence")
+        guard.approve = refuse
+        with patch.dict(sys.modules, {
+            "project_telegram_approval": bridge,
+            "project_milestone_guard": guard,
+        }):
+            with self.assertRaisesRegex(ValueError, "stale acceptance"):
+                pw_buttons.approve(self.root, pw_buttons.callback_data("a", self.record))
+        self.assertEqual(json.loads(self.pending.read_text()), self.record)
+
     def test_traversal_and_tampered_callback_rejected(self):
         for bad in ("pwa:a:../fixture:0123456789abcdef0123",
                     "pwa:a:fixture:00000000000000000000",
