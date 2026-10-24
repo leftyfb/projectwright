@@ -74,6 +74,23 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
             self.assertTrue(cfg["planning"]["enabled"])
             self.assertEqual(cfg["timeout_seconds"],900)
 
+    def test_malformed_enablement_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            directory=Path(td)/"demo"
+            directory.mkdir()
+            env={**os.environ,"PYTHONPATH":str(SRC)}
+            for bad in ({"execution":{"enabled":"false"}},
+                        {"planning":{"enabled":1}},
+                        {"notes":[]},
+                        {"execution":"enabled"}):
+                with self.subTest(bad=bad):
+                    (directory/"config.json").write_text(json.dumps({"id":"demo",**bad}))
+                    proc=subprocess.run([sys.executable,"-B","-c",
+                        "import sys; from pathlib import Path; from pw_config import load; load('demo',Path(sys.argv[1]))",
+                        td],capture_output=True,text=True,env=env)
+                    self.assertNotEqual(proc.returncode,0)
+                    self.assertIn("ValueError",proc.stderr)
+
     def test_json_overrides_take_precedence_without_losing_nested_defaults(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
