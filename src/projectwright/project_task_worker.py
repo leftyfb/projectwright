@@ -783,6 +783,11 @@ def main() -> int:
         print(json.dumps({'project': args.project, 'decision': 'disabled',
                           'reason': 'project config missing'}))
         return 3
+    initial = json.loads(config_file.read_text(encoding='utf-8'))
+    if initial.get('projectwright_initialized') == 1 and initial.get('execution') == {'enabled': False}:
+        print(json.dumps({'project': args.project, 'decision': 'disabled',
+                          'reason': 'project not configured for execution'}))
+        return 3
     load_project(args.project)
     if args.journal_status or args.authorize_retry:
         from pw_worker_journal import (journal_path, read as journal_read,
