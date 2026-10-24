@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded AI planning extension for project_queue_manager (Stage B).
+"""Bounded AI planning extension for pw_queue_manager (Stage B).
 
 Only the generic manager --once calls this module. No code or state changes
 occur on --status/--dry-run. An AI response is an *untrusted proposal* and is
@@ -20,7 +20,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from project_queue_manager import (project_config, planning_policy,
+from pw_queue_manager import (project_config, planning_policy,
                                    queue_summary, read_json_optional, ROW,
                                    VALID_KINDS)
 
@@ -97,7 +97,7 @@ def validate_proposal(raw: dict, *, available: int, queue: str,
 
 
 def run_planner(cfg: dict, prompt: str, *, timeout: int) -> dict:
-    from project_queue_manager import provider_argv
+    from pw_queue_manager import provider_argv
     cmd, prompt_on_stdin = provider_argv(cfg, 'planner', prompt=prompt)
     if (not Path(cmd[0]).is_file() and shutil.which(cmd[0]) is None):
         raise ValueError(f'Planner provider executable not found: {cmd[0]}')
