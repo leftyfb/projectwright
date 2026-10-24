@@ -57,6 +57,8 @@ jobs:
             PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
               "$RUNNER_TEMP/projectwright-install/bin/$cmd" --help > /dev/null
           done
+          PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP/projectwright-install/bin/pw" setup-user --help > /dev/null
           echo "Wheel entrypoint help checks OK"
 
       - name: Build and inspect development Debian package
