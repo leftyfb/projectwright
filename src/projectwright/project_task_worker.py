@@ -521,7 +521,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
                                            read as read_journal, start as journal_start,
                                            phase as journal_phase, finalize as journal_finalize,
                                            clear_reviewed as journal_clear_reviewed)
-        from project_worker_progress import record_completed, state_path as progress_state_path
+        from pw_worker_progress import record_completed, state_path as progress_state_path
         journal_file = journal_path(PROJECT, PROJECT_CONFIG)
         progress_file = progress_state_path(PROJECT, PROJECT_CONFIG)
         # Hand recovery its own project lock before selecting any new task.
