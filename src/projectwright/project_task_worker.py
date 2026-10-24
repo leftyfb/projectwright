@@ -710,7 +710,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
         fcntl.flock(lk, fcntl.LOCK_UN)
         if PROJECT.get("notes", {}).get("mirrors"):
             try:
-                sync_script = Path(__file__).resolve().parent / "project_notes_sync.py"
+                sync_script = Path(__file__).resolve().parent / "pw_notes_sync.py"
                 sync_result = subprocess.run(
                     [
                         sys.executable,
