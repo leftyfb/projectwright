@@ -68,6 +68,15 @@ jobs:
           git diff --check \
             2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/diff-check.log"
 
+      - name: Upload development wheel
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: projectwright-wheel-${{ github.run_id }}
+          path: ${{ runner.temp }}/projectwright-wheels/*.whl
+          retention-days: 7
+          if-no-files-found: error
+
       - name: Upload ephemeral test logs
         if: always()
         uses: actions/upload-artifact@v4
