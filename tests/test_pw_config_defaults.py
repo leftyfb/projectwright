@@ -122,17 +122,17 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             folder=Path(td)
             binary=folder/"hermes"
-            binary.write_text("#!/bin/sh\\nexit 0\\n")
+            binary.write_text("#!/bin/sh\nexit 0\n")
             binary.chmod(0o755)
             env={**os.environ,"PYTHONPATH":str(SRC),
                  "PATH":str(folder)+os.pathsep+os.environ.get("PATH","")}
             code=(
-                "from unittest.mock import patch\\n"
-                "from project_queue_planner import run_planner\\n"
-                "with patch('project_queue_planner.subprocess.Popen') as proc:\\n"
-                "    proc.return_value.communicate.return_value=('{}','')\\n"
-                "    proc.return_value.returncode=0\\n"
-                "    assert run_planner({'hermes':'hermes'},'prompt',timeout=5)=={}\\n"
+                "from unittest.mock import patch\n"
+                "from project_queue_planner import run_planner\n"
+                "with patch('project_queue_planner.subprocess.Popen') as proc:\n"
+                "    proc.return_value.communicate.return_value=('{}','')\n"
+                "    proc.return_value.returncode=0\n"
+                "    assert run_planner({'hermes':'hermes'},'prompt',timeout=5)=={}\n"
             )
             result=subprocess.run([sys.executable,"-B","-c",code],
                                   env=env,capture_output=True,text=True)
