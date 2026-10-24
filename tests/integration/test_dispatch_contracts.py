@@ -44,7 +44,7 @@ class DispatchFixture(unittest.TestCase):
         self.project_dir.mkdir(parents=True)
         self.scripts = self.root / "scripts"
         self.scripts.mkdir()
-        for name in ("pw_queue_manager.py", "project_task_worker.py"):
+        for name in ("pw_queue_manager.py", "pw_task_worker.py"):
             shutil.copy2(SRC / name, self.scripts / name)
 
     def config(self, *, queue_text="", cycle_file=None, worktree=None, **extra):
@@ -278,7 +278,7 @@ class TestTick(DispatchFixture):
         result, calls = self.run_tick({"decision": "queued"})
         self.assertEqual(result, 0)
         self.assertEqual(len(calls), 2)
-        self.assertIn("project_task_worker.py", calls[1][2])
+        self.assertIn("pw_task_worker.py", calls[1][2])
 
     def test_idle_never_invokes_worker(self):
         for mode in ("awaiting_acceptance", "disabled"):
@@ -523,13 +523,13 @@ class CycleTests(DispatchFixture):
 
     def test_test_then_commit_permitted(self):
         result, calls = self.run_tick({"decision": "blocked", "reason": "branch_or_worktree, active_git_cycle"}, manager_rc=2)
-        self.assertEqual((result, [Path(c[2]).name for c in calls]), (0, ["pw_queue_manager.py", "project_task_worker.py"]))
+        self.assertEqual((result, [Path(c[2]).name for c in calls]), (0, ["pw_queue_manager.py", "pw_task_worker.py"]))
         self.cfg_queue = Path(self.cfg["queue"])
         self.cfg_queue.write_text(self.queue_text.replace("[ ] **P103", "[x] **P103"))
         self.record["last_task"] = "P103"
         self._save_cycle()
         result, calls = self.run_tick({"decision": "blocked", "reason": "branch_or_worktree, active_git_cycle"}, manager_rc=2)
-        self.assertEqual((result, [Path(c[2]).name for c in calls]), (0, ["pw_queue_manager.py", "project_task_worker.py"]))
+        self.assertEqual((result, [Path(c[2]).name for c in calls]), (0, ["pw_queue_manager.py", "pw_task_worker.py"]))
 
     def test_stale_snapshot_refused(self):
         (self.repo / "approval_probe.py").write_text("unauthorized mutation\n")
