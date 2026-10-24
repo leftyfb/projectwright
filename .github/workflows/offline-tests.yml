@@ -53,7 +53,7 @@ jobs:
             "$RUNNER_TEMP"/projectwright-wheels/*.whl
           PYTHONPATH="$RUNNER_TEMP/projectwright-install" python3 -B -c \
             "import pw_dispatch, project_queue_manager, project_task_worker, pw_project_timer; print('wheel imports OK')"
-          for cmd in pw-dispatch pw-manager pw-worker pw-notify pw-timer; do
+          for cmd in pw pw-dispatch pw-manager pw-worker pw-notify pw-timer; do
             PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
               "$RUNNER_TEMP/projectwright-install/bin/$cmd" --help > /dev/null
           done
@@ -73,6 +73,8 @@ jobs:
             PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" \
               "$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw-$name" --help > /dev/null
           done
+          PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" \
+            "$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw" --help > /dev/null
           echo "Debian wrapper smoke checks OK"
 
       - name: Upload development Debian package
