@@ -80,8 +80,11 @@ a disposable account before a stable tag or deployment.
 
 ## 6. Debian installation and optional user integration
 
-- [ ] Ship a packaged Hermes plugin named `projectwright-approvals` and a
-  `projectwright-approval-notify.service` plus `.timer`.
+- [ ] Ship and **register** a Hermes plugin named `projectwright-approvals`.
+  The Debian preview now includes the plugin Python source in
+  `/usr/share/projectwright/hermes/` and inert approval notification unit
+  templates under `/usr/share/projectwright/systemd/user/`; actual Hermes
+  plugin discovery/registration and user activation still need integration testing.
 - [ ] Complete per-user Hermes plugin onboarding. An explicit
   `pw setup-user --enable-hermes-plugin` implementation now runs
   `hermes plugins enable projectwright-approvals` under the selected non-root
