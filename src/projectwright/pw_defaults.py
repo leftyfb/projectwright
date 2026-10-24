@@ -5,7 +5,7 @@ import argparse
 import json
 import re
 from pw_dispatch import default_project_root
-from pw_config import load as load_config
+from pw_config import load as load_config, ready_for_config_free_worker
 
 _PROJECT_ID = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
@@ -32,6 +32,8 @@ def defaults(project: str | None = None) -> dict:
         result["project_config"] = str(root / project / "config.json")
         result["configured"] = (root / project / "config.json").is_file()
         result["effective_config"] = load_config(project, root)[1]
+        result["config_free_worktree_ready"] = (not result["configured"] and
+            ready_for_config_free_worker(result["effective_config"]))
         result["missing_config_decision"] = "disabled"
     return result
 
