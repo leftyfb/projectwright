@@ -303,7 +303,7 @@ def main() -> int:
         _, cfg = load_config(args.project, args.config_root)
         # Built-in settings work without config.json. Until a project is
         # explicitly enabled, never launch a planner or touch Git state.
-        if cfg['execution']['enabled'] is False and cfg['planning']['enabled'] is False:
+        if not (args.config_root / args.project / 'config.json').is_file() or (cfg.get('projectwright_initialized') == 1 and cfg['execution']['enabled'] is False):
             print(json.dumps({'project': args.project, 'decision': 'disabled'}))
             return once_exit_code('disabled') if args.once else 0
         mode = 'once' if args.once else 'status'
