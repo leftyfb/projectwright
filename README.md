@@ -5,6 +5,13 @@ modules under `src/projectwright/`, together with an immutable source manifest
 and an offline `unittest` suite. Runtime scripts in `~/.hermes/scripts/` are not
 modified by this repository's tests.
 
+## Architecture and operations
+
+Read the [end-to-end workflow](docs/workflow.md) and
+[18-file component inventory](docs/component-inventory.md) for the current
+execution and approval lifecycle. The [user approval setup](docs/user-approval-setup.md)
+explains the non-root Telegram timer onboarding and current installer limits.
+
 ## Final release requirements
 
 The [final release checklist](docs/release-checklist.md) is the acceptance gate
