@@ -29,5 +29,8 @@ yet been represented as an installable complete runtime specification.
 
 `pw-dispatch` now defaults to locating its sibling modules next to the
 installed `pw_dispatch.py` module, while retaining the explicit `--scripts`
-override. That lets source-tree use and wheel-based invocation resolve the
-same selected source set. No timers are enabled by packaging.
+override. The timer manager likewise locates its dispatcher next to its
+installed module when generating a disabled-by-default unit, rather than
+assuming the user's Hermes scripts directory. These changes let source-tree
+use and wheel-based invocation select coherent sibling modules. No timers are
+enabled by packaging.
