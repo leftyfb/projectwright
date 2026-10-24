@@ -299,16 +299,11 @@ def main() -> int:
                         else args.config_root if args.config_root is not None
                         else default_project_root())
     try:
-        # Config-free invocation is intentionally inert: never infer a worktree,
-        # provider credentials or authorization policy from the user's HOME.
-        if not (args.config_root / args.project / 'config.json').is_file():
-            if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', args.project):
-                raise ValueError('Invalid project ID')
-            print(json.dumps({'project': args.project, 'decision': 'disabled'}))
-            return once_exit_code('disabled') if args.once else 0
-        config_path = args.config_root / args.project / 'config.json'
-        cfg = json.loads(config_path.read_text(encoding='utf-8'))
-        if cfg.get('projectwright_initialized') == 1 and cfg.get('execution') == {'enabled': False}:
+        from pw_config import load as load_config
+        _, cfg = load_config(args.project, args.config_root)
+        # Built-in settings work without config.json. Until a project is
+        # explicitly enabled, never launch a planner or touch Git state.
+        if cfg['execution']['enabled'] is False and cfg['planning']['enabled'] is False:
             print(json.dumps({'project': args.project, 'decision': 'disabled'}))
             return once_exit_code('disabled') if args.once else 0
         mode = 'once' if args.once else 'status'
