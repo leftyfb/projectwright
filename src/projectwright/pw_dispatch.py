@@ -273,7 +273,7 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False):
         print('FAIL unexpected planning decision='+decision, file=sys.stderr)
         return 20
     worker = [sys.executable, '-B', str(scripts/'project_task_worker.py'), '--project', project, '--once']
-    if no_telegram:
+    if no_telegram or not (default_project_root() / project / 'config.json').is_file():
         worker.append('--no-telegram')
     w = runner(worker, capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1', 'PROJECTWRIGHT_DISPATCHED':'1'}, timeout=2700)
     print('WORKER rc='+str(w.returncode))
