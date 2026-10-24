@@ -39,6 +39,7 @@ def load(project: str, root: Path | None = None) -> tuple[Path, dict]:
         "hermes": "hermes",
         "planning": {"enabled": False, "requirements_file": str(directory / "requirements.md")},
         "notes": {"enabled": False},
+        "quota": {"enabled": False},
         "execution": {"enabled": False},
     }
     for section in ("planning", "notes", "execution"):
