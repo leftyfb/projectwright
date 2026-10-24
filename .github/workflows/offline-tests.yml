@@ -78,6 +78,13 @@ jobs:
             "$RUNNER_TEMP/projectwright-install/bin/pw" status --project scaffold \
             --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" \
             | python3 -B -c "import json,sys; assert json.load(sys.stdin)['decision']=='disabled'"
+          HOME="$RUNNER_TEMP/pw-empty-home" PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP/projectwright-install/bin/pw" init --project configless \
+            --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" --no-config \
+            > "$RUNNER_TEMP/projectwright-test-logs/init-configless.json"
+          test -f "$RUNNER_TEMP/pw-empty-home/.config/projectwright/projects/configless/queue.md"
+          test -f "$RUNNER_TEMP/pw-empty-home/.config/projectwright/projects/configless/work_log.md"
+          test ! -e "$RUNNER_TEMP/pw-empty-home/.config/projectwright/projects/configless/config.json"
           echo "Wheel canonical and legacy module checks OK"
 
       - name: Build and inspect development Debian package
