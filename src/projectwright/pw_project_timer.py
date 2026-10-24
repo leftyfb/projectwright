@@ -55,7 +55,9 @@ def setup_user_approvals(*, minutes=10, enable_plugin=False, runner=subprocess.r
         dest / 'projectwright-approval-notify.timer': timer,
     }
     for path, contents in targets.items():
-        if path.exists() and path.read_text() != contents:
+        if path.is_symlink():
+            raise ValueError(f'Refusing symlinked user unit: {path}')
+        if path.exists() and (not path.is_file() or path.read_text() != contents):
             raise ValueError(f'Refusing to overwrite custom user unit: {path}')
     if enable_plugin:
         source = approval_plugin_assets()
@@ -65,7 +67,9 @@ def setup_user_approvals(*, minutes=10, enable_plugin=False, runner=subprocess.r
             if not origin.is_file():
                 raise ValueError(f'Hermes plugin asset missing: {origin}')
             target = plugin_dest / name
-            if target.exists() and target.read_bytes() != origin.read_bytes():
+            if target.is_symlink():
+                raise ValueError(f'Refusing symlinked Hermes plugin file: {target}')
+            if target.exists() and (not target.is_file() or target.read_bytes() != origin.read_bytes()):
                 raise ValueError(f'Refusing to overwrite modified Hermes plugin: {target}')
         plugin_dest.mkdir(parents=True, exist_ok=True)
         for name in ('plugin.yaml', '__init__.py'):
