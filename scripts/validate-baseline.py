@@ -142,7 +142,7 @@ def inspect_source(mode: str, manifest: dict) -> tuple[bool, bool, bool, bool]:
         and not invalid_manifest_records
         and not drift
     )
-    source_set_ok = not missing and not (extra - permitted_extra)
+    source_set_ok = not missing and not (set(extra) - permitted_extra)
     if mode == "baseline":
         print(f"Original snapshot hash check: {'PASS' if baseline_ok else 'FAIL'}")
     else:
