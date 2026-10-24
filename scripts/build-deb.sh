@@ -29,6 +29,8 @@ for name in dispatch manager worker notify timer; do
   printf '#!/bin/sh\nexec /usr/bin/python3 -m %s "$@"\n' "$module" > "$stage/usr/bin/pw-$name"
   chmod 0755 "$stage/usr/bin/pw-$name"
 done
+printf '#!/bin/sh\\nexec /usr/bin/python3 -c '\''import pw_dispatch; raise SystemExit(pw_dispatch.cli())'\'' "$@"\\n' > "$stage/usr/bin/pw"
+chmod 0755 "$stage/usr/bin/pw"
 cat > "$stage/DEBIAN/control" <<'EOF'
 Package: projectwright
 Version: 0.1.0~dev0-1
