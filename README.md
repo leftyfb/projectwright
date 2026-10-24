@@ -5,6 +5,15 @@ modules under `src/projectwright/`, together with an immutable source manifest
 and an offline `unittest` suite. Runtime scripts in `~/.hermes/scripts/` are not
 modified by this repository's tests.
 
+## Development wheel preview
+
+A preliminary, non-production Python wheel can be built from the repository's
+`pyproject.toml`. CI installs the wheel into a disposable target, smoke-tests the
+`pw-dispatch`, `pw-manager`, `pw-worker`, `pw-notify` and `pw-timer` entrypoints,
+and retains a seven-day wheel artifact. See [development wheel notes](docs/development-wheel.md)
+for build instructions and remaining Hermes-specific runtime assumptions. The
+package does not install/enable systemd timers or modify `~/.hermes/scripts`.
+
 ## Run the offline suite
 
 From the repository root:
