@@ -38,6 +38,12 @@ def load(project: str, root: Path | None = None) -> tuple[Path, dict]:
         "notes": {"enabled": False},
         "execution": {"enabled": False},
     }
+    for section in ("planning", "notes", "execution"):
+        supplied = overrides.get(section)
+        if supplied is not None and not isinstance(supplied, dict):
+            raise ValueError(f"{section} configuration must be an object")
+        if isinstance(supplied, dict) and "enabled" in supplied and type(supplied["enabled"]) is not bool:
+            raise ValueError(f"{section}.enabled must be boolean")
     result = {**defaults, **overrides}
     for section in ("planning", "notes", "execution"):
         if isinstance(overrides.get(section), dict):
