@@ -346,6 +346,24 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.head)
         self.assertTrue((self.project / "cycle.json").exists())
 
+    def test_git_cycle_restores_preexisting_untracked_file(self):
+        self.queue.write_text(
+            "- [ ] **P101 — EDIT** modify fixture file\n"
+            "- [ ] **P102 — TEST** test fixture change\n"
+            "- [ ] **P103 — COMMIT** commit validated fixture\n"
+        )
+        original = "private original content\n"
+        (self.repo / "preexisting.txt").write_text(original)
+        self.env["PW_FAKE_MODE"] = "git_cycle"
+        for task_id in ("P101", "P102", "P103"):
+            result = self.dispatch()
+            self.assertEqual(result.returncode, 0, f"{task_id}: {result.stdout}{result.stderr}")
+            self.assertIn(f"[x] **{task_id}", self.queue.read_text())
+        self.assertEqual((self.repo / "preexisting.txt").read_text(), original)
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "?? preexisting.txt")
+        self.assertEqual(git(self.repo, "show", "--format=", "--name-only", "HEAD"), "probe.txt")
+        self.assertFalse((self.project / "cycle.json").exists())
+
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
         self.save_config()
