@@ -277,7 +277,7 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False):
         # Read-only observability: journal and queue are written by the worker.
         # Missing/inconsistent data is reported, not inferred as successful work.
         try:
-            root = Path(os.environ.get('HERMES_PROJECT_CONFIG_DIR', str(Path.home()/'.hermes/projects'))) / project
+            root = default_project_root() / project
             journal = json.loads((root/'worker_journal.json').read_text())
             queue = (root/'queue.md').read_text(encoding='utf-8')
             import importlib.util
