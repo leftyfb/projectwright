@@ -173,7 +173,7 @@ def notify_pending(root: Path, *, dry_run=False, transport=None):
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--root', type=Path, default=Path.home()/'.hermes/projects')
+    parser.add_argument('--root', type=Path, default=__import__('project_queue_manager').default_project_root())
     parser.add_argument('--send', action='store_true')
     a=parser.parse_args()
     # Scan first, under per-project locks. A failed scan is reported, never silently bypassed.
