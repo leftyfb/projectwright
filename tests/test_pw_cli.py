@@ -15,8 +15,8 @@ class UnifiedCommandTests(unittest.TestCase):
     def test_commands_route_to_existing_modules(self):
         cases = {
             "tick": ("pw_dispatch", []),
-            "status": ("project_queue_manager", ["--status"]),
-            "plan": ("project_queue_manager", ["--once"]),
+            "status": ("pw_queue_manager", ["--status"]),
+            "plan": ("pw_queue_manager", ["--once"]),
             "worker": ("project_task_worker", []),
             "notify": ("pw_notify", []),
             "timer": ("pw_project_timer", []),
