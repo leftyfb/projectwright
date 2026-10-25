@@ -32,6 +32,24 @@ jobs:
           test "$RUNNER_NAME" = pw-test-projectwright
           test ! -e /usr/bin/pw
 
+      - name: Checkout reviewed lifecycle harness
+        uses: actions/checkout@v4
+        with:
+          ref: test/review-followups
+          persist-credentials: false
+
+      - name: Verify unprivileged runner cannot invoke installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/pw-test-deb-lifecycle.sh
+          if bash scripts/pw-test-deb-lifecycle.sh /does-not-exist 2>"$RUNNER_TEMP/pw-root-denial.log"; then
+            echo "ERROR: installer unexpectedly accepted non-root execution" >&2
+            exit 1
+          fi
+          grep -Fq 'requires explicit root invocation' "$RUNNER_TEMP/pw-root-denial.log"
+          echo "PASS: root-only lifecycle harness refuses the Actions runner"
+
       - name: Select latest successful hosted-CI Debian artifact on review branch
         shell: bash
         env:
