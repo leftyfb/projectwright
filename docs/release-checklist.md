@@ -175,6 +175,14 @@ a disposable account before a stable tag or deployment.
 - Expanded read-only discovery to common user-local virtualenv locations; [run 40246253270](https://github.com/leftyfb/projectwright/actions/runs/40246253270) **passed**, confirming the dedicated runner can execute the Hermes plugin CLI. This does not establish a running Hermes gateway or successful Projectwright plugin registration.
 - Next: verify user-local Hermes state and adapter discovery, then test plugin registration with isolated credentials and no Telegram network delivery. Never overwrite the test user's existing Hermes `.env` or reuse production secrets.
 
+## Verified isolated Hermes native plugin registration (2026-10-25)
+
+- **PASS:** [pw-test Actions run 40247054640](https://github.com/leftyfb/projectwright/actions/runs/40247054640) used the actual Hermes CLI in the dedicated LXD container to enable and inspect the packaged `projectwright-approvals` native plugin. The registry listed it as **enabled**, version `0.1.0`, source `user`.
+- The fixture checks that the plugin directory did not exist beforehand, installs only the two Debian-shipped plugin assets, disables the plugin afterward and removes the test-created directory (including Hermes-generated cache); it purges the Debian package afterward. Existing `~/.hermes/.env` is preserved and no Telegram message was sent.
+- First attempt [40246961109](https://github.com/leftyfb/projectwright/actions/runs/40246961109) verified registration but failed to clean generated plugin cache. The corrected full lifecycle **passed** in run 40247054640.
+- Once test Hermes was configured, the earlier dummy-`.env` timer test correctly refused to overwrite existing credentials. The workflow now skips that specific fixture if the account already has Hermes credentials. The earlier live user-timer onboarding evidence remains valid.
+- **Still unverified:** a live Hermes gateway loading the plugin callback handler; real Telegram inline button delivery and approval; full isolated EDIT/TEST/COMMIT provider workflow; historical upgrade migration.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
