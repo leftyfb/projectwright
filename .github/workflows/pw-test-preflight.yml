@@ -51,3 +51,19 @@ jobs:
           command -v dpkg-deb
           command -v systemctl
           python3 -B scripts/validate-baseline.py --mode development
+
+      - name: Inspect isolated Hermes CLI without changing configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          if ! command -v hermes >/dev/null 2>&1; then
+            echo 'Hermes CLI not on runner PATH; check installation location' >&2
+            exit 2
+          fi
+          echo "Hermes executable: $(command -v hermes)"
+          hermes plugins --help
+          echo 'PASS: Hermes CLI can be reached from the GitHub runner'
