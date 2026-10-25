@@ -14,9 +14,11 @@ class PreflightTests(unittest.TestCase):
         calls=[]
         def runner(args, **kwargs):
             calls.append((args, kwargs))
-            return subprocess.CompletedProcess(args,0,"user=ubuntu\nhostname=pw-test\nuid=1000\nvirt=lxc\nos=ubuntu\nsystemd=running\n","")
+            return subprocess.CompletedProcess(args,0,"HOME=\u0027/home/ubuntu\u0027\nSSH_CONNECTION=fixture\nuser=ubuntu\nhostname=pw-test\nuid=1000\nvirt=lxc\nos=ubuntu\nsystemd=running\n","")
         facts=module.inspect(runner=runner)
         self.assertEqual(facts["virt"],"lxc")
+        self.assertNotIn("HOME",facts)
+        self.assertNotIn("SSH_CONNECTION",facts)
         self.assertEqual(calls[0][0][0],"ssh")
         self.assertEqual(calls[0][0][7],"ubuntu@pw-test")
         self.assertIn("StrictHostKeyChecking=yes",calls[0][0])
