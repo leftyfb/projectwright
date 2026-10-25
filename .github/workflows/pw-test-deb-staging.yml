@@ -119,6 +119,27 @@ jobs:
           test ! -e /usr/bin/pw
           echo "PASS: hosted-CI Debian preview extracted and smoke-tested in LXC; no package installed"
 
+      - name: Install, reinstall, and purge Debian package in disposable container
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          sudo -n true
+          shopt -s nullglob
+          debs=("${RUNNER_TEMP}"/pw-hosted-deb/*.deb)
+          test "${#debs[@]}" -eq 1
+          sudo -n bash scripts/pw-test-deb-lifecycle.sh "${debs[0]}"
+          test ! -e /usr/bin/pw
+          test ! -e /usr/share/projectwright
+          if dpkg-query -W -f='${Status}' projectwright 2>/dev/null | grep -q 'install ok installed'; then
+            echo 'Package unexpectedly remained installed after lifecycle test' >&2
+            exit 1
+          fi
+          echo 'PASS: real install, same-version reinstall, and purge inside pw-test'
+
       - name: Preserve tested package for deliberate manual lifecycle test
         uses: actions/upload-artifact@v4
         with:
