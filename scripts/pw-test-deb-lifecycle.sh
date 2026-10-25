@@ -10,7 +10,7 @@ die() { echo "REFUSED: $*" >&2; exit 2; }
 deb=$1
 [[ "$(dpkg-deb --field "$deb" Package)" == "projectwright" ]] || die "package is not projectwright"
 [[ "$(dpkg-deb --field "$deb" Version)" == "0.1.0~dev0-1" ]] || die "unexpected development package version"
-if dpkg-query -W -f='${Status}' projectwright 2>/dev/null | grep -q 'install ok installed'; then
+if dpkg-query -W -f='${Status}' projectwright 2>/dev/null | grep -Eq '(installed|unpacked|half-installed|half-configured|config-files)'; then
   die "projectwright is already installed; never overwrite an existing installation"
 fi
 [[ ! -e /usr/bin/pw && ! -L /usr/bin/pw && ! -e /usr/share/projectwright && ! -L /usr/share/projectwright ]] || die "Projectwright paths already exist"
@@ -22,10 +22,10 @@ fi
 cleanup() {
   rc=$?
   trap - EXIT
-  if dpkg-query -W -f='${Status}' projectwright 2>/dev/null | grep -Eq '(installed|unpacked|half-installed|half-configured)'; then
+  if dpkg-query -W -f='${Status}' projectwright 2>/dev/null | grep -Eq '(installed|unpacked|half-installed|half-configured|config-files)'; then
     dpkg --purge projectwright || rc=1
   fi
-  if [[ -e /usr/bin/pw || -e /usr/share/projectwright ]]; then
+  if [[ -e /usr/bin/pw || -L /usr/bin/pw || -e /usr/share/projectwright || -L /usr/share/projectwright ]]; then
     echo "REFUSED cleanup incomplete: package-owned paths still present" >&2
     rc=1
   fi
