@@ -62,16 +62,17 @@ a disposable account before a stable tag or deployment.
 
 - User reports runner **`pw-test-projectwright`** installed and running
   **in the foreground** inside LXD `pw-test` as the `ubuntu` account.
-  Registration was reported by the user, but the runner's live status and
-  labels have not yet been independently verified through GitHub Actions.
-- Added `.github/workflows/pw-test-preflight.yml`: a manual-only,
+  Registration and required label have now been verified by GitHub Actions
+  [40240865792](https://github.com/leftyfb/projectwright/actions/runs/40240865792),
+  which completed **successfully** on the container.
+- Added `.github/workflows/pw-test-preflight.yml`: a deliberately triggered,
   read-only job with a required `projectwright-lxd-install` runner label,
   exact runner-name/host/user/container checks, and no sudo or package writes.
-  **Requires assigning this custom runner label** in GitHub runner settings.
-- This workflow must be available to GitHub for manual dispatch (normally
-  on the default branch); do **not** merge experimental code to `main`
-  merely to enable dispatch. If dispatch is not available on the review
-  branch, use a deliberately authorized alternate invocation approach.
+  The required custom runner label is working.
+- A push trigger limited to changes to `.github/pw-test-preflight-trigger.txt`
+  on `test/review-followups` enables execution without changing `main`.
+  `workflow_dispatch` remains available once GitHub's default-branch
+  registration requirement is met. Initial push-trigger run **passed**.
 - Running in the foreground is sufficient for initial testing; if that
   process stops, queued jobs cannot begin. System-wide Debian installation
   and removal testing is still unapproved and **not** part of this preflight.
