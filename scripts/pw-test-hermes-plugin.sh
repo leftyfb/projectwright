@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Run only as ubuntu in the dedicated pw-test LXC runner.
+set -euo pipefail
+fail() { echo "REFUSED: $*" >&2; exit 2; }
+[[ "$(hostname -s)" == pw-test ]] || fail "wrong host"
+[[ "$(id -un)" == ubuntu && "$(id -u)" != 0 ]] || fail "wrong user"
+[[ "$(systemd-detect-virt --container)" == lxc ]] || fail "not LXC"
+[[ "$HOME" == /home/ubuntu ]] || fail "unexpected HOME"
+[[ "${RUNNER_NAME-}" == pw-test-projectwright ]] || fail "wrong runner"
+cli="$HOME/.local/bin/hermes"
+[[ -x "$cli" ]] || fail "Hermes CLI not found"
+[[ -f /usr/share/projectwright/hermes/projectwright-approvals/plugin.yaml ]] || fail "packaged plugin missing"
+dest="$HOME/.hermes/plugins/projectwright-approvals"
+[[ ! -e "$dest" && ! -L "$dest" ]] || fail "plugin already exists; preserving it"
+cleanup() {
+  rc=$?
+  trap - EXIT
+  "$cli" plugins disable projectwright-approvals >/dev/null 2>&1 || true
+  if [[ -d "$dest" && ! -L "$dest" ]]; then
+    rm -f -- "$dest/plugin.yaml" "$dest/__init__.py"
+    rmdir -- "$dest" || rc=1
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
+mkdir -p -- "$dest"
+cp -- /usr/share/projectwright/hermes/projectwright-approvals/plugin.yaml "$dest/plugin.yaml"
+cp -- /usr/share/projectwright/hermes/projectwright-approvals/__init__.py "$dest/__init__.py"
+"$cli" plugins enable projectwright-approvals
+"$cli" plugins show projectwright-approvals
+"$cli" plugins list
+echo 'PASS: Projectwright native plugin enabled and discovered by real test Hermes CLI; cleanup follows'
