@@ -4,6 +4,11 @@ name: pw-test LXD preflight
 # maintainers should dispatch reviewed code to a self-hosted runner.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - test/review-followups
+    paths:
+      - .github/pw-test-preflight-trigger.txt
 
 permissions:
   contents: read
