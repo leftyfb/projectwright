@@ -142,6 +142,29 @@ jobs:
           test ! -e /usr/share/projectwright
           echo 'PASS: synthetic Debian version upgrade, reinstall and purge inside pw-test'
 
+      - name: Verify real per-user systemd timer onboarding with mock Telegram credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          bash -n scripts/pw-test-user-onboarding.sh
+          shopt -s nullglob
+          debs=("${RUNNER_TEMP}"/pw-hosted-deb/*.deb)
+          test "${#debs[@]}" -eq 1
+          cleanup() {
+            status=$?
+            trap - EXIT
+            sudo -n dpkg --purge projectwright || status=1
+            exit "$status"
+          }
+          trap cleanup EXIT
+          sudo -n dpkg --install "${debs[0]}"
+          bash scripts/pw-test-user-onboarding.sh
+          echo 'PASS: real systemd user timer onboarding with disposable credentials'
+
       - name: Retain tested Debian package
         uses: actions/upload-artifact@v4
         with:
