@@ -79,4 +79,5 @@ jobs:
           fi
           echo "Hermes executable: $cli"
           "$cli" plugins --help
+          "$cli" plugins list
           echo 'PASS: Hermes CLI can be reached from the GitHub runner'
