@@ -124,6 +124,30 @@ a disposable account before a stable tag or deployment.
   separate authorization. User-level systemd/Hermes setup remains out of
   scope for this lifecycle script.
 
+## Human-authorized dpkg lifecycle handoff (2026-10-25)
+
+- The successful non-root staging job now also uploads the **exact tested
+  Debian file** as a short-lived `pw-test-verified-deb-<run id>` Actions
+  artifact. The workflow does not install the package or elevate privileges.
+- For the first actual install, a human should download that artifact from
+  the **successful pw-test Debian staging smoke run**, inspect its SHA-256,
+  and extract its ZIP inside `pw-test` as `ubuntu`. Run the script below
+  only after confirming the shell is **inside the disposable container**,
+  not on `tux`:
+  ```sh
+  hostname -s
+  systemd-detect-virt --container
+  # Within pw-test, from the reviewed test/review-followups checkout:
+  sha256sum /absolute/path/projectwright_0.1.0~dev0-1_all.deb
+  sudo bash scripts/pw-test-deb-lifecycle.sh /absolute/path/projectwright_0.1.0~dev0-1_all.deb
+  ```
+  No sudo privileges have been granted to GitHub Actions. The lifecycle
+  script refuses prior package remnants and invokes a purge cleanup trap.
+- **Not yet performed:** privileged lifecycle invocation, true two-version
+  upgrade, live per-user timer, or Hermes integration. Logs and the output
+  SHA-256 should be retained for release evidence. This handoff is a
+  manual privileged operation; do not run it automatically on push.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
