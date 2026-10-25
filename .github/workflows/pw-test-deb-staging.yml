@@ -35,17 +35,13 @@ jobs:
           ref: test/review-followups
           persist-credentials: false
 
-      - name: Provide isolated Python build toolchain
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.14'
-
       - name: Build wheel and Debian package in temporary workspace
         shell: bash
         run: |
           set -euo pipefail
           work="$(mktemp -d "${RUNNER_TEMP}/pw-deb-stage.XXXXXXXX")"
           trap 'rm -rf "$work"' EXIT
+          python3 -m pip --version || { echo "Prerequisite missing: install python3-pip in pw-test container (not on tux)"; exit 2; }
           python3 -m pip wheel --no-deps --wheel-dir "$work/wheels" .
           bash scripts/build-deb.sh "$work"/wheels/*.whl "$work/debs"
           dpkg-deb --info "$work"/debs/*.deb
