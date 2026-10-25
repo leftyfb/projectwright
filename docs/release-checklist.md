@@ -58,6 +58,27 @@ a disposable account before a stable tag or deployment.
   review results before allowing any write, package installation, or
   user-timer changes. Never install into `tux` itself.
 
+## Dedicated pw-test Actions runner (2026-10-25)
+
+- User reports runner **`pw-test-projectwright`** installed and running
+  **in the foreground** inside LXD `pw-test` as the `ubuntu` account.
+  Registration was reported by the user, but the runner's live status and
+  labels have not yet been independently verified through GitHub Actions.
+- Added `.github/workflows/pw-test-preflight.yml`: a manual-only,
+  read-only job with a required `projectwright-lxd-install` runner label,
+  exact runner-name/host/user/container checks, and no sudo or package writes.
+  **Requires assigning this custom runner label** in GitHub runner settings.
+- This workflow must be available to GitHub for manual dispatch (normally
+  on the default branch); do **not** merge experimental code to `main`
+  merely to enable dispatch. If dispatch is not available on the review
+  branch, use a deliberately authorized alternate invocation approach.
+- Running in the foreground is sufficient for initial testing; if that
+  process stops, queued jobs cannot begin. System-wide Debian installation
+  and removal testing is still unapproved and **not** part of this preflight.
+- Next: verify the runner label and successful manual preflight, then
+  separately design controlled Debian install/upgrade/uninstall jobs and
+  confirm that `pw-test` has no sensitive host bind mounts or privileges.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
