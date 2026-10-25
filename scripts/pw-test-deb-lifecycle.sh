@@ -13,7 +13,7 @@ deb=$1
 if dpkg-query -W -f='${Status}' projectwright 2>/dev/null | grep -q 'install ok installed'; then
   die "projectwright is already installed; never overwrite an existing installation"
 fi
-[[ ! -e /usr/bin/pw && ! -e /usr/share/projectwright ]] || die "Projectwright paths already exist"
+[[ ! -e /usr/bin/pw && ! -L /usr/bin/pw && ! -e /usr/share/projectwright && ! -L /usr/share/projectwright ]] || die "Projectwright paths already exist"
 # Require a non-privileged runner and no obvious host bind-mounted paths.
 [[ -f /run/systemd/container ]] || die "missing systemd container marker"
 if grep -Eq ' /(home|etc|usr|var/lib/dpkg) (none|ext4|btrfs|zfs|overlay) .*bind' /proc/mounts; then
@@ -22,8 +22,8 @@ fi
 cleanup() {
   rc=$?
   trap - EXIT
-  if dpkg-query -W -f='${Status}' projectwright 2>/dev/null | grep -q 'install ok installed'; then
-    dpkg --remove projectwright || rc=1
+  if dpkg-query -W -f='${Status}' projectwright 2>/dev/null | grep -Eq '(installed|unpacked|half-installed|half-configured)'; then
+    dpkg --purge projectwright || rc=1
   fi
   if [[ -e /usr/bin/pw || -e /usr/share/projectwright ]]; then
     echo "REFUSED cleanup incomplete: package-owned paths still present" >&2
@@ -42,4 +42,4 @@ done
 # true upgrade requires a separately versioned package.
 dpkg --install "$deb"
 dpkg-query -W -f='${Status}\n' projectwright | grep -qx 'install ok installed'
-echo "PASS: install, reinstall and CLI smoke. Removal runs via EXIT trap."
+echo "PASS: install, reinstall and CLI smoke. Purge runs via EXIT trap."
