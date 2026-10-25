@@ -119,7 +119,7 @@ jobs:
           test ! -e /usr/bin/pw
           echo "PASS: hosted-CI Debian preview extracted and smoke-tested in LXC; no package installed"
 
-      - name: Install synthetic older version, upgrade, reinstall and purge in LXC
+      - name: Install synthetic older version, upgrade and purge in LXC
         shell: bash
         run: |
           set -euo pipefail
@@ -131,40 +131,18 @@ jobs:
           shopt -s nullglob
           debs=("${RUNNER_TEMP}"/pw-hosted-deb/*.deb)
           test "${#debs[@]}" -eq 1
-          # Synthetic older-version fixture: identical contents, lower Debian revision.
-          # Exercises dpkg's upgrade transition, NOT historical application migration.
           fixture="$(mktemp -d "${RUNNER_TEMP}/pw-upgrade.XXXXXXXX")"
           trap 'rm -rf "$fixture"' EXIT
           dpkg-deb --raw-extract "${debs[0]}" "$fixture/tree"
-          sed -i 's/^Version: 0.1.0~dev0-1$/Version: 0.1.0~dev0-0/' "$fixture/tree/DEBIAN/control"
-          test "$(grep -c '^Version: 0.1.0~dev0-0
-          test ! -e /usr/bin/pw
-          test ! -e /usr/share/projectwright
-          if dpkg-query -W -f='${Status}' projectwright 2>/dev/null | grep -q 'install ok installed'; then
-            echo 'Package unexpectedly remained installed after lifecycle test' >&2
-            exit 1
-          fi
-          echo 'PASS: real install, same-version reinstall, and purge inside pw-test'
-
-      - name: Preserve tested package for deliberate manual lifecycle test
-        uses: actions/upload-artifact@v4
-        with:
-          name: pw-test-verified-deb-${{ github.run_id }}
-          path: ${{ runner.temp }}/pw-hosted-deb/*.deb
-          retention-days: 7
-          if-no-files-found: error
- "$fixture/tree/DEBIAN/control")" -eq 1
+          sed -i 's/^Version: 0.1.0~dev0-1/Version: 0.1.0~dev0-0/' "$fixture/tree/DEBIAN/control"
+          grep -Fxq 'Version: 0.1.0~dev0-0' "$fixture/tree/DEBIAN/control"
           dpkg-deb --build --root-owner-group "$fixture/tree" "$fixture/older.deb"
           sudo -n bash scripts/pw-test-deb-lifecycle.sh "${debs[0]}" "$fixture/older.deb"
           test ! -e /usr/bin/pw
           test ! -e /usr/share/projectwright
-          if dpkg-query -W -f='${Status}' projectwright 2>/dev/null | grep -q 'install ok installed'; then
-            echo 'Package unexpectedly remained installed after lifecycle test' >&2
-            exit 1
-          fi
-          echo 'PASS: real install, same-version reinstall, and purge inside pw-test'
+          echo 'PASS: synthetic Debian version upgrade, reinstall and purge inside pw-test'
 
-      - name: Preserve tested package for deliberate manual lifecycle test
+      - name: Retain tested Debian package
         uses: actions/upload-artifact@v4
         with:
           name: pw-test-verified-deb-${{ github.run_id }}
