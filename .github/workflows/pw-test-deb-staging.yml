@@ -35,6 +35,11 @@ jobs:
           ref: test/review-followups
           persist-credentials: false
 
+      - name: Provide isolated Python build toolchain
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
       - name: Build wheel and Debian package in temporary workspace
         shell: bash
         run: |
