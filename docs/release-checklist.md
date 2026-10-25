@@ -80,6 +80,27 @@ a disposable account before a stable tag or deployment.
   separately design controlled Debian install/upgrade/uninstall jobs and
   confirm that `pw-test` has no sensitive host bind mounts or privileges.
 
+## Debian staging on pw-test (2026-10-25)
+
+- Added a branch-only, explicitly triggered, non-root Debian staging workflow:
+  `.github/workflows/pw-test-deb-staging.yml`. It checks container identity,
+  builds the wheel and Debian preview under `RUNNER_TEMP`, extracts without
+  installing, exercises CLI help/defaults and inspects package assets.
+  It never invokes `sudo`, `apt install` or `dpkg --install`.
+- First live attempt [40241221573](https://github.com/leftyfb/projectwright/actions/runs/40241221573)
+  reached the container, but stopped because its system Python has no `pip`.
+- Second attempt [40241284388](https://github.com/leftyfb/projectwright/actions/runs/40241284388)
+  stopped during `actions/setup-python`: the downloaded Python 3.14 binary
+  requires CPU ISA features unavailable on this host. No Debian build or
+  installation completed. The workflow now uses Ubuntu's own Python rather
+  than downloading an incompatible toolchain.
+- **Prerequisite still required (inside `pw-test`, not on `tux`):**
+  install `python3-pip` as the container administrator and rerun the branch-only
+  staging trigger. This is a test-environment provisioning task, **not**
+  proof of a Projectwright package installation or uninstall.
+- Real `dpkg` installation, upgrade, per-user Hermes setup, and purge
+  remain unverified. Do not check off these release gates yet.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
