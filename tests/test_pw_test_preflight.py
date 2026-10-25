@@ -18,7 +18,7 @@ class PreflightTests(unittest.TestCase):
         facts=module.inspect(runner=runner)
         self.assertEqual(facts["virt"],"lxc")
         self.assertEqual(calls[0][0][0],"ssh")
-        self.assertEqual(calls[0][0][8],"ubuntu@pw-test")
+        self.assertEqual(calls[0][0][7],"ubuntu@pw-test")
         self.assertIn("StrictHostKeyChecking=yes",calls[0][0])
         self.assertNotIn("sudo",calls[0][0][-1])
         self.assertNotIn("apt ",calls[0][0][-1])
