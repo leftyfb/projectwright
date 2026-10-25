@@ -162,8 +162,12 @@ jobs:
           }
           trap cleanup EXIT
           sudo -n dpkg --install "${debs[0]}"
-          bash scripts/pw-test-user-onboarding.sh
-          echo 'PASS: real systemd user timer onboarding with disposable credentials'
+          if test -e "$HOME/.hermes/.env" || test -L "$HOME/.hermes/.env"; then
+            echo 'SKIP: existing Hermes credentials present; never replace them with timer test fixture'
+          else
+            bash scripts/pw-test-user-onboarding.sh
+            echo 'PASS: real systemd user timer onboarding with disposable credentials'
+          fi
 
       - name: Verify native Projectwright Hermes plugin registration and cleanup
         shell: bash
