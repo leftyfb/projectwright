@@ -103,6 +103,23 @@ a disposable account before a stable tag or deployment.
   enablement, and removal/purge **remain unverified**. Those require a
   separate guarded test with explicit container-scoped privileges and cleanup.
 
+## Guarded Debian install lifecycle script (2026-10-25)
+
+- Added `scripts/pw-test-deb-lifecycle.sh` for a **separately authorized,
+  manual root invocation inside pw-test only**. It refuses mismatched
+  hostname/virtualization, unexpected Debian package name/version, existing
+  Projectwright installation or paths, and an obvious host bind mount.
+  It installs, checks CLI entry points, reinstalls the same development
+  version, and purges the package in an EXIT cleanup trap (including
+  partially installed states). The GitHub runner never invokes sudo.
+- This script is **not yet executed on pw-test**. Successful staging
+  [40242150486](https://github.com/leftyfb/projectwright/actions/runs/40242150486)
+  does **not** validate real dpkg install or purge.
+- A same-version reinstall is not an upgrade: testing a true upgrade
+  requires two distinct package versions, a verified migration plan and
+  separate authorization. User-level systemd/Hermes setup remains out of
+  scope for this lifecycle script.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
