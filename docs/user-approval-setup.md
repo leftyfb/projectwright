@@ -11,7 +11,7 @@ stable deployment.
 A preliminary explicit setup command is available:
 
 ```bash
-pw setup-user --enable-hermes-plugin
+pw-timer setup-user --enable-hermes-plugin
 ```
 
 Run it **as the intended ordinary user**, not with `sudo`. It verifies that
@@ -55,7 +55,7 @@ and `/usr/share/projectwright/hermes/projectwright-approvals.py`.
 The timer unit calls the packaged `/usr/bin/pw-notify --send` entry point.
 These are package-managed source/template files, not automatically deployed
 into any individual account, and the Hermes plugin source is **not yet a
-registered Hermes plugin installation**. The explicit `pw setup-user`
+registered Hermes plugin installation**. The explicit `pw-timer setup-user`
 command still generates its own per-user units, because automatic installation
 and upgrades must handle existing user modifications safely.
 
