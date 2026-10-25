@@ -11,6 +11,15 @@ cli="$HOME/.local/bin/hermes"
 [[ -x "$cli" ]] || fail "Hermes CLI not found"
 [[ -f /usr/share/projectwright/hermes/projectwright-approvals/plugin.yaml ]] || fail "packaged plugin missing"
 dest="$HOME/.hermes/plugins/projectwright-approvals"
+# Recover only harmless generated cache left by our earlier failed cleanup.
+# Refuse any plugin manifest or other content that could belong to the user.
+if [[ -d "$dest" && ! -L "$dest" && ! -e "$dest/plugin.yaml" && ! -e "$dest/__init__.py" ]]; then
+  if [[ -d "$dest/__pycache__" && ! -L "$dest/__pycache__" ]] &&
+     [[ "$(find "$dest" -mindepth 1 -maxdepth 1 ! -name __pycache__ | wc -l)" -eq 0 ]]; then
+    rm -rf -- "$dest/__pycache__"
+    rmdir -- "$dest"
+  fi
+fi
 [[ ! -e "$dest" && ! -L "$dest" ]] || fail "plugin already exists; preserving it"
 cleanup() {
   rc=$?
