@@ -124,6 +124,11 @@ a disposable account before a stable tag or deployment.
   separate authorization. User-level systemd/Hermes setup remains out of
   scope for this lifecycle script.
 
+## Verified real Debian install/reinstall/purge (2026-10-25)
+
+- **PASS:** [GitHub Actions 40244321910](https://github.com/leftyfb/projectwright/actions/runs/40244321910) ran the lifecycle inside `pw-test` with explicitly authorized `sudo -n`. It installed the hosted-CI `.deb`, verified installed commands, reinstalled the same version, and purged it via the trap. Post-run checks found no `/usr/bin/pw`, `/usr/share/projectwright`, or installed `projectwright` dpkg status. This is actual container installation evidence, not extraction-only validation.
+- Still unverified: **true two-version upgrade**, standalone user-level systemd approval timer onboarding, live Hermes plugin and Telegram integration, and production installation. Do not mark these complete.
+
 ## Human-authorized dpkg lifecycle handoff (2026-10-25)
 
 - The successful non-root staging job now also uploads the **exact tested
@@ -143,8 +148,9 @@ a disposable account before a stable tag or deployment.
   ```
   No sudo privileges have been granted to GitHub Actions. The lifecycle
   script refuses prior package remnants and invokes a purge cleanup trap.
-- **Not yet performed:** privileged lifecycle invocation, true two-version
-  upgrade, live per-user timer, or Hermes integration. Logs and the output
+- **Now performed:** privileged lifecycle invocation in `pw-test` (run
+  40244321910). True two-version upgrade, live per-user timer, and Hermes
+  integration remain outstanding. Logs and the output
   SHA-256 should be retained for release evidence. This handoff is a
   manual privileged operation; do not run it automatically on push.
 
