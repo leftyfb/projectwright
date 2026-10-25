@@ -1,0 +1,48 @@
+name: pw-test LXD preflight
+
+# Never trigger this job from pushes or pull requests. Only trusted
+# maintainers should dispatch reviewed code to a self-hosted runner.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pw-test-lxd-preflight
+  cancel-in-progress: false
+
+jobs:
+  container-preflight:
+    runs-on: [self-hosted, linux, projectwright-lxd-install]
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Confirm intended container and unprivileged user
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = 'pw-test'
+          test "$(id -un)" = 'ubuntu'
+          test "$(id -u)" -ne 0
+          test "$(systemd-detect-virt --container)" = 'lxc'
+          test -d /run/systemd/system
+          test "$RUNNER_NAME" = 'pw-test-projectwright'
+          echo 'Verified pw-test LXC runner with ordinary ubuntu account'
+
+      - name: Check out trusted development branch (read-only)
+        uses: actions/checkout@v4
+        with:
+          ref: test/review-followups
+          persist-credentials: false
+
+      - name: Inspect package tooling without installing anything
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 --version
+          git --version
+          command -v dpkg-deb
+          command -v systemctl
+          python3 -B scripts/validate-baseline.py --mode development
