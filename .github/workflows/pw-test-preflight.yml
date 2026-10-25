@@ -60,10 +60,23 @@ jobs:
           test "$(id -un)" = ubuntu
           test "$(systemd-detect-virt --container)" = lxc
           test "$RUNNER_NAME" = pw-test-projectwright
-          if ! command -v hermes >/dev/null 2>&1; then
-            echo 'Hermes CLI not on runner PATH; check installation location' >&2
+          cli=""
+          for candidate in "$(command -v hermes 2>/dev/null || true)" \
+              "$HOME/.local/bin/hermes" \
+              "$HOME/.hermes/venv/bin/hermes" \
+              "$HOME/hermes-agent/venv/bin/hermes" \
+              "$HOME/hermes-agent/.venv/bin/hermes" \
+              "$HOME/.venvs/hermes/bin/hermes"; do
+            if test -n "$candidate" && test -x "$candidate"; then
+              cli="$candidate"
+              break
+            fi
+          done
+          if test -z "$cli"; then
+            echo 'Hermes executable not found on PATH or common user-local paths' >&2
+            echo 'Searched ~/.local/bin, ~/.hermes/venv, ~/hermes-agent/venv and .venv' >&2
             exit 2
           fi
-          echo "Hermes executable: $(command -v hermes)"
-          hermes plugins --help
+          echo "Hermes executable: $cli"
+          "$cli" plugins --help
           echo 'PASS: Hermes CLI can be reached from the GitHub runner'
