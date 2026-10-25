@@ -161,6 +161,13 @@ a disposable account before a stable tag or deployment.
 - An initial workflow revision was invalid YAML and did not run; the corrected workflow completed successfully. No changes to `main` or production Hermes were requested.
 - Next: validate per-user systemd onboarding in the container with isolated credentials/provider mocks, then test a real cross-source-version migration when an older releasable artifact exists.
 
+## Verified live per-user systemd onboarding in LXD (2026-10-25)
+
+- **PASS:** [pw-test Actions run 40245117718](https://github.com/leftyfb/projectwright/actions/runs/40245117718) installed the real Debian package, supplied **dummy Telegram credentials only**, ran `pw-timer setup-user --minutes 1440` as ordinary `ubuntu`, verified the user-level timer was enabled and active, disabled it, repeated setup for idempotency, and disabled it again.
+- The test harness removes its dummy `~/.hermes/.env` and generated user units, reloads the systemd user daemon, and purges the Debian package. **No Hermes plugin was enabled and no Telegram message was sent**; live Hermes discovery and callbacks remain unverified.
+- The first attempt [40245052174](https://github.com/leftyfb/projectwright/actions/runs/40245052174) failed because the harness called `pw setup-user` rather than the actual packaged `pw-timer setup-user` entry point. Corrected and rerun successfully.
+- Documentation and CLI onboarding command consistency still requires review: `docs/user-approval-setup.md` currently gives `pw setup-user`, while the packaged `pw-timer setup-user` entry point was the one verified.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
