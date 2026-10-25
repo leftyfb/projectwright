@@ -26,7 +26,7 @@ cleanup() {
 }
 trap cleanup EXIT
 (umask 077; printf 'TELEGRAM_BOT_TOKEN=123456:pw-test-fake-token-NO-NETWORK\nTELEGRAM_ALLOWED_USERS=123456789\n' > "$env_file")
-/usr/bin/pw setup-user --minutes 1440
+/usr/bin/pw-timer setup-user --minutes 1440
 systemctl --user is-enabled projectwright-approval-notify.timer | grep -Fxq enabled
 systemctl --user is-active projectwright-approval-notify.timer | grep -Fxq active
 test -f "$timer_file"
@@ -34,6 +34,6 @@ test -f "$service_file"
 grep -Fq 'OnUnitInactiveSec=1440min' "$timer_file"
 # Immediately disable the timer before checking repeat onboarding.
 systemctl --user disable --now projectwright-approval-notify.timer
-/usr/bin/pw setup-user --minutes 1440
+/usr/bin/pw-timer setup-user --minutes 1440
 systemctl --user disable --now projectwright-approval-notify.timer
 echo 'PASS: live per-user timer setup, enable, disable and idempotent setup'
