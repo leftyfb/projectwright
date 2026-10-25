@@ -168,6 +168,13 @@ a disposable account before a stable tag or deployment.
 - The first attempt [40245052174](https://github.com/leftyfb/projectwright/actions/runs/40245052174) failed because the harness called `pw setup-user` rather than the actual packaged `pw-timer setup-user` entry point. Corrected and rerun successfully.
 - Documentation and CLI onboarding command consistency still requires review: `docs/user-approval-setup.md` currently gives `pw setup-user`, while the packaged `pw-timer setup-user` entry point was the one verified.
 
+## Isolated Hermes CLI discovery on pw-test (2026-10-25)
+
+- User reports a separately configured Hermes installation in `pw-test`.
+- First read-only runner probe [40246157329](https://github.com/leftyfb/projectwright/actions/runs/40246157329) passed container and Projectwright validation but found no `hermes` command on the non-interactive runner PATH. No plugin or credentials were changed.
+- Expanded read-only discovery to common user-local virtualenv locations; [run 40246253270](https://github.com/leftyfb/projectwright/actions/runs/40246253270) **passed**, confirming the dedicated runner can execute the Hermes plugin CLI. This does not establish a running Hermes gateway or successful Projectwright plugin registration.
+- Next: verify user-local Hermes state and adapter discovery, then test plugin registration with isolated credentials and no Telegram network delivery. Never overwrite the test user's existing Hermes `.env` or reuse production secrets.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
