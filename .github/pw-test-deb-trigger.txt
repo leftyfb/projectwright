@@ -2,4 +2,4 @@ Request non-root staged Debian package build and extraction smoke only; no dpkg 
 Retry staging with actions/setup-python isolated build runtime.
 Consume hosted-CI Debian artifact; no pip on LXD runner.\nVerify lifecycle installer rejects unprivileged runner.\nValidate retained Debian artifact and tightened cleanup gate.\nAuthorized by user: run sudo dpkg install/reinstall/purge exclusively in pw-test LXD.\nRun synthetic lower-revision dpkg upgrade and purge in pw-test.
 Retry corrected YAML synthetic upgrade test.
-Run live per-user systemd approval timer onboarding in pw-test using dummy Telegram credentials.\n
+Run live per-user systemd approval timer onboarding in pw-test using dummy Telegram credentials.\nRetry live systemd user setup using packaged pw-timer CLI.\n
