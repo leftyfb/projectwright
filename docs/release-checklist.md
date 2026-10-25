@@ -154,6 +154,13 @@ a disposable account before a stable tag or deployment.
   SHA-256 should be retained for release evidence. This handoff is a
   manual privileged operation; do not run it automatically on push.
 
+## Verified synthetic Debian version upgrade (2026-10-25)
+
+- **PASS:** [pw-test Actions run 40244873728](https://github.com/leftyfb/projectwright/actions/runs/40244873728) installed an older synthetic Debian revision `0.1.0~dev0-0`, upgraded with the hosted-CI package `0.1.0~dev0-1`, exercised CLI smoke checks, reinstalled and purged it inside the dedicated LXC container.
+- The older package was **repacked from the current package with a lower Debian revision**, not built from an earlier Projectwright source release. This confirms dpkg's two-version transition and cleanup; **real historical-version migration and user-data retention remain unverified**.
+- An initial workflow revision was invalid YAML and did not run; the corrected workflow completed successfully. No changes to `main` or production Hermes were requested.
+- Next: validate per-user systemd onboarding in the container with isolated credentials/provider mocks, then test a real cross-source-version migration when an older releasable artifact exists.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
