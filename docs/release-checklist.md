@@ -112,7 +112,11 @@ a disposable account before a stable tag or deployment.
   It installs, checks CLI entry points, reinstalls the same development
   version, and purges the package in an EXIT cleanup trap (including
   partially installed states). The GitHub runner never invokes sudo.
-- This script is **not yet executed on pw-test**. Successful staging
+- The unprivileged refusal path was **executed successfully on pw-test** by
+  [GitHub Actions 40242723597](https://github.com/leftyfb/projectwright/actions/runs/40242723597):
+  the harness passed Bash syntax validation and rejected invocation from the
+  ordinary runner account. The hosted-CI Debian artifact also passed staging.
+- The root-only install/purge path remains **unexecuted on pw-test**. Successful staging
   [40242150486](https://github.com/leftyfb/projectwright/actions/runs/40242150486)
   does **not** validate real dpkg install or purge.
 - A same-version reinstall is not an upgrade: testing a true upgrade
