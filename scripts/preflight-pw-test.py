@@ -27,7 +27,12 @@ def inspect(target="ubuntu@pw-test", *, runner=subprocess.run):
          "-o", "StrictHostKeyChecking=yes", target, "sh", "-c", REMOTE],
         capture_output=True, text=True, timeout=25, check=True,
     )
-    facts = dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
+    allowed = {"user", "hostname", "uid", "virt", "os", "systemd", "mounts"}
+    facts = {}
+    for line in result.stdout.splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key in allowed:
+            facts[key] = value
     if facts.get("user") != "ubuntu" or facts.get("uid") == "0":
         raise RuntimeError("Refusing: SSH did not resolve to unprivileged ubuntu")
     if facts.get("virt") not in {"lxc", "lxd"}:
