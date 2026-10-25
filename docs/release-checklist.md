@@ -82,24 +82,26 @@ a disposable account before a stable tag or deployment.
 
 ## Debian staging on pw-test (2026-10-25)
 
-- Added a branch-only, explicitly triggered, non-root Debian staging workflow:
-  `.github/workflows/pw-test-deb-staging.yml`. It checks container identity,
-  builds the wheel and Debian preview under `RUNNER_TEMP`, extracts without
-  installing, exercises CLI help/defaults and inspects package assets.
-  It never invokes `sudo`, `apt install` or `dpkg --install`.
-- First live attempt [40241221573](https://github.com/leftyfb/projectwright/actions/runs/40241221573)
-  reached the container, but stopped because its system Python has no `pip`.
-- Second attempt [40241284388](https://github.com/leftyfb/projectwright/actions/runs/40241284388)
-  stopped during `actions/setup-python`: the downloaded Python 3.14 binary
-  requires CPU ISA features unavailable on this host. No Debian build or
-  installation completed. The workflow now uses Ubuntu's own Python rather
-  than downloading an incompatible toolchain.
-- **Prerequisite still required (inside `pw-test`, not on `tux`):**
-  install `python3-pip` as the container administrator and rerun the branch-only
-  staging trigger. This is a test-environment provisioning task, **not**
-  proof of a Projectwright package installation or uninstall.
-- Real `dpkg` installation, upgrade, per-user Hermes setup, and purge
-  remain unverified. Do not check off these release gates yet.
+- A branch-scoped, deliberately triggered, non-root Debian staging workflow,
+  `.github/workflows/pw-test-deb-staging.yml`, now **downloads the exact
+  Debian package artifact from a successful GitHub-hosted CI run** instead of
+  rebuilding from source inside the LXC container. It checks the container
+  identity and artifact source (successful push on review branch), verifies
+  package metadata, extracts into a temporary directory, runs CLI help and
+  defaults, and checks bundled Hermes and systemd files.
+- **Live staging passed:** GitHub Actions run
+  [40242150486](https://github.com/leftyfb/projectwright/actions/runs/40242150486)
+  on `pw-test-projectwright`. No `sudo`, `apt install`, `dpkg --install`,
+  or changes to the production host were requested. **The container does not
+  need `pip` for this workflow.**
+- Earlier staging attempts [40241221573](https://github.com/leftyfb/projectwright/actions/runs/40241221573)
+  and [40241284388](https://github.com/leftyfb/projectwright/actions/runs/40241284388)
+  identified missing system `pip` and an incompatible CPU ISA requirement in
+  a downloadable Python build. The artifact handoff eliminates both build
+  prerequisites on `pw-test`.
+- Real `dpkg` installation, upgrade, per-user Hermes setup, systemd
+  enablement, and removal/purge **remain unverified**. Those require a
+  separate guarded test with explicit container-scoped privileges and cleanup.
 
 ## 1. Consistent filenames, modules, and commands
 
