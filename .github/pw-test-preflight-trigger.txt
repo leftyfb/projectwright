@@ -1,0 +1,2 @@
+Read-only LXD runner preflight trigger 2026-10-25.
+No installation, sudo, package modifications, or production access authorized.
