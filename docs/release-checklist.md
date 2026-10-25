@@ -53,7 +53,8 @@ a disposable account before a stable tag or deployment.
   now checks the explicit `ubuntu@pw-test` target, ordinary user identity,
   container virtualization and available systemd indicators. Its test suite
   stubs SSH; no remote test was executed from this ChatGPT session.
-- Next: ask Hermes to run the preflight in its SSH-capable environment;
+- **Live preflight passed (user-run on tux, 2026-10-25):** SSH returned `user=ubuntu`, `uid=1000`, `hostname=pw-test`, `virt=lxc`, `os=ubuntu`, and `systemd=running`. No remote modifications were reported. The original parser also included unwanted shell environment fields; this has been corrected in the script and tested.
+- Next: review the preflight evidence, then explicitly authorize a contained install test;
   review results before allowing any write, package installation, or
   user-timer changes. Never install into `tux` itself.
 
