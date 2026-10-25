@@ -1,1 +1,2 @@
 Request non-root staged Debian package build and extraction smoke only; no dpkg install, no sudo.
+Retry staging with actions/setup-python isolated build runtime.
