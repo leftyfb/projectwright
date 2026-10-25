@@ -17,8 +17,9 @@ cleanup() {
   trap - EXIT
   "$cli" plugins disable projectwright-approvals >/dev/null 2>&1 || true
   if [[ -d "$dest" && ! -L "$dest" ]]; then
-    rm -f -- "$dest/plugin.yaml" "$dest/__init__.py"
-    rmdir -- "$dest" || rc=1
+    # This directory was absent before the test and created by this script.
+    # Hermes may generate __pycache__ or plugin metadata while loading it.
+    rm -rf -- "$dest" || rc=1
   fi
   exit "$rc"
 }
