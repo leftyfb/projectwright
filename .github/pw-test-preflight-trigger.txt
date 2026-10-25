@@ -1,3 +1,3 @@
 Read-only LXD runner preflight trigger 2026-10-25.
 No installation, sudo, package modifications, or production access authorized.
-Read-only check of Hermes CLI installed in pw-test.\nCheck common user-local Hermes executable paths in pw-test.\n
+Read-only check of Hermes CLI installed in pw-test.\nCheck common user-local Hermes executable paths in pw-test.\nInspect Hermes plugin registry without modifying it.
