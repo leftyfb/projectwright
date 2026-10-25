@@ -1,0 +1,59 @@
+name: pw-test Debian staging smoke
+
+# Explicit branch-only trigger; no system package installation or sudo.
+on:
+  push:
+    branches: [test/review-followups]
+    paths: [.github/pw-test-deb-trigger.txt]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pw-test-deb-staging
+  cancel-in-progress: false
+
+jobs:
+  stage-deb:
+    runs-on: [self-hosted, linux, projectwright-lxd-install]
+    timeout-minutes: 15
+    steps:
+      - name: Assert disposable LXC identity before any checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(id -u)" -ne 0
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+
+      - name: Checkout trusted review branch
+        uses: actions/checkout@v4
+        with:
+          ref: test/review-followups
+          persist-credentials: false
+
+      - name: Build wheel and Debian package in temporary workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d "${RUNNER_TEMP}/pw-deb-stage.XXXXXXXX")"
+          trap 'rm -rf "$work"' EXIT
+          python3 -m pip wheel --no-deps --wheel-dir "$work/wheels" .
+          bash scripts/build-deb.sh "$work"/wheels/*.whl "$work/debs"
+          dpkg-deb --info "$work"/debs/*.deb
+          dpkg-deb --extract "$work"/debs/*.deb "$work/root"
+          test ! -e /usr/bin/pw
+          export PYTHONPATH="$work/root/usr/lib/python3/dist-packages"
+          for command in pw pw-dispatch pw-manager pw-worker pw-notify pw-timer; do
+            "$work/root/usr/bin/$command" --help >/dev/null
+          done
+          mkdir -p "$work/home"
+          HOME="$work/home" "$work/root/usr/bin/pw" defaults --project disposable >/dev/null
+          test ! -e "$work/home/.hermes"
+          test -f "$work/root/usr/share/projectwright/hermes/projectwright-approvals/plugin.yaml"
+          test -f "$work/root/usr/share/projectwright/systemd/user/projectwright-approval-notify.timer"
+          test ! -e /usr/bin/pw
+          echo "PASS: built, extracted, and smoke-tested Debian preview without installation"
