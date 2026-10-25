@@ -42,6 +42,21 @@ a disposable account before a stable tag or deployment.
   each acceptance gate complete. Update this handoff and checkboxes as work
   is verified; no deploy/merge without user direction.
 
+## Container-based installation test status (2026-10-25)
+
+- The user has provisioned an **LXD container named `pw-test` on `tux`**
+  with the ordinary account `ubuntu`.
+- Hermes reported successful read-only SSH connectivity (`ssh ... pw-test true`,
+  exit code 0). This confirms reachability only, **not** installed software,
+  container isolation, plugin registration, or package lifecycle behavior.
+- A repository-owned read-only verifier, `scripts/preflight-pw-test.py`,
+  now checks the explicit `ubuntu@pw-test` target, ordinary user identity,
+  container virtualization and available systemd indicators. Its test suite
+  stubs SSH; no remote test was executed from this ChatGPT session.
+- Next: ask Hermes to run the preflight in its SSH-capable environment;
+  review results before allowing any write, package installation, or
+  user-timer changes. Never install into `tux` itself.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
