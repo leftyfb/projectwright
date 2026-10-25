@@ -118,3 +118,11 @@ jobs:
           test -f "$work/root/usr/share/projectwright/systemd/user/projectwright-approval-notify.timer"
           test ! -e /usr/bin/pw
           echo "PASS: hosted-CI Debian preview extracted and smoke-tested in LXC; no package installed"
+
+      - name: Preserve tested package for deliberate manual lifecycle test
+        uses: actions/upload-artifact@v4
+        with:
+          name: pw-test-verified-deb-${{ github.run_id }}
+          path: ${{ runner.temp }}/pw-hosted-deb/*.deb
+          retention-days: 7
+          if-no-files-found: error
