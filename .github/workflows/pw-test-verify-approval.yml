@@ -41,3 +41,23 @@ jobs:
           else:
               raise SystemExit('FAIL: no pending or resolved approval record')
           PY
+
+      - name: Inspect Telegram adapter readiness without printing credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          systemctl --user is-active --quiet hermes-gateway.service
+          python3 -B - <<'PY'
+          import subprocess
+          lines=subprocess.check_output(
+              ['journalctl','--user','-u','hermes-gateway.service','--since','2026-10-26 01:36:00','--no-pager','-o','cat'],
+              text=True,errors='replace').splitlines()
+          interesting=[line for line in lines if any(term in line.lower() for term in
+                       ('no adapter available for telegram','no adapter could be created',
+                        'telegram polling','telegram adapter','cryptography','telegram-platform'))]
+          print('Gateway running: yes')
+          print('Adapter startup failures observed:',sum('no adapter available for telegram' in line.lower() for line in interesting))
+          print('Crypto import failures observed:',sum('cryptography' in line.lower() for line in interesting))
+          print('Selected gateway diagnostic line count:',len(interesting))
+          PY
