@@ -234,6 +234,12 @@ a disposable account before a stable tag or deployment.
 - **PENDING:** recipient must press Approve or Reject in Telegram; then invoke the read-only `pw-test Verify Live Approval` workflow to check for the verified milestone receipt or rejection state. **Do not mark real inbound callbacks verified until this inspection passes.**
 - **CLEANUP REQUIRED AFTER TEST:** The staging workflow intentionally leaves Projectwright installed and the plugin enabled in the disposable `pw-test` gateway to receive the button. After the result is recorded, remove the test-only gateway drop-in, remove test plugin, restore gateway, purge package, and remove only the disposable fixture. Leave the shared Hermes credentials unchanged. **Never run the setup workflow a second time without reviewing its no-overwrite guards.**
 
+## Hermes Telegram adapter import-path fix (2026-10-25)
+
+- **ROOT CAUSE IDENTIFIED:** the Debian-installed Projectwright Hermes bridge prepended `/usr/lib/python3/dist-packages` to Hermes's virtual environment `sys.path`. Mixing Debian's pure-Python `cryptography` package with the Hermes venv's Rust extension prevented `telegram-platform` from importing. The gateway reported `No adapter available for telegram`. This was not a Telegram bot setup issue.
+- **FIX COMMITTED:** plugin bridge now appends the Debian fallback path, preserving Hermes's existing virtual environment import precedence. Regression test asserts the fallback does not use `sys.path.insert`.
+- **USER-REPORTED LIVE RESULT:** after the same plugin change and gateway restart in `pw-test`, Telegram began polling normally. **Still to verify:** the actual Telegram callback produces the pinned disposable Git milestone approval receipt. A GitHub Actions verifier workflow exists for the disposable milestone.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
