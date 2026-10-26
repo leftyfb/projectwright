@@ -1,0 +1,1 @@
+Run one-time isolated live Telegram approval fixture staging. No message send during setup.
