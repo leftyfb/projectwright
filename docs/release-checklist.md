@@ -220,6 +220,13 @@ a disposable account before a stable tag or deployment.
 - A **read-only, redacted** readiness check on `pw-test` found Hermes `~/.hermes/.env`, but `TELEGRAM_ALLOWED_USERS` **does not satisfy Projectwright's numeric allow-list parser** ([diagnostic run 40249685686](https://github.com/leftyfb/projectwright/actions/runs/40249685686)). Neither its value nor Telegram token was printed, and no credential was changed. It may be missing or formatted differently than Projectwright expects; the current value is not a verified safe test-only destination.
 - Live bot delivery is therefore **BLOCKED**, not passed. Do not send real Telegram notifications or alter the Hermes allow-list until the user explicitly identifies an isolated test bot and recipient. The workflow now reports this as `NOT READY` without failing unrelated container diagnostics.
 
+## Telegram test follow-up (2026-10-25)
+
+- **CONFIRMED by recipient:** the isolated `pw-test` bot connectivity message from [run 40251106706](https://github.com/leftyfb/projectwright/actions/runs/40251106706) arrived in Telegram. This confirms outbound delivery, not a button callback.
+- **FIXED:** the one-time live `sendMessage` step was removed from `.github/workflows/pw-test-preflight.yml` in commit `96279b65`; ordinary branch preflight no longer sends a message. The workflow should remain read-only.
+- **Still gated:** before sending an actionable Approve button, the actual running Hermes gateway must point Projectwright to a **disposable project root** (for example via its service environment `HERMES_PROJECT_CONFIG_DIR`) and the handler must be installed for the duration of the callback. Never let an approval callback resolve production or other existing project directories. The previous gateway fixture removed the plugin and restored the gateway after testing.
+- User reported stopping the competing production bot gateway on `tux`. The test runner cannot independently verify remote production process state; confirm no competing bot consumer before the interactive callback run.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
