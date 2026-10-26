@@ -189,6 +189,12 @@ a disposable account before a stable tag or deployment.
 - Doctor reports `0 tool(s), 0 hook(s)`; Projectwright's adapter registers a Telegram handler factory, not a tool/hook. The doctor result does **not** prove that the running gateway attached the callback handler or that a button was delivered/clicked.
 - **Still open:** gateway-level Telegram callback registration and end-to-end approval interaction, isolated live provider execution, and production release/security gates. Do not use a real Telegram bot token merely to satisfy the doctor test.
 
+## Installed adapter callback-factory test (2026-10-25)
+
+- **PASS:** [pw-test Actions run 40247768747](https://github.com/leftyfb/projectwright/actions/runs/40247768747) installed the Debian package, validated the native plugin with Hermes doctor, and imported its packaged adapter under Ubuntu Python with an **in-memory Telegram transport stub**. A fake application received exactly one `CallbackQueryHandler`, which matched scoped Projectwright approve/reject callback IDs and refused an unrelated ID.
+- The probe does **not** start or restart the Hermes gateway, connect to Telegram, test an actual bot message, or approve a real milestone. Those live gateway and end-to-end gates are still open.
+- Initial probe [40247667905](https://github.com/leftyfb/projectwright/actions/runs/40247667905) failed because the Hermes CLI was a shell wrapper, not a Python interpreter. The corrected system-Python probe with stub Telegram transport passed. All package/plugin cleanup completed.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
