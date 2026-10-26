@@ -41,10 +41,6 @@ cp -- /usr/share/projectwright/hermes/projectwright-approvals/__init__.py "$dest
 "$cli" plugins doctor projectwright-approvals
 # Use the same Python runtime that launches Hermes to materialize the
 # callback handler with a dummy application. No gateway or Telegram connection.
-interpreter="$(head -n 1 "$cli")"
-interpreter="${interpreter#\#!}"
-interpreter="${interpreter%% *}"
-[[ -x "$interpreter" ]] || fail "cannot identify Hermes Python interpreter"
-"$interpreter" scripts/pw-test-hermes-callback.py
+python3 -B scripts/pw-test-hermes-callback.py
 "$cli" plugins list
 echo 'PASS: Projectwright native plugin enabled and discovered by real test Hermes CLI; cleanup follows'
