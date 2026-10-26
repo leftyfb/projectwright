@@ -192,6 +192,24 @@ jobs:
           bash scripts/pw-test-hermes-plugin.sh
           echo 'PASS: Hermes plugin registration and cleanup against isolated pw-test'
 
+      - name: Load plugin into running test Hermes gateway and restore prior state
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/pw-test-hermes-gateway.sh
+          shopt -s nullglob
+          debs=("${RUNNER_TEMP}"/pw-hosted-deb/*.deb)
+          test "${#debs[@]}" -eq 1
+          cleanup() {
+            status=$?
+            trap - EXIT
+            sudo -n dpkg --purge projectwright || status=1
+            exit "$status"
+          }
+          trap cleanup EXIT
+          sudo -n dpkg --install "${debs[0]}"
+          bash scripts/pw-test-hermes-gateway.sh
+
       - name: Retain tested Debian package
         uses: actions/upload-artifact@v4
         with:
