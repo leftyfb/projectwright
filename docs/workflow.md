@@ -12,10 +12,7 @@ Existing projects use a JSON configuration under the selected project root.
 See [configuration-home.md](configuration-home.md) for XDG paths, overrides
 and the backwards-compatible Hermes-project fallback.
 
-A missing `config.json` is recognized as `disabled` by the manager. Nothing
-is automatically executed or initialized in that case; config-free execution
-remains incomplete. The worker always validates the configuration and may
-not infer a Git repository or executable from an absent setting.
+A missing `config.json` normally yields `disabled`; however, an **explicitly prepared** config-free project with a real Git worktree, HEAD commit, queue and work log can run through manual `pw worker` or `pw tick` after preflight. `requirements.md` permits explicit planning. Missing prerequisites remain disabled, and no Git repository, executable or approval is invented. See [the current manual](manual.md).
 
 ## 2. Inspect, plan and dispatch
 
@@ -87,17 +84,14 @@ progress does not replace or satisfy milestone approval.
 ## 6. Scheduling and installation
 
 The timer utility can install disabled-by-default per-project systemd user
-units. `pw setup-user` performs explicit non-root setup for the separate
+units. `pw-timer setup-user` performs explicit non-root setup for the separate
 approval notification timer, only after validating Telegram configuration.
 The Debian preview does **not** silently choose an operating-system user
-from its root-run installation script. Package-triggered per-user onboarding,
-plugin provisioning, release upgrades and uninstall lifecycle are pending
-requirements, tracked in [release-checklist.md](release-checklist.md).
+from its root-run installation script. The separate non-root onboarding, real Debian install/purge, Hermes plugin/gateway and a real Telegram Approve callback have passed isolated LXD tests. Generalized user onboarding, cross-source-version migration and stable uninstall/upgrade guarantees remain pending; see [release-checklist.md](release-checklist.md).
 
 ## 7. Files and tests
 
-The 18 current Python source files and their purposes, callers, and external
-effects are enumerated in [component-inventory.md](component-inventory.md).
+The **current** canonical `pw_*.py` implementations, compatibility shims, packaging, CI and tests are mapped in [file-reference.md](file-reference.md). The older [component inventory](component-inventory.md) is a historical 18-file baseline.
 The [test coverage matrix](test-coverage-matrix.md) identifies maintained
 tests by subsystem; [end-to-end gaps](e2e-test-gaps.md) distinguishes source
 tests on `tux` from live model, Telegram and systemd operations. CI builds
