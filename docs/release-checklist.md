@@ -214,6 +214,12 @@ a disposable account before a stable tag or deployment.
 - The test mocks the Telegram transport and configured authorized user; it does **not** send a network message, consume the real gateway's update stream, or verify bot routing/allowed-user settings in the live gateway. Those are still end-to-end acceptance gates.
 - The test never uses production project files or bot credentials. The existing live `pw-test` Hermes gateway was not restarted as part of this callback/receipt regression.
 
+## Test Telegram readiness and callback rejection (2026-10-25)
+
+- A new disposable Git fixture drives the **real rejection callback**, verifies `telegram_approval_rejected.json` matches the pinned request, confirms the pending request is kept for human review, and asserts that no acceptance receipt or repeat notification is created. This complements the previously passing approval-and-replay test; check the latest hosted and LXD runs before calling this new case verified.
+- A **read-only, redacted** readiness check on `pw-test` found Hermes `~/.hermes/.env`, but `TELEGRAM_ALLOWED_USERS` **does not satisfy Projectwright's numeric allow-list parser** ([diagnostic run 40249685686](https://github.com/leftyfb/projectwright/actions/runs/40249685686)). Neither its value nor Telegram token was printed, and no credential was changed. It may be missing or formatted differently than Projectwright expects; the current value is not a verified safe test-only destination.
+- Live bot delivery is therefore **BLOCKED**, not passed. Do not send real Telegram notifications or alter the Hermes allow-list until the user explicitly identifies an isolated test bot and recipient. The workflow now reports this as `NOT READY` without failing unrelated container diagnostics.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
