@@ -514,6 +514,28 @@ class TelegramApprovalAndButtonTests(unittest.TestCase):
             self.assertFalse((self.project / "planning_state.json").exists())
             self.assertEqual(pw_notify.notify_pending(self.root, dry_run=True), [])
 
+    def test_gateway_callback_root_override_is_fail_closed(self) -> None:
+        class Handler:
+            def __init__(self, callback, pattern):
+                self.callback = callback
+                self.pattern = pattern
+
+        app = SimpleNamespace(add_handler=lambda handler: None)
+        fake_ext = SimpleNamespace(CallbackQueryHandler=Handler)
+        with patch.dict(sys.modules, {
+            "telegram": SimpleNamespace(ext=fake_ext),
+            "telegram.ext": fake_ext,
+        }):
+            for invalid in ("relative", "/does-not-exist"):
+                with self.subTest(invalid=invalid), patch.dict(
+                    "os.environ", {"PROJECTWRIGHT_APPROVAL_ROOT": invalid}
+                ), self.assertRaisesRegex(ValueError, "PROJECTWRIGHT_APPROVAL_ROOT"):
+                    pw_plugin._factory(app, None)
+            with patch.dict("os.environ", {
+                "PROJECTWRIGHT_APPROVAL_ROOT": str(self.root)
+            }):
+                pw_plugin._factory(app, None)
+
     def test_callback_requires_configured_private_user(self) -> None:
         class Handler:
             def __init__(self, callback, pattern):
