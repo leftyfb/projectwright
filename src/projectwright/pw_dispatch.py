@@ -322,7 +322,7 @@ def cli():
         'worker': ('pw_task_worker', []),
         'notify': ('pw_notify', []),
         'timer': ('pw_project_timer', []),
-        'setup-user': ('pw_project_timer', []),
+        'setup-user': ('pw_project_timer', ['setup-user']),
         'defaults': ('pw_defaults', []),
         'init': ('pw_init', []),
     }
