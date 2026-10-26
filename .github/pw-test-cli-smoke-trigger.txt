@@ -1,0 +1,2 @@
+Run reviewed non-root extracted Debian CLI smoke on pw-test, 2026-10-26.
+No sudo, dpkg install, systemd changes, Hermes gateway action, or Telegram delivery.
