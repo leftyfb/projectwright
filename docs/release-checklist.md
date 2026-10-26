@@ -195,6 +195,12 @@ a disposable account before a stable tag or deployment.
 - The probe does **not** start or restart the Hermes gateway, connect to Telegram, test an actual bot message, or approve a real milestone. Those live gateway and end-to-end gates are still open.
 - Initial probe [40247667905](https://github.com/leftyfb/projectwright/actions/runs/40247667905) failed because the Hermes CLI was a shell wrapper, not a Python interpreter. The corrected system-Python probe with stub Telegram transport passed. All package/plugin cleanup completed.
 
+## Live isolated Hermes gateway discovery (2026-10-25)
+
+- **PASS:** [pw-test Actions run 40248316763](https://github.com/leftyfb/projectwright/actions/runs/40248316763) verified via the real user-level systemd manager that `hermes-gateway.service` is **loaded, active, and running** in the `pw-test` LXC container. The Hermes CLI exposes `gateway status` and `gateway list`.
+- This was **read-only**: no gateway stop, start, restart or configuration change. The earlier plugin-doctor and callback-factory tests removed their plugin fixtures afterward, so these findings **do not establish that the running gateway loaded Projectwright**.
+- Next: plan a controlled installation and gateway restart/reload inside the disposable container, preserving existing user credentials and backing up test-only settings. Then verify Projectwright callback registration and approval behavior without sending messages to a production Telegram bot.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
