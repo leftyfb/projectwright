@@ -183,6 +183,12 @@ a disposable account before a stable tag or deployment.
 - Once test Hermes was configured, the earlier dummy-`.env` timer test correctly refused to overwrite existing credentials. The workflow now skips that specific fixture if the account already has Hermes credentials. The earlier live user-timer onboarding evidence remains valid.
 - **Still unverified:** a live Hermes gateway loading the plugin callback handler; real Telegram inline button delivery and approval; full isolated EDIT/TEST/COMMIT provider workflow; historical upgrade migration.
 
+## Hermes plugin runtime contract validation (2026-10-25)
+
+- **PASS:** [pw-test Actions run 40247372924](https://github.com/leftyfb/projectwright/actions/runs/40247372924) ran `hermes plugins doctor projectwright-approvals` against the installed Debian plugin in the isolated test Hermes environment. Hermes reported **"OK: runtime discovery, manifest parsing, import, and registration passed"**. The test then disabled and removed its plugin directory and purged the Debian package.
+- Doctor reports `0 tool(s), 0 hook(s)`; Projectwright's adapter registers a Telegram handler factory, not a tool/hook. The doctor result does **not** prove that the running gateway attached the callback handler or that a button was delivered/clicked.
+- **Still open:** gateway-level Telegram callback registration and end-to-end approval interaction, isolated live provider execution, and production release/security gates. Do not use a real Telegram bot token merely to satisfy the doctor test.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
