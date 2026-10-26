@@ -147,7 +147,7 @@ The effective config also contains `base`, `queue`, `work_log`, `worktree`, `bra
 | Send pending approval | `pw notify --send` | **Network message and delivery marker** |
 | Per-project timer | `pw timer status demo` | Calls user systemd manager |
 
-`pw init` and `pw defaults` are also primary subcommands; `pw setup-user` is routed to the timer onboarding action. The direct, verified packaged form is `pw-timer setup-user`. **Current CLI caveat:** `pw setup-user` does not prepend the required `setup-user` action when delegating, so use `pw-timer setup-user` until the launcher is corrected. Consult each command's `--help` before applying flags, especially while the CLI is evolving. Exit codes and manager JSON decisions are documented in [baseline-validation.md](baseline-validation.md).
+`pw init` and `pw defaults` are also primary subcommands; `pw setup-user` is routed to the timer onboarding action. The directly verified packaged form is `pw-timer setup-user`. The unified `pw setup-user` launcher now forwards the required action in the development branch; prefer the direct form for previously built `.deb` artifacts that predate the fix. Consult each command's `--help` before applying flags, especially while the CLI is evolving. Exit codes and manager JSON decisions are documented in [baseline-validation.md](baseline-validation.md).
 
 ## 7. Exact orchestration workflow
 
