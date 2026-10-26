@@ -52,7 +52,7 @@ The administrator installs a package for the OS; only the **intended ordinary us
 pw-timer setup-user --minutes 10 --enable-hermes-plugin
 ```
 
-This can install matching user units, enable/start the approval notifier timer and enable the native Hermes plugin. It refuses root and conflicting/symlinked targets. A Hermes gateway restart/reload may be separately required for callback registration. This is an operational change, **not** a dry-run. The unified `pw setup-user` alias currently lacks the action forwarding needed by `pw_project_timer.main`; use the verified `pw-timer setup-user` form.
+This can install matching user units, enable/start the approval notifier timer and enable the native Hermes plugin. It refuses root and conflicting/symlinked targets. A Hermes gateway restart/reload may be separately required for callback registration. This is an operational change, **not** a dry-run. The unified `pw setup-user` action forwarding was corrected on this development branch; previously built preview artifacts may still require the direct `pw-timer setup-user` form.
 
 To disable the approval timer:
 
