@@ -4,3 +4,4 @@ Read-only check of Hermes CLI installed in pw-test.\nCheck common user-local Her
 Inspect Hermes gateway and systemd status without accessing credentials.
 Run disposable Git project milestone callback approval and replay test on pw-test.
 Verify reject callback persists review state and never approves a disposable milestone.
+Read-only Telegram configuration readiness with no secrets or IDs disclosed.
