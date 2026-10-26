@@ -63,6 +63,6 @@ inside a Hermes virtual environment. These integration assets are still
 installed **inertly** by dpkg; the explicit non-root onboarding action is
 required for each account. Isolated Hermes discovery/registration and live Approve callback have been verified; production rollout, Reject and other security edges remain separate acceptance gates.
 
-**Unified alias caveat:** the current `pw setup-user` routing does not pass the required action argument to the timer module. Use `pw-timer setup-user` until fixed and retested.
+**Unified alias:** the development branch now forwards `pw setup-user` correctly to the timer module. Previously built `.deb` artifacts may predate the fix, so `pw-timer setup-user` remains the documented stable invocation for those previews.
 
 See [full manual](manual.md) and [packaging operations](packaging-and-operations.md).
