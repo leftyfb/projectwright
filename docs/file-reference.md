@@ -107,6 +107,71 @@ Each `project_*.py` file below exists to preserve older import/script consumers 
 | `docs/technical-debt.md`, `docs/independent-review-followups.md` | Audit findings and follow-up work. |
 | `docs/tux-test-runner.md`, `docs/development-wheel.md` | Runner and preview-build context. |
 
+## Individual test-file index
+
+These are the branch's top-level targeted regression files; the directory suites above contain additional subsystem integration/acceptance/recovery cases. The name describes the primary contract tested, not a guarantee of live external integration.
+
+| Test file | Main contract |
+|---|---|
+| `tests/test_acceptance_module_compat.py` | Acceptance helper legacy-import compatibility |
+| `tests/test_ci_workflow_safety.py` | Routine CI workflow safety, including live Telegram trigger boundary |
+| `tests/test_config_free_edit_test_commit.py` | Prepared config-free EDIT/TEST/COMMIT cycle |
+| `tests/test_config_free_milestone_acceptance.py` | Config-free milestone acceptance gating |
+| `tests/test_config_free_planning.py` | Explicit prepared-project planning |
+| `tests/test_config_free_prepared_worktree.py` | Worktree eligibility and preflight refusal |
+| `tests/test_config_free_read_task.py` | Config-free READ execution |
+| `tests/test_guard_pinned_evidence.py` | Approval guard pinned evidence and stale-state refusal |
+| `tests/test_milestone_module_compat.py` | Milestone module alias compatibility |
+| `tests/test_notes_xdg_paths.py` | Notes and configuration-root path selection |
+| `tests/test_packaged_manager_handoff.py` | Installed manager/dispatcher module handoff |
+| `tests/test_packaged_worker_utilities.py` | Installed worker helper imports |
+| `tests/test_packaging_manifest.py` | Wheel module list / packaging contract |
+| `tests/test_progress_module_compat.py` | Progress helper compatibility |
+| `tests/test_project_root.py` | XDG/legacy/explicit project-root resolution |
+| `tests/test_provider_adapter.py` | Command provider argv/stdin and validation |
+| `tests/test_pw_adapter_factory_registration.py` | Hermes plugin callback factory registration |
+| `tests/test_pw_cli.py` | Unified `pw` command routing |
+| `tests/test_pw_config_defaults.py` | Config merge/default/prepared-worktree logic |
+| `tests/test_pw_defaults.py` | Read-only defaults CLI |
+| `tests/test_pw_dispatch_config_root.py` | Dispatcher config root propagation |
+| `tests/test_pw_init.py` | Safe initial project creation |
+| `tests/test_pw_milestone_guard_migration.py` | Guard canonical naming migration |
+| `tests/test_pw_notes_publisher_migration.py` | Publisher naming migration |
+| `tests/test_pw_notes_sync_migration.py` | Notes sync naming migration |
+| `tests/test_pw_notify_revocation.py` | Notification revocation and stale delivery state |
+| `tests/test_pw_plugin_authorization.py` | Callback user/private-chat authorization |
+| `tests/test_pw_queue_manager_migration.py` | Manager canonical naming migration |
+| `tests/test_pw_queue_planner_migration.py` | Planner canonical naming migration |
+| `tests/test_pw_quota_migration.py` | Quota naming migration |
+| `tests/test_pw_recovery_migration.py` | Recovery naming migration |
+| `tests/test_pw_setup_user_symlinks.py` | Symlink refusal in per-user setup |
+| `tests/test_pw_task_worker_migration.py` | Worker naming/module identity migration |
+| `tests/test_pw_telegram_approval_migration.py` | Approval bridge migration |
+| `tests/test_pw_test_preflight.py` | LXD target and read-only preflight parser |
+| `tests/test_pw_worker_journal_migration.py` | Journal migration |
+| `tests/test_recovery_config_root.py` | Recovery root selection |
+| `tests/test_shared_config_entrypoints.py` | Shared config behavior across entrypoints |
+| `tests/test_telegram_callback_replay.py` | Callback replay/stale request refusal |
+| `tests/test_timer_status_exit.py` | Timer status exit-code behavior |
+| `tests/test_user_setup.py` | Non-root approval timer and plugin setup |
+| `tests/test_worker_missing_config.py` | Absent configuration failure/guard behavior |
+
+**Suite source files:**
+
+| File | Focus |
+|---|---|
+| `tests/unit/test_baseline_validator.py` | Source manifest/development validator |
+| `tests/unit/test_milestone_sequence.py` | Ordered milestones and receipt policy |
+| `tests/unit/test_quota_progress.py` | Quota and worker progress |
+| `tests/integration/test_dispatch_contracts.py` | Dispatcher/manager contract and dispatch refusal |
+| `tests/integration/test_review_followups.py` | Review follow-up regression scenarios |
+| `tests/integration/test_subprocess_chain.py` | Real subprocess fake-provider queue/worker and Git cycles |
+| `tests/integration/test_worker_delivery_contract.py` | Worker notification failure independence |
+| `tests/acceptance/test_acceptance_and_telegram.py` | Guard, callback and Telegram transport mocks |
+| `tests/recovery/test_recovery_contracts.py` | Journal/interruption incident recovery |
+
+`tests/__init__.py`, `tests/unit/__init__.py`, `tests/integration/__init__.py`, `tests/acceptance/__init__.py` and `tests/recovery/__init__.py` mark Python test packages. `tests/fixtures/README.md` documents fixture handling. No test in ordinary `unittest` discovery is permission to contact live Hermes/Telegram, install Debian packages or start systemd units.
+
 ## Ownership boundaries
 
 - **Projectwright owns:** queue decisions, journal/recovery, Git safety policy, scope validation, approval evidence and optional dispatch timers.
