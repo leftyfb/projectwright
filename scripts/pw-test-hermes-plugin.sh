@@ -38,5 +38,6 @@ cp -- /usr/share/projectwright/hermes/projectwright-approvals/plugin.yaml "$dest
 cp -- /usr/share/projectwright/hermes/projectwright-approvals/__init__.py "$dest/__init__.py"
 "$cli" plugins enable projectwright-approvals
 "$cli" plugins show projectwright-approvals
+"$cli" plugins doctor projectwright-approvals
 "$cli" plugins list
 echo 'PASS: Projectwright native plugin enabled and discovered by real test Hermes CLI; cleanup follows'
