@@ -1,3 +1,5 @@
+> **Historical preview-build notes.** The package has since been installed, upgraded synthetically, purged and exercised with Hermes/Telegram in an isolated `pw-test` LXD container. Those passes do not make it a stable release. Read [packaging-and-operations.md](packaging-and-operations.md) and the dated [release-checklist.md](release-checklist.md) for current status.
+
 # Development wheel preview
 
 The repository defines a preliminary `projectwright` Python wheel in
@@ -41,11 +43,6 @@ CI also uses `scripts/build-deb.sh` to assemble
 `projectwright_0.1.0~dev0-1_all.deb` from the tested pure-Python wheel.
 The package has five `/usr/bin/pw-*` wrappers using the distribution's
 `/usr/bin/python3`, Python files under `/usr/lib/python3/dist-packages`,
-and basic `python3` and `git` dependencies. A CI job inspects the package
-file listing and extracts it into a temporary directory for an import/CLI
-smoke check; it does **not** install the package on a real host or publish
-an APT repository.
+and basic `python3` and `git` dependencies. A CI inspects the package, extracts it and smoke-tests wrappers. A **separate authorized LXD workflow** has also performed an actual dpkg lifecycle; no APT repository is published or production host installed.
 
-This preview is not approved for deployment. Hermes CLI availability,
-configuration migration, Python/Telegram optional integrations, supported
-Ubuntu releases, and upgrade/uninstall behavior remain unverified.
+This preview is not approved for production deployment. Isolated Hermes/Telegram and package lifecycle paths have been exercised, but supported Ubuntu/Python/dependency matrix, cross-source-version migration, user-data preservation and general production upgrade/uninstall behavior remain unverified.
