@@ -20,6 +20,9 @@ class UnifiedCommandTests(unittest.TestCase):
             "worker": ("pw_task_worker", []),
             "notify": ("pw_notify", []),
             "timer": ("pw_project_timer", []),
+            "setup-user": ("pw_project_timer", ["setup-user"]),
+            "defaults": ("pw_defaults", []),
+            "init": ("pw_init", []),
         }
         for action, (module, flags) in cases.items():
             with self.subTest(action=action):
@@ -29,6 +32,16 @@ class UnifiedCommandTests(unittest.TestCase):
                     self.assertEqual(pw_dispatch.cli(), 0)
                     self.assertEqual(called.call_args.args[0],
                         [sys.executable, "-B", "-m", module, *flags, "--help"])
+
+    def test_setup_user_options_forward_without_side_effects(self):
+        with patch.object(sys, "argv", ["pw", "setup-user", "--minutes", "15", "--enable-hermes-plugin"]), patch.object(
+            pw_dispatch.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
+        ) as called:
+            self.assertEqual(pw_dispatch.cli(), 0)
+            self.assertEqual(called.call_args.args[0], [
+                sys.executable, "-B", "-m", "pw_project_timer", "setup-user",
+                "--minutes", "15", "--enable-hermes-plugin",
+            ])
 
     def test_unknown_command_refuses_without_execution(self):
         with patch.object(sys, "argv", ["pw", "bad"]), patch.object(
