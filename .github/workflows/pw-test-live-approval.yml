@@ -1,0 +1,85 @@
+name: pw-test Live Approval Setup
+
+on:
+  push:
+    branches: [test/review-followups]
+    paths: [.github/pw-test-live-trigger.txt]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: pw-test-live-approval
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: [self-hosted, linux, projectwright-lxd-install]
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/review-followups
+          persist-credentials: false
+      - name: Assert isolated account
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          test ! -e /home/ubuntu/projectwright-live-test
+          test ! -e /usr/bin/pw
+          test ! -e "$HOME/.hermes/plugins/projectwright-approvals"
+          test ! -e "$HOME/.config/systemd/user/hermes-gateway.service.d/90-projectwright-test.conf"
+          systemctl --user is-active --quiet hermes-gateway.service
+      - name: Select verified Debian artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 -B - <<'PY'
+          import json,os,urllib.request
+          repo=os.environ["GITHUB_REPOSITORY"]
+          url=f"https://api.github.com/repos/{repo}/actions/workflows/offline-tests.yml/runs?branch=test%2Freview-followups&status=success&per_page=20"
+          req=urllib.request.Request(url,headers={"Authorization":"Bearer "+os.environ["GH_TOKEN"],"Accept":"application/vnd.github+json"})
+          with urllib.request.urlopen(req,timeout=20) as h: runs=json.load(h)["workflow_runs"]
+          selected=next(x for x in runs if x["event"]=="push" and x["head_branch"]=="test/review-followups" and x["conclusion"]=="success")
+          with open(os.environ["GITHUB_ENV"],"a") as h: h.write(f"DEB_RUN_ID={selected['id']}\n")
+          print("Source CI:",selected["id"])
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: projectwright-deb-${{ env.DEB_RUN_ID }}
+          run-id: ${{ env.DEB_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/pw-live-deb
+      - name: Stage disposable project and isolated gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          debs=("${RUNNER_TEMP}"/pw-live-deb/*.deb)
+          test "${#debs[@]}" -eq 1
+          test "$(dpkg-deb --field "${debs[0]}" Package)" = projectwright
+          sudo -n dpkg --install "${debs[0]}"
+          PYTHONPATH=/usr/lib/python3/dist-packages python3 -B scripts/pw-test-live-approval.py prepare
+          test -f /home/ubuntu/projectwright-live-test/projects/pwtelecheck/telegram_approval_pending.json
+          mkdir -p "$HOME/.hermes/plugins/projectwright-approvals" "$HOME/.config/systemd/user/hermes-gateway.service.d"
+          cp /usr/share/projectwright/hermes/projectwright-approvals/{plugin.yaml,__init__.py} "$HOME/.hermes/plugins/projectwright-approvals/"
+          cat > "$HOME/.config/systemd/user/hermes-gateway.service.d/90-projectwright-test.conf" <<'EOF'
+          [Service]
+          Environment=PROJECTWRIGHT_APPROVAL_ROOT=/home/ubuntu/projectwright-live-test/projects
+          EOF
+          "$HOME/.local/bin/hermes" plugins enable projectwright-approvals
+          systemctl --user daemon-reload
+          systemctl --user restart hermes-gateway.service
+          systemctl --user is-active --quiet hermes-gateway.service
+          # Confirm environment of the running gateway, not merely the unit file.
+          pid="$(systemctl --user show -p MainPID --value hermes-gateway.service)"
+          test "$pid" -gt 1
+          tr '\\0' '\\n' < "/proc/$pid/environ" | grep -Fxq 'PROJECTWRIGHT_APPROVAL_ROOT=/home/ubuntu/projectwright-live-test/projects'
+          echo 'READY: isolated gateway project root confirmed. No Telegram message sent.'
