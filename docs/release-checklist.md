@@ -240,6 +240,12 @@ a disposable account before a stable tag or deployment.
 - **FIX COMMITTED:** plugin bridge now appends the Debian fallback path, preserving Hermes's existing virtual environment import precedence. Regression test asserts the fallback does not use `sys.path.insert`.
 - **USER-REPORTED LIVE RESULT:** after the same plugin change and gateway restart in `pw-test`, Telegram began polling normally. **Still to verify:** the actual Telegram callback produces the pinned disposable Git milestone approval receipt. A GitHub Actions verifier workflow exists for the disposable milestone.
 
+## Live Telegram approval fully verified and cleaned up (2026-10-25)
+
+- **PASS:** After the Projectwright Python path precedence bug was fixed, the user successfully pressed Approve in Telegram. The independent read-only [pw-test verification run 40258567183](https://github.com/leftyfb/projectwright/actions/runs/40258567183) reported `PASS: Telegram callback wrote verified acceptance receipt; request consumed`, verifying a real Telegram callback, acceptance receipt, and pending-record removal for disposable milestone `pwtelecheck / DEMO-1-M1`.
+- **PASS:** [pw-test cleanup run 40258658872](https://github.com/leftyfb/projectwright/actions/runs/40258658872) disabled and removed the test approval plugin, removed the gateway root override, restarted the test gateway with its prior environment, purged the temporary Debian package, and deleted the isolated disposable Git fixture. It reported both `PASS: gateway test-only environment override removed` and `PASS: disposable Projectwright assets removed; Hermes credentials preserved`. No production `tux` actions were performed.
+- **Regression fix:** Hermes adapter's Debian fallback appends `/usr/lib/python3/dist-packages` rather than prepending it; this preserves Hermes's venv `cryptography` import precedence. An offline test prohibits reintroducing the prepend. Do not confuse success of the one-time live test with a production deployment or release approval.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
