@@ -1,0 +1,1 @@
+Read-only verification of the disposable Telegram callback receipt.
