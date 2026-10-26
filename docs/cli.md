@@ -15,7 +15,7 @@ harness independence.
 | `pw timer ACTION PROJECT` | `pw_project_timer` | Inspect, install, enable or disable user timers |
 | `pw init --project NAME [--no-config]` | `pw_init` | Create inert configured project or config-free queue/work-log skeleton |
 | `pw defaults --project NAME` | `pw_defaults` | Read-only selected root and effective defaults |
-| `pw setup-user` | `pw_project_timer` | **Known delegation issue:** currently omits required `setup-user` action; use `pw-timer setup-user` instead |
+| `pw setup-user` | `pw_project_timer setup-user` | Explicit non-root approval timer/plugin onboarding; also available as `pw-timer setup-user` |
 
 Each command has its own `--help`, which `pw` forwards. `pw --help`
 displays the routing summary without performing any action. The legacy
