@@ -1,0 +1,55 @@
+name: pw-test Live Approval Cleanup
+on:
+  push:
+    branches: [test/review-followups]
+    paths: [.github/pw-test-cleanup-trigger.txt]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cleanup:
+    runs-on: [self-hosted, linux, projectwright-lxd-install]
+    timeout-minutes: 10
+    steps:
+      - name: Remove only verified disposable approval test assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          test "$HOME" = /home/ubuntu
+          base=/home/ubuntu/projectwright-live-test
+          project="$base/projects/pwtelecheck"
+          override="$HOME/.config/systemd/user/hermes-gateway.service.d/90-projectwright-test.conf"
+          plugin="$HOME/.hermes/plugins/projectwright-approvals"
+          test -d "$base" && test ! -L "$base"
+          test -d "$project" && test ! -L "$project"
+          test -f "$project/config.json"
+          test -f "$project/planning_state.json"
+          test ! -e "$project/telegram_approval_pending.json"
+          test -f "$override" && test ! -L "$override"
+          grep -Fxq 'Environment=PROJECTWRIGHT_APPROVAL_ROOT=/home/ubuntu/projectwright-live-test/projects' "$override"
+          test -d "$plugin" && test ! -L "$plugin"
+          test -f "$plugin/plugin.yaml"
+          grep -Fxq 'name: projectwright-approvals' "$plugin/plugin.yaml"
+          "$HOME/.local/bin/hermes" plugins disable projectwright-approvals
+          rm -f -- "$override"
+          rm -rf -- "$plugin"
+          systemctl --user daemon-reload
+          systemctl --user restart hermes-gateway.service
+          systemctl --user is-active --quiet hermes-gateway.service
+          pid="$(systemctl --user show -p MainPID --value hermes-gateway.service)"
+          PID="$pid" python3 -B - <<'PY'
+          import os
+          from pathlib import Path
+          entries=Path('/proc/'+os.environ['PID']+'/environ').read_bytes().split(bytes([0]))
+          assert not any(x.startswith(b'PROJECTWRIGHT_APPROVAL_ROOT=') for x in entries)
+          print('PASS: gateway test-only environment override removed')
+          PY
+          sudo -n dpkg --purge projectwright
+          test ! -e /usr/bin/pw
+          rm -rf -- "$base"
+          test ! -e "$base"
+          echo 'PASS: disposable Projectwright assets removed; Hermes credentials preserved'
