@@ -2,7 +2,10 @@
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
-from projectwright import pw_plugin
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src' / 'projectwright'))
+import pw_plugin
 
 class AdapterRegistrationTest(unittest.TestCase):
     def test_registration_provides_factory(self):
