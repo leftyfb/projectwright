@@ -84,3 +84,28 @@ jobs:
           "$cli" gateway --help
           systemctl --user list-units --type=service --no-pager --plain 'hermes*' || true
           echo 'PASS: Hermes CLI can be reached from the GitHub runner'
+
+      - name: Check Telegram test prerequisites without exposing or using credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          python3 -B - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd() / "src" / "projectwright"))
+          from pw_notify import config_values, parse_allowed_users
+          env = Path.home() / ".hermes" / ".env"
+          if env.is_symlink():
+              raise SystemExit("REFUSED: symlinked Hermes credential file")
+          if not env.is_file():
+              print("NOT READY: test Hermes credential file absent")
+          else:
+              values = config_values(env)
+              users = parse_allowed_users(values.get("TELEGRAM_ALLOWED_USERS", ""))
+              token = values.get("TELEGRAM_BOT_TOKEN", "")
+              print("Telegram token configured:", bool(token))
+              print("Authorized recipient count:", len(users))
+              print("Delivery skipped: destination is not verified as test-only")
+          PY
