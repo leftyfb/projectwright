@@ -53,6 +53,31 @@ class ApprovalSetupTests(unittest.TestCase):
                         enable_plugin=True, runner=lambda *args, **kw: self.fail("enabled"))
             self.assertEqual((plugin / "plugin.yaml").read_text(), "custom manifest")
 
+    def test_missing_credential_file_refuses_without_creating_units(self):
+        with tempfile.TemporaryDirectory(prefix="pw-setup-missing-env-") as temp:
+            home = Path(temp)
+            with patch.object(Path, "home", return_value=home), \
+                 patch.object(timer.os, "geteuid", return_value=1000):
+                with self.assertRaisesRegex(ValueError, "Configure Telegram bot token"):
+                    timer.setup_user_approvals(runner=lambda *a, **k: self.fail("called"))
+            self.assertFalse((home / ".config/systemd/user").exists())
+            self.assertFalse((home / ".hermes").exists())
+
+    def test_symlinked_credential_file_refused(self):
+        with tempfile.TemporaryDirectory(prefix="pw-setup-env-link-") as temp:
+            home = Path(temp)
+            hermes = home / ".hermes"
+            hermes.mkdir()
+            target = home / "test-token-file"
+            target.write_text("TELEGRAM_BOT_TOKEN=fixture\\nTELEGRAM_ALLOWED_USERS=111\\n")
+            (hermes / ".env").symlink_to(target)
+            with patch.object(Path, "home", return_value=home), \
+                 patch.object(timer.os, "geteuid", return_value=1000):
+                with self.assertRaisesRegex(ValueError, "symlinked Hermes credential"):
+                    timer.setup_user_approvals(runner=lambda *a, **k: self.fail("called"))
+            self.assertFalse((home / ".config/systemd/user").exists())
+            self.assertEqual(target.read_text(), "TELEGRAM_BOT_TOKEN=fixture\\nTELEGRAM_ALLOWED_USERS=111\\n")
+
     def test_root_cannot_implicitly_configure_a_user(self):
         with patch.object(timer.os, "geteuid", return_value=0):
             with self.assertRaisesRegex(ValueError, "non-root"):
