@@ -74,12 +74,20 @@ jobs:
           [Service]
           Environment=PROJECTWRIGHT_APPROVAL_ROOT=/home/ubuntu/projectwright-live-test/projects
           EOF
-          "$HOME/.local/bin/hermes" plugins enable projectwright-approvals
+          # Establish the restricted root before Hermes can load the plugin.
           systemctl --user daemon-reload
+          systemctl --user restart hermes-gateway.service
+          systemctl --user is-active --quiet hermes-gateway.service
+          "$HOME/.local/bin/hermes" plugins enable projectwright-approvals
           systemctl --user restart hermes-gateway.service
           systemctl --user is-active --quiet hermes-gateway.service
           # Confirm environment of the running gateway, not merely the unit file.
           pid="$(systemctl --user show -p MainPID --value hermes-gateway.service)"
           test "$pid" -gt 1
-          tr '\\0' '\\n' < "/proc/$pid/environ" | grep -Fxq 'PROJECTWRIGHT_APPROVAL_ROOT=/home/ubuntu/projectwright-live-test/projects'
+          PID="$pid" python3 -B - <<'PY'
+          import os
+          from pathlib import Path
+          values = Path("/proc/" + os.environ["PID"] + "/environ").read_bytes().split(bytes([0]))
+          assert b"PROJECTWRIGHT_APPROVAL_ROOT=/home/ubuntu/projectwright-live-test/projects" in values
+          PY
           echo 'READY: isolated gateway project root confirmed. No Telegram message sent.'
