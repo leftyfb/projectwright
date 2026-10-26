@@ -79,5 +79,8 @@ jobs:
           fi
           echo "Hermes executable: $cli"
           "$cli" plugins --help
-          "$cli" plugins list
+          "$cli" plugins list --plain --no-bundled
+          # Read-only gateway/service discovery; never start gateway or dump env.
+          "$cli" gateway --help
+          systemctl --user list-units --type=service --no-pager --plain 'hermes*' || true
           echo 'PASS: Hermes CLI can be reached from the GitHub runner'
