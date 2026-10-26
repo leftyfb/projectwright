@@ -1,7 +1,17 @@
 """Hermes-installed adapter offline callback registration probe."""
 import importlib.util
+import re
+import sys
 from pathlib import Path
 from types import SimpleNamespace
+
+class FakeCallbackQueryHandler:
+    def __init__(self, callback, pattern):
+        self.callback = callback
+        self.pattern = re.compile(pattern)
+
+sys.modules['telegram'] = SimpleNamespace()
+sys.modules['telegram.ext'] = SimpleNamespace(CallbackQueryHandler=FakeCallbackQueryHandler)
 
 path = Path("/usr/share/projectwright/hermes/projectwright-approvals/__init__.py")
 spec = importlib.util.spec_from_file_location("pw_adapter_probe", path)
