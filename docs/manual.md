@@ -102,6 +102,34 @@ For an intentional, manually invoked execution, `pw worker --project demo --once
 
 For a non-default config home, add `--config-dir /absolute/config/home` consistently to supported commands. Do not mix roots between `status`, `plan`, and `worker`.
 
+### Concrete disposable queue example
+
+For a newly prepared `demo` repository, you can use a single read-only task in `queue.md` to inspect behavior before trying any EDIT/TEST/COMMIT cycle:
+
+```markdown
+- [ ] **T101 — READ** Summarize the repository layout and existing tests without changing files.
+```
+
+The queue parser requires lines beginning `- [ ]`, `- [x]` or `- [!]`, an uppercase-letter-plus-digit task ID, an em dash or hyphen separator, and one of `READ`, `EDIT`, `TEST`, `COMMIT`, `VERIFY`, `DECIDE`. The example describes a **provider-executed** READ; it is not performed by `pw` itself. The provider must return the requested structured result artifact, and Projectwright will reject Git mutation by a READ task.
+
+For a first config-free Git worktree, the safe sequence is: create a disposable `worktree/` repository on `main` with a HEAD commit, put the row above in `queue.md`, leave `work_log.md` in place, run `pw worker --project demo --dry-run`, then execute `pw tick --project demo --no-telegram` **only** after verifying the selected root and local provider. You need not enable any systemd timer for this test.
+
+### Example of an inert `config.json`
+
+`pw init --project demo` writes a disabled configuration resembling:
+
+```json
+{
+  "id": "demo",
+  "projectwright_initialized": 1,
+  "execution": {"enabled": false},
+  "planning": {"enabled": false},
+  "notes": {"enabled": false}
+}
+```
+
+The effective config also contains `base`, `queue`, `work_log`, `worktree`, `branch`, `lock`, `result_dir`, `cycle_file`, `worker_journal_file`, `timeout_seconds` (900) and `hermes` (`hermes` on PATH). `pw defaults --project demo` prints merged values. Existing JSON can override these, and configured projects retain legacy quota defaults; do **not** turn `execution.enabled` on without reviewing the provider, Git target, queue, policy and any external integrations.
+
 ## 6. Daily command guide
 
 | Intent | Command | Side effects |
