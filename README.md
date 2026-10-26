@@ -1,78 +1,76 @@
-# Projectwright source snapshot and tests
+# Projectwright
 
-This repository contains an audited snapshot of Projectwright's 18 flat Python
-modules under `src/projectwright/`, together with an immutable source manifest
-and an offline `unittest` suite. Runtime scripts in `~/.hermes/scripts/` are not
-modified by this repository's tests.
+**Requirements-to-Git task orchestration with explicit safety gates and human milestone approval.**
 
-## Architecture and operations
+Projectwright turns `requirements.md` and an ordered `queue.md` into bounded planning and agent tasks, validates structured completion reports and Git evidence, and pauses at configured milestones for acceptance. Its default worker uses a locally configured Hermes CLI; a command-based adapter is experimental. Telegram approval, Home Assistant quota telemetry, notes mirroring and user-level systemd timers are optional integrations.
 
-Read the [end-to-end workflow](docs/workflow.md) and
-[18-file component inventory](docs/component-inventory.md) for the current
-execution and approval lifecycle. The [user approval setup](docs/user-approval-setup.md)
-explains the non-root Telegram timer onboarding and current installer limits.
+> **Development release only.** This branch (`test/review-followups`) builds a working preview wheel and `.deb`, but it is not approved for production deployment. The [release checklist](docs/release-checklist.md) records verified isolated installs, Hermes/Telegram approval testing and remaining release gates. No install step should automatically alter a user's Hermes credentials, project files, plugin or timers.
 
-## Final release requirements
+## Start here
 
-The [final release checklist](docs/release-checklist.md) is the acceptance gate
-for naming consistency, complete file/workflow documentation, XDG config and
-config-free defaults, swappable execution harnesses, Telegram UI approvals,
-and Debian installation plus per-user Hermes/systemd onboarding. Preview builds
-are **not** considered production-ready until these items are verified.
+| If you want to… | Read |
+|---|---|
+| Understand how it works and run a safe first project | **[Full user and operator manual](docs/manual.md)** |
+| See the role of **every source, packaging, workflow and test file** | **[Current file-by-file reference](docs/file-reference.md)** |
+| Build or inspect the Debian preview, plan upgrades/uninstalls | **[Packaging and operations](docs/packaging-and-operations.md)** |
+| Follow requirements → planning → work → Git → human acceptance | [Workflow](docs/workflow.md) |
+| Find CLI commands and options | [CLI reference](docs/cli.md) |
+| Understand project roots, XDG paths, defaults and config-free mode | [Configuration guide](docs/configuration-home.md) |
+| Configure Hermes or experimental non-Hermes execution | [Provider adapters](docs/provider-adapters.md) |
+| Set up per-user Telegram approval and systemd | [Approval setup](docs/user-approval-setup.md) |
+| See precisely what has passed or is still blocked | [Release acceptance checklist](docs/release-checklist.md) |
+| Understand tests and what they do **not** prove | [Coverage matrix](docs/test-coverage-matrix.md) and [E2E gaps](docs/e2e-test-gaps.md) |
 
-## Unified CLI and configuration locations (development)
+## In one minute
 
-The development packages now include a preliminary `pw` launcher. See
-[CLI reference](docs/cli.md) and [configuration paths](docs/configuration-home.md).
-The XDG migration is partial; legacy projects remain available and missing
-project configuration leaves scheduling disabled by default.
+```text
+requirements.md -> planner -> queue.md -> dispatcher/manager gates
+                                          |
+                                    one worker task
+                                          |
+                              provider report + Git checks
+                                          |
+                          queue/progress or recovery hold
+                                          |
+                       milestone acceptance (optional Telegram)
+                                          |
+                             verified receipt -> next work
+```
 
-## Development wheel preview
+`pw status` inspects a project; `pw plan` can request new queue items; `pw tick` plans when allowed and executes at most one task; `pw worker` runs a single task; `pw notify` previews approval requests (only `--send` transmits). A configured agent can change the selected Git worktree; always test against disposable data first. For the exact safeguards and execution types, see the [manual](docs/manual.md).
 
-A preliminary, non-production Python wheel can be built from the repository's
-`pyproject.toml`. CI installs the wheel into a disposable target, smoke-tests the
-`pw-dispatch`, `pw-manager`, `pw-worker`, `pw-notify` and `pw-timer` entrypoints,
-and retains a seven-day wheel artifact. See [development wheel notes](docs/development-wheel.md)
-for build instructions and remaining Hermes-specific runtime assumptions. The
-package does not install/enable systemd timers or modify `~/.hermes/scripts`.
+## Inspect and test the development source
 
-## Run the offline suite
-
-From the repository root:
+Requires Python 3.10+ and Git. From the repository root:
 
 ```sh
 python3 -B -m unittest discover -s tests -p 'test_*.py' -v
-```
-
-The suite uses temporary directories/repositories and mocked service boundaries.
-It does not send Telegram messages, call live Home Assistant or Hermes APIs, or
-start/enable systemd units. Live checks are intentionally not part of default
-discovery; see `docs/e2e-test-gaps.md` before attempting any separate live test.
-
-## Validate source and baseline
-
-```sh
-python3 -B scripts/validate-baseline.py --mode baseline
 python3 -B scripts/validate-baseline.py --mode development
 ```
 
-`baseline` requires the checked-out source file set and SHA-256 values to match
-`installed-source-manifest.json`. `development` reports source drift while
-still enforcing the expected file set and running syntax, import, dependency,
-and offline-suite checks. Details: `docs/baseline-validation.md`.
+Read-only CLI exploration in an environment where Projectwright is installed:
 
-## Decision and configuration contracts
+```sh
+pw --help
+pw defaults --project demo
+pw status --project demo
+```
 
-The `project_queue_manager.py --once` JSON and exit-code contract, quota
-sensor semantics, and Telegram multi-recipient parsing/delivery rules are
-specified in `docs/baseline-validation.md`. Current coverage and explicit
-remaining gaps are tracked in `docs/test-coverage-matrix.md` and
-`docs/e2e-test-gaps.md`.
+To create an inert private project, `pw init --project demo` disables execution by default. To create only a queue/work-log skeleton without `config.json`, use `pw init --project demo --no-config`; then you must separately prepare a Git worktree and valid queue before manual execution. Projectwright does not provision a model, Git repository, Telegram bot or systemd schedule for you.
 
-## Test documentation
+## Repository orientation
 
-- `docs/test-source-inventory.md` — recovered historical test artifacts and
-  provenance.
-- `docs/test-coverage-matrix.md` — current offline coverage and known gaps.
-- `docs/e2e-test-gaps.md` — residual live/integration work and safety boundaries.
-- `docs/technical-debt.md` — source/runtime findings and unresolved contracts.
+- `src/projectwright/pw_*.py` — current runtime and integration implementations.
+- `src/projectwright/project_*.py` — retained legacy compatibility imports.
+- `packaging/`, `pyproject.toml`, `scripts/build-deb.sh` — build and inert installation assets.
+- `tests/` — offline unit, integration, acceptance, recovery and migration regressions.
+- `.github/workflows/` — hosted CI and **separately gated** disposable LXD live tests.
+- `docs/` — operating manual, reference, acceptance evidence and historical audit records.
+
+The older [component inventory](docs/component-inventory.md), [architecture snapshot](docs/architecture-current.md) and [runtime entrypoint snapshot](docs/runtime-entrypoints.md) describe the original 18-file audit; consult the **current file reference** for the newer canonical modules and branch behavior.
+
+## Safety and current status
+
+The isolated `pw-test` LXD environment has verified a real Debian install/purge, user timer onboarding, Hermes plugin/gateway loading, Telegram message delivery, a real Approve callback, receipt verification and cleanup. That does **not** verify a stable package, every rejection/auth edge case, cross-source-version migration, a full live EDIT/TEST/COMMIT path, or production installation. No self-hosted `pw-test` workflow should be triggered while its runner/container is intentionally stopped.
+
+Development and review belong on `test/review-followups`; do not modify `main` or a production Hermes instance without specific authorization. The [release checklist](docs/release-checklist.md) is the evidence-backed authority for sign-off.
