@@ -10,5 +10,5 @@ try:
 except ModuleNotFoundError as exc:
     if exc.name != "pw_plugin":
         raise
-    sys.path.insert(0, "/usr/lib/python3/dist-packages")
+    sys.path.append("/usr/lib/python3/dist-packages")
     from pw_plugin import register
