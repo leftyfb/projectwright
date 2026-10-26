@@ -1,3 +1,5 @@
+> **Historical baseline audit only.** This page inventories the original 18 flat modules and historical installed Hermes state. It is **not** the current development branch manual. Read [manual.md](manual.md), [file-reference.md](file-reference.md) and [release-checklist.md](release-checklist.md) for current names, workflows and verified live test status.
+
 # Component inventory
 
 Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. The baseline inventory is historical; development now includes a canonical `pw_worker_progress.py` implementation and a compatibility-only `project_worker_progress.py` shim. Both ship during migration. All 18 tracked Python files under `src/projectwright/` were AST-parsed and inventoried. The checked-in source manifest pins the 18 source hashes and expected installed paths; a separate read-only audit compared installed copies and reported all 18 matching source at audit time. “Used” below means direct call/launcher evidence, not merely import reachability.
