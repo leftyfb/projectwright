@@ -208,6 +208,12 @@ a disposable account before a stable tag or deployment.
 - **Still open:** confirmation of a real Telegram callback press and authenticated milestone acceptance in a disposable Git repository. Gateway plugin-loading confirmation is not an end-to-end bot message or approval.
 - The dedicated LXD gateway can be restarted for future explicitly authorized tests; do not apply this workflow to the production Hermes host.
 
+## Disposable Git milestone approval through callback handler (2026-10-25)
+
+- **PASS:** hosted [offline CI run 40249196488](https://github.com/leftyfb/projectwright/actions/runs/40249196488) and [pw-test LXD preflight 40249278923](https://github.com/leftyfb/projectwright/actions/runs/40249278923) exercised a new regression that creates a throwaway Git repo and pending milestone approval, constructs its signed/content-bound inline callback, registers Projectwright's callback factory in an in-memory Telegram application, and dispatches the **actual approval function** through that callback. It verifies the acceptance receipt is recorded and pending request removed, then checks repeated delivery is refused as stale.
+- The test mocks the Telegram transport and configured authorized user; it does **not** send a network message, consume the real gateway's update stream, or verify bot routing/allowed-user settings in the live gateway. Those are still end-to-end acceptance gates.
+- The test never uses production project files or bot credentials. The existing live `pw-test` Hermes gateway was not restarted as part of this callback/receipt regression.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
