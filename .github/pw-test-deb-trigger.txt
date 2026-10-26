@@ -6,3 +6,4 @@ Run live per-user systemd approval timer onboarding in pw-test using dummy Teleg
 Preserve existing Hermes .env and run registration test.
 Retry plugin registration after cleanup correction.
 Validate plugin via Hermes doctor runtime contracts.
+Validate callback factory with Hermes Python and fake Telegram app.
