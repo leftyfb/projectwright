@@ -3,3 +3,4 @@ No installation, sudo, package modifications, or production access authorized.
 Read-only check of Hermes CLI installed in pw-test.\nCheck common user-local Hermes executable paths in pw-test.\nInspect Hermes plugin registry without modifying it.
 Inspect Hermes gateway and systemd status without accessing credentials.
 Run disposable Git project milestone callback approval and replay test on pw-test.
+Verify reject callback persists review state and never approves a disposable milestone.
