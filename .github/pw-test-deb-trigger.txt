@@ -5,3 +5,4 @@ Retry corrected YAML synthetic upgrade test.
 Run live per-user systemd approval timer onboarding in pw-test using dummy Telegram credentials.\nRetry live systemd user setup using packaged pw-timer CLI.\nTest real isolated Hermes native plugin registration, inspection and cleanup.
 Preserve existing Hermes .env and run registration test.
 Retry plugin registration after cleanup correction.
+Validate plugin via Hermes doctor runtime contracts.
