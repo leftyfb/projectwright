@@ -103,9 +103,13 @@ jobs:
               print("NOT READY: test Hermes credential file absent")
           else:
               values = config_values(env)
-              users = parse_allowed_users(values.get("TELEGRAM_ALLOWED_USERS", ""))
               token = values.get("TELEGRAM_BOT_TOKEN", "")
               print("Telegram token configured:", bool(token))
-              print("Authorized recipient count:", len(users))
+              try:
+                  users = parse_allowed_users(values.get("TELEGRAM_ALLOWED_USERS", ""))
+              except ValueError:
+                  print("NOT READY: TELEGRAM_ALLOWED_USERS is missing or invalid for Projectwright")
+              else:
+                  print("Authorized recipient count:", len(users))
               print("Delivery skipped: destination is not verified as test-only")
           PY
