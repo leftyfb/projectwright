@@ -96,27 +96,37 @@ jobs:
           export HOME="$work/home"
           export XDG_CONFIG_HOME="$HOME/.config"
           mkdir -m 700 "$HOME"
+          echo 'CHECK: entrypoint help'
           for cmd in pw pw-dispatch pw-manager pw-worker pw-notify pw-timer; do
             "$work/root/usr/bin/$cmd" --help >/dev/null
           done
+          echo 'CHECK: config-free init'
           "$work/root/usr/bin/pw" init --project demo --no-config \
             --config-dir "$HOME/.config/projectwright" >"$work/init.json"
           test -f "$HOME/.config/projectwright/projects/demo/queue.md"
           test -f "$HOME/.config/projectwright/projects/demo/work_log.md"
           test ! -e "$HOME/.config/projectwright/projects/demo/config.json"
+          echo 'CHECK: defaults'
           "$work/root/usr/bin/pw" defaults --project demo \
             --config-dir "$HOME/.config/projectwright" >"$work/defaults.json"
           python3 -B -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["configured"] is False' "$work/defaults.json"
+          echo 'CHECK: disabled status'
           "$work/root/usr/bin/pw" status --project demo \
             --config-dir "$HOME/.config/projectwright" >"$work/status.json"
           python3 -B -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["decision"] == "disabled"' "$work/status.json"
           # With no credentials in this disposable home, the *correct* setup
           # route must reach the non-root token preflight and fail before writes.
+          echo 'CHECK: setup-user credential refusal'
           if "$work/root/usr/bin/pw" setup-user --minutes 10 >"$work/setup.out" 2>"$work/setup.err"; then
             echo 'ERROR: setup-user unexpectedly enabled services' >&2
             exit 1
           fi
-          grep -Fq 'Configure Telegram bot token' "$work/setup.err"
+          if ! grep -Fq 'Configure Telegram bot token' "$work/setup.err"; then
+            echo 'ERROR: setup-user did not reach expected credential preflight' >&2
+            sed -n '1,12p' "$work/setup.err" >&2
+            exit 1
+          fi
+          echo 'CHECK: no account/service/host writes'
           test ! -e "$HOME/.hermes"
           test ! -e "$HOME/.config/systemd/user"
           test ! -e /usr/bin/pw
