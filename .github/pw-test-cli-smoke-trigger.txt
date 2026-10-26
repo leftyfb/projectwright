@@ -1,3 +1,4 @@
 Run reviewed non-root extracted Debian CLI smoke on pw-test, 2026-10-26.
 No sudo, dpkg install, systemd changes, Hermes gateway action, or Telegram delivery.
 Retry with explicit non-sensitive smoke phase markers after first harness failure.
+Rerun after hosted CI 40352449079 passed the missing-env and symlink preflight fix.
