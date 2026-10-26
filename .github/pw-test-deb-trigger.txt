@@ -7,3 +7,4 @@ Preserve existing Hermes .env and run registration test.
 Retry plugin registration after cleanup correction.
 Validate plugin via Hermes doctor runtime contracts.
 Validate callback factory with Hermes Python and fake Telegram app.
+Retry callback factory test using system Python and fake Telegram transport.
