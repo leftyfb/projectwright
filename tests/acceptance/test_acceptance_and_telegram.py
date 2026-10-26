@@ -465,6 +465,55 @@ class TelegramApprovalAndButtonTests(unittest.TestCase):
             self.assertTrue(replay.answers[0][0].startswith("Request stale"))
             self.assertEqual(replay.edits, [])
 
+    def test_disposable_rejection_via_registered_handler(self) -> None:
+        """Reject from Telegram callback persists review state, never an approval."""
+        record = self.scan_one()
+        callback = pw_buttons.callback_data("r", record)
+
+        class Handler:
+            def __init__(self, callback, pattern):
+                self.callback, self.pattern = callback, pattern
+
+        class App:
+            def add_handler(self, handler):
+                self.handler = handler
+
+        class Query:
+            data = callback
+            from_user = SimpleNamespace(id=123)
+            message = SimpleNamespace(chat=SimpleNamespace(type="private"))
+            def __init__(self):
+                self.answers = []
+                self.edits = []
+            async def answer(self, text, **kwargs):
+                self.answers.append((text, kwargs))
+            async def edit_message_text(self, text):
+                self.edits.append(text)
+
+        app = App()
+        fake_ext = SimpleNamespace(CallbackQueryHandler=Handler)
+        with patch.dict(sys.modules, {
+            "telegram": SimpleNamespace(ext=fake_ext),
+            "telegram.ext": fake_ext,
+            "project_telegram_approval": bridge,
+            "project_milestone_guard": guard,
+        }), patch.object(pw_notify, "config_values", return_value={
+            "TELEGRAM_ALLOWED_USERS": "123",
+        }), patch("project_queue_manager.default_project_root", return_value=self.root):
+            pw_plugin._factory(app, None)
+            query = Query()
+            asyncio.run(app.handler.callback(SimpleNamespace(callback_query=query), None))
+            self.assertEqual(query.answers, [("Recorded", {})])
+            self.assertEqual(len(query.edits), 1)
+            self.assertIn("REJECTED fixture / DEMO-1-M1", query.edits[0])
+            self.assertEqual(
+                json.loads((self.project / "telegram_approval_rejected.json").read_text()),
+                record,
+            )
+            self.assertTrue((self.project / "telegram_approval_pending.json").exists())
+            self.assertFalse((self.project / "planning_state.json").exists())
+            self.assertEqual(pw_notify.notify_pending(self.root, dry_run=True), [])
+
     def test_callback_requires_configured_private_user(self) -> None:
         class Handler:
             def __init__(self, callback, pattern):
