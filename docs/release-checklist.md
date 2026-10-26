@@ -5,6 +5,14 @@ considered done merely because a development wheel or Debian preview builds.
 A production release requires tests, docs, and an install/upgrade test against
 a disposable account before a stable tag or deployment.
 
+## Current verified state (2026-10-26)
+
+- **Real Telegram Approve callback PASSED:** [pw-test receipt verification 40258567183](https://github.com/leftyfb/projectwright/actions/runs/40258567183) independently confirmed the acceptance receipt and pending-record consumption for a disposable milestone. This closes the isolated live Approve-path acceptance gate, **not** all rejection, authorization, migration, or release gates.
+- **Disposable integration cleanup PASSED:** [pw-test cleanup 40258658872](https://github.com/leftyfb/projectwright/actions/runs/40258658872) removed the test-only plugin, service override, .deb and Git fixture; existing Hermes credentials were preserved.
+- **Dependency-path fix:** The Hermes bridge appends Debian's package directory to `sys.path`, preserving Hermes virtualenv precedence. Hosted regression tests verify the change.
+- **Environment availability:** The user plans to leave the `pw-test` LXD container stopped between test sessions. **Do not trigger any `pw-test` self-hosted Actions workflows while it is stopped.** Continue hosted-only CI and documentation; do not start the container or production services without specific authorization.
+- **Historical notes below are chronological, not current status.** Earlier statements that live Telegram delivery or approval was blocked, or that cleanup was outstanding, were superseded by the successful runs above. Check the dated evidence, not an obsolete earlier gate description.
+
 ## Current development handoff (2026-10-24)
 
 **Up-to-date canonical module reference:** [module-naming-current.md](module-naming-current.md). Historical inventories document the original baseline, not the current naming.
@@ -311,12 +319,12 @@ a disposable account before a stable tag or deployment.
 
 ## 5. Telegram approval experience
 
-- [ ] Deliver milestone requests with Telegram inline **Approve / Reject**
-  buttons. The button callback, not free-form chat parsing, is authoritative.
+- [x] Deliver milestone requests with Telegram inline **Approve / Reject**
+  buttons. The button callback, not free-form chat parsing, is authoritative. Verified with disposable live Approve callback in run 40258567183; real Reject path remains a separate gate.
 - [ ] Authorize users dynamically against the configured allow-list and private
   chats; stale, replayed, altered, revoked and rejected requests fail closed.
-- [ ] Run acceptance checks against current policy, queue and Git evidence
-  under the project lock before producing an approval receipt.
+- [x] Run acceptance checks against current policy, queue and Git evidence
+  under the project lock before producing an approval receipt. Verified by the live disposable callback receipt and offline stale-policy/Git regressions; broader threat-model audit remains open.
 - [ ] Provide review context (project, requirement/milestone, commit, scope,
   task summary and how to inspect the diff) in the Telegram UI.
 - [ ] Preserve pending requests for review on errors, record rejections durably,
