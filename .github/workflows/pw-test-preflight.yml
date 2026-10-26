@@ -113,3 +113,46 @@ jobs:
                   print("Authorized recipient count:", len(users))
               print("Delivery skipped: destination is not verified as test-only")
           PY
+
+      - name: Send one explicit live Telegram connectivity probe to configured recipient
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          python3 -B - <<'PY'
+          import json, sys
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          sys.path.insert(0, str(Path.cwd() / "src" / "projectwright"))
+          from pw_notify import config_values, parse_allowed_users
+          env = Path.home() / ".hermes" / ".env"
+          if not env.is_file() or env.is_symlink():
+              raise SystemExit("REFUSED: Hermes env missing or symlinked")
+          values = config_values(env)
+          users = parse_allowed_users(values.get("TELEGRAM_ALLOWED_USERS", ""))
+          token = values.get("TELEGRAM_BOT_TOKEN", "")
+          if len(users) != 1 or not token:
+              raise SystemExit("REFUSED: exactly one user and configured bot token required")
+          payload = {
+              "chat_id": users[0],
+              "text": "Projectwright pw-test connectivity check (disposable LXD test only). No approval requested.",
+              "disable_notification": True,
+          }
+          request = Request(
+              "https://api.telegram.org/bot" + token + "/sendMessage",
+              data=json.dumps(payload).encode(),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          try:
+              with urlopen(request, timeout=15) as response:
+                  result = json.load(response)
+              if result.get("ok") is not True or not result.get("result", {}).get("message_id"):
+                  raise ValueError("Telegram response was not successful")
+          except Exception as exc:
+              raise SystemExit("FAILED: Telegram connectivity (" + type(exc).__name__ + ")") from None
+          print("PASS: Telegram accepted one message to the single authorized test user")
+          PY
