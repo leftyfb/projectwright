@@ -1,7 +1,6 @@
 # Configuration home: initial XDG migration
 
-Projectwright currently has an **initial XDG project-root selector**, not yet
-complete configuration-free execution. New user configuration should live under
+Projectwright currently has an **initial XDG project-root selector**, partially migrated configuration-free execution. New user configuration should live under
 `$XDG_CONFIG_HOME/projectwright` (default `~/.config/projectwright`).
 Project-specific state and config are currently discovered in its
 `projects/<project-id>/` subdirectory.
@@ -32,13 +31,7 @@ The selector never moves or rewrites an existing project. For the first
 transition, retaining legacy data takes priority over silently changing live
 behavior. Use an explicit `--config-dir` to select a new location.
 
-**Missing configuration behavior:** `pw status` or `pw plan` for a
-project without `config.json` returns a `disabled` decision and does not
-create project data, run a provider, or send a message. The remaining config-free runtime defaults are not yet implemented. The worker
-now also returns a non-executing `disabled` JSON decision (exit code 3) when the
-project has no `config.json`, rather than reading an implicit Hermes config.
-Actual worker execution still requires a validated project configuration. A missing configuration is never
-interpreted as permission to start a task.
+**Missing configuration behavior:** an ordinary unprepared project without `config.json` is disabled, and no provider, Git repository, queue or credentials are created. An **explicitly prepared** config-free project with a Git worktree, HEAD commit, branch match, queue and work log can be manually inspected and executed, as described later on this page. With `requirements.md` an explicit planning path is supported. Unattended scheduling and human approval are never inferred.
 
 Current migration gaps: individual utilities (notifier, approval helpers,
 notes sync, timer setup) still have legacy `~/.hermes` assumptions. The release
@@ -56,9 +49,7 @@ provider, sends Telegram messages, enables systemd services, or approves tasks.
 The `configured` field reports only whether `config.json` exists; it is not
 an authorization decision or validation of its contents. The reported defaults
 describe behavior **when no project configuration exists**, not effective
-settings in an existing project. Actual config-free *execution* remains
-intentionally disabled until safe project initialization and policy validation
-are designed and tested.
+settings in an existing project. Config-free *execution* requires an explicitly prepared worktree and preflight; it is not an unattended authorization.
 
 ## Initialize a safe, disabled project
 
@@ -97,8 +88,7 @@ load_project now consume the shared hardcoded defaults and optional overrides.
 **Still pending:** remove the CLI-level absent-file execution guard only after
 selecting and validating a Git worktree and the execution authorization policy,
 and distinguish ordinary task execution from approval-sensitive operations.
-The installed worker currently retains its fail-closed absent-file guard, so
-this is not yet an end-to-end config-free execution claim.
+The worker permits the prepared-worktree manual path after Git and queue preflight; it continues to refuse unprepared projects.
 
 ## Manually running a prepared project without config.json
 
