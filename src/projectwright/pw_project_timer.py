@@ -40,7 +40,13 @@ def setup_user_approvals(*, minutes=10, enable_plugin=False, runner=subprocess.r
     if os.geteuid() == 0:
         raise ValueError('Run setup-user as the intended non-root user')
     from pw_notify import config_values, parse_allowed_users
-    values = config_values(Path.home() / '.hermes/.env')
+    credential_file = Path.home() / '.hermes/.env'
+    if credential_file.is_symlink():
+        raise ValueError('Refusing symlinked Hermes credential file')
+    try:
+        values = config_values(credential_file)
+    except FileNotFoundError:
+        raise ValueError('Configure Telegram bot token before enabling notifications') from None
     if not values.get('TELEGRAM_BOT_TOKEN'):
         raise ValueError('Configure Telegram bot token before enabling notifications')
     if not parse_allowed_users(values.get('TELEGRAM_ALLOWED_USERS', '')):
