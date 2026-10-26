@@ -201,6 +201,13 @@ a disposable account before a stable tag or deployment.
 - This was **read-only**: no gateway stop, start, restart or configuration change. The earlier plugin-doctor and callback-factory tests removed their plugin fixtures afterward, so these findings **do not establish that the running gateway loaded Projectwright**.
 - Next: plan a controlled installation and gateway restart/reload inside the disposable container, preserving existing user credentials and backing up test-only settings. Then verify Projectwright callback registration and approval behavior without sending messages to a production Telegram bot.
 
+## Verified live Hermes gateway callback loading (2026-10-25)
+
+- **PASS:** [pw-test Actions run 40248597007](https://github.com/leftyfb/projectwright/actions/runs/40248597007) installed the hosted-CI Debian package, enabled the `projectwright-approvals` native plugin, checked it with Hermes doctor, restarted the **already running isolated Hermes gateway**, and verified systemd reported it active. Hermes explicitly logged: `Gateway reloaded plugins — active in the running gateway now: callbacks.`
+- The test then disabled and removed its plugin and restarted the gateway to return to its earlier configuration; it purged Projectwright. Existing `~/.hermes/.env` and test Hermes credentials were not rewritten.
+- **Still open:** confirmation of a real Telegram callback press and authenticated milestone acceptance in a disposable Git repository. Gateway plugin-loading confirmation is not an end-to-end bot message or approval.
+- The dedicated LXD gateway can be restarted for future explicitly authorized tests; do not apply this workflow to the production Hermes host.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
