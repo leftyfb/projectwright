@@ -223,7 +223,7 @@ a disposable account before a stable tag or deployment.
 ## Telegram test follow-up (2026-10-25)
 
 - **CONFIRMED by recipient:** the isolated `pw-test` bot connectivity message from [run 40251106706](https://github.com/leftyfb/projectwright/actions/runs/40251106706) arrived in Telegram. This confirms outbound delivery, not a button callback.
-- **FIXED:** the one-time live `sendMessage` step was removed from `.github/workflows/pw-test-preflight.yml` in commit `96279b65`; ordinary branch preflight no longer sends a message. The workflow should remain read-only.
+- **FIXED:** the one-time live `sendMessage` step was removed from `.github/workflows/pw-test-preflight.yml` in commit `96279b65`; ordinary branch preflight no longer sends a message. Verified with successful [read-only LXD run 40252303862](https://github.com/leftyfb/projectwright/actions/runs/40252303862).
 - **Still gated:** before sending an actionable Approve button, the actual running Hermes gateway must point Projectwright to a **disposable project root** (for example via its service environment `HERMES_PROJECT_CONFIG_DIR`) and the handler must be installed for the duration of the callback. Never let an approval callback resolve production or other existing project directories. The previous gateway fixture removed the plugin and restored the gateway after testing.
 - User reported stopping the competing production bot gateway on `tux`. The test runner cannot independently verify remote production process state; confirm no competing bot consumer before the interactive callback run.
 
