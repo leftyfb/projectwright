@@ -227,6 +227,13 @@ a disposable account before a stable tag or deployment.
 - **Still gated:** before sending an actionable Approve button, the actual running Hermes gateway must point Projectwright to a **disposable project root** (for example via its service environment `HERMES_PROJECT_CONFIG_DIR`) and the handler must be installed for the duration of the callback. Never let an approval callback resolve production or other existing project directories. The previous gateway fixture removed the plugin and restored the gateway after testing.
 - User reported stopping the competing production bot gateway on `tux`. The test runner cannot independently verify remote production process state; confirm no competing bot consumer before the interactive callback run.
 
+## Real Telegram approval staged and delivered (2026-10-25)
+
+- **PASS:** [pw-test staging run 40253261094](https://github.com/leftyfb/projectwright/actions/runs/40253261094) installed Projectwright, prepared one disposable Git milestone at `/home/ubuntu/projectwright-live-test/projects/pwtelecheck`, configured a user-level Hermes gateway service drop-in with `PROJECTWRIGHT_APPROVAL_ROOT=/home/ubuntu/projectwright-live-test/projects`, enabled the approvals plugin, restarted the test gateway, and verified its **actual running process environment** contained the scoped root. It did not send Telegram.
+- **PASS (outbound request):** [pw-test send run 40253364020](https://github.com/leftyfb/projectwright/actions/runs/40253364020) verified the same live gateway isolation and used `pw-notify --root /home/ubuntu/projectwright-live-test/projects --send`. It reported `NOTIFIED pwtelecheck / DEMO-1-M1` and wrote the delivery marker. This was **an actionable test Approve/Reject message**, sent to the single configured Telegram recipient.
+- **PENDING:** recipient must press Approve or Reject in Telegram; then invoke the read-only `pw-test Verify Live Approval` workflow to check for the verified milestone receipt or rejection state. **Do not mark real inbound callbacks verified until this inspection passes.**
+- **CLEANUP REQUIRED AFTER TEST:** The staging workflow intentionally leaves Projectwright installed and the plugin enabled in the disposable `pw-test` gateway to receive the button. After the result is recorded, remove the test-only gateway drop-in, remove test plugin, restore gateway, purge package, and remove only the disposable fixture. Leave the shared Hermes credentials unchanged. **Never run the setup workflow a second time without reviewing its no-overwrite guards.**
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
