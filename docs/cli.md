@@ -13,6 +13,9 @@ harness independence.
 | `pw worker --project NAME --once` | `project_task_worker` | Run at most one worker task |
 | `pw notify` | `pw_notify` | Preview approval notifications; send only if explicitly requested |
 | `pw timer ACTION PROJECT` | `pw_project_timer` | Inspect, install, enable or disable user timers |
+| `pw init --project NAME [--no-config]` | `pw_init` | Create inert configured project or config-free queue/work-log skeleton |
+| `pw defaults --project NAME` | `pw_defaults` | Read-only selected root and effective defaults |
+| `pw setup-user` | `pw_project_timer` | **Known delegation issue:** currently omits required `setup-user` action; use `pw-timer setup-user` instead |
 
 Each command has its own `--help`, which `pw` forwards. `pw --help`
 displays the routing summary without performing any action. The legacy
@@ -28,3 +31,9 @@ The `pw` command merely delegates; it does not bypass the worker journal,
 Git cycle validation, quota gate, acceptance guard or existing authorization
 rules. A missing project configuration yields a disabled manager decision,
 not permission to begin work.
+
+## Additional operator commands
+
+`pw worker --project NAME --dry-run` previews selection; `--journal-status` inspects durable task state; `--quota-check` evaluates optional quota; `--authorize-retry TASK_ID` is an explicit reviewed recovery action. `pw tick --no-telegram` suppresses legacy worker progress messages, not milestone acceptance. `pw notify` is a preview unless `--send` is supplied, which sends an actual Telegram approval request.
+
+`pw-timer setup-user --minutes 10 --enable-hermes-plugin` is the verified non-root approval onboarding command; it can enable a user timer and plugin. It is separate from `pw timer check|install-disabled|enable|disable|status PROJECT`, which manages project dispatch timers. See [manual](manual.md) and [packaging operations](packaging-and-operations.md).
