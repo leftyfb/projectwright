@@ -41,11 +41,11 @@ jobs:
           python3 -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/wheels" .
           bash scripts/build-deb.sh "$RUNNER_TEMP"/wheels/*.whl "$RUNNER_TEMP/debs"
           test "$(dpkg-deb --field "$RUNNER_TEMP/debs/projectwright_0.1.0-1_all.deb" Package)" = projectwright
-          sha256sum "$RUNNER_TEMP"/debs/*.deb
+          (cd "$RUNNER_TEMP/debs" && sha256sum ./*.deb > SHA256SUMS && sha256sum -c SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
           name: projectwright-ubuntu-lts-matrix-deb
-          path: ${{ runner.temp }}/debs/*.deb
+          path: ${{ runner.temp }}/debs/*
           retention-days: 7
           if-no-files-found: error
 
@@ -89,6 +89,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
+          (cd "$RUNNER_TEMP/release-deb" && sha256sum -c SHA256SUMS)
           debs=("$RUNNER_TEMP"/release-deb/*.deb)
           test "${#debs[@]}" -eq 1
           test "$(dpkg-deb --field "${debs[0]}" Package)" = projectwright
