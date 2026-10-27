@@ -1,11 +1,19 @@
 name: Ubuntu 24.04 and 26.04 Debian compatibility
 
-# Beta target matrix only. Hosted disposable containers, never self-hosted.
+# Release 0.1.0 target matrix. Hosted disposable containers, never self-hosted.
 on:
   push:
-    branches: [test/review-followups]
-    paths: [.github/ubuntu-release-matrix-trigger.txt]
+    branches: [release/0.1.0]
+    paths:
+      - '.github/workflows/ubuntu-lts-compatibility.yml'
+      - 'pyproject.toml'
+      - 'scripts/build-deb.sh'
+      - 'docs/release-notes.md'
   workflow_dispatch:
+
+concurrency:
+  group: projectwright-lts-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -17,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: test/review-followups
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
@@ -32,7 +40,7 @@ jobs:
           }
           python3 -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/wheels" .
           bash scripts/build-deb.sh "$RUNNER_TEMP"/wheels/*.whl "$RUNNER_TEMP/debs"
-          test "$(dpkg-deb --field "$RUNNER_TEMP/debs/projectwright_0.1.0~dev0-1_all.deb" Package)" = projectwright
+          test "$(dpkg-deb --field "$RUNNER_TEMP/debs/projectwright_0.1.0-1_all.deb" Package)" = projectwright
           sha256sum "$RUNNER_TEMP"/debs/*.deb
       - uses: actions/upload-artifact@v4
         with:
@@ -84,7 +92,7 @@ jobs:
           debs=("$RUNNER_TEMP"/release-deb/*.deb)
           test "${#debs[@]}" -eq 1
           test "$(dpkg-deb --field "${debs[0]}" Package)" = projectwright
-          test "$(dpkg-deb --field "${debs[0]}" Version)" = '0.1.0~dev0-1'
+          test "$(dpkg-deb --field "${debs[0]}" Version)" = '0.1.0-1'
           test ! -e /usr/bin/pw
           work="$(mktemp -d /tmp/projectwright-ubuntu-matrix.XXXXXXXX)"
           cleanup() {
@@ -119,11 +127,11 @@ jobs:
           python3 -B -c 'import json,sys; assert json.load(open(sys.argv[1]))["configured"] is False' "$work/defaults.json"
           pw status --project demo --config-dir "$HOME/.config/projectwright" >"$work/status.json"
           python3 -B -c 'import json,sys; assert json.load(open(sys.argv[1]))["decision"] == "disabled"' "$work/status.json"
-          if pw setup-user --minutes 10 >"$work/setup.out" 2>"$work/setup.err"; then
+          if pw setup --no-telegram >"$work/setup.out" 2>"$work/setup.err"; then
             echo 'ERROR: root unexpectedly enabled per-user setup' >&2
             exit 1
           fi
-          grep -Fq 'Run setup-user as the intended non-root user' "$work/setup.err"
+          grep -Fq 'Run pw setup as the intended non-root user' "$work/setup.err"
           test ! -e "$HOME/.hermes"
           test ! -e "$HOME/.config/systemd/user"
           echo 'PASS: clean Debian install and CLI behavior on Ubuntu ${{ matrix.ubuntu }}'
