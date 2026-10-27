@@ -1,8 +1,7 @@
 name: Publish Projectwright release
 
-# Manual for future patch releases. A one-time, explicitly edited trigger file
-# bootstraps 0.1.0 because release tooling cannot dispatch a workflow through
-# the connected GitHub API. Never publish on an ordinary code push.
+# Release publication is explicitly dispatched by a maintainer after verifying
+# the release branch, exact source commit, and successful Ubuntu matrix artifact.
 on:
   workflow_dispatch:
     inputs:
@@ -18,16 +17,13 @@ on:
         description: 'Successful Ubuntu LTS matrix Actions run ID for source_sha'
         required: true
         type: string
-  push:
-    branches: [main]
-    paths: [.github/release-0.1.0-publish-trigger.txt]
 
 permissions:
   contents: write
   actions: read
 
 concurrency:
-  group: projectwright-publish-0.1.0
+  group: projectwright-publish-${{ inputs.version }}
   cancel-in-progress: false
 
 jobs:
@@ -37,9 +33,9 @@ jobs:
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_VERSION: ${{ inputs.version || '0.1.0' }}
-      SOURCE_SHA: ${{ inputs.source_sha || 'a07c39a844439c8b20ef7aa58ee57d7e0aa3e0e0' }}
-      ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id || '40437443529' }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
     steps:
       - name: Reject unexpected release request
         shell: bash
@@ -54,16 +50,11 @@ jobs:
           [[ "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]] || {
             echo 'REFUSED: CI run ID must be numeric' >&2; exit 2;
           }
-          if [[ "${{ github.event_name }}" == push ]]; then
-            test "$RELEASE_VERSION" = '0.1.0'
-            test "$SOURCE_SHA" = 'a07c39a844439c8b20ef7aa58ee57d7e0aa3e0e0'
-            test "$ARTIFACT_RUN_ID" = '40437443529'
-          fi
           command -v gh
           command -v dpkg-deb
 
       - name: Check out the exact tested release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
