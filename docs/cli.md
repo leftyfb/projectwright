@@ -15,6 +15,7 @@ harness independence.
 | `pw timer ACTION PROJECT` | `pw_project_timer` | Inspect, install, enable or disable user timers |
 | `pw init --project NAME [--no-config]` | `pw_init` | Create inert configured project or config-free queue/work-log skeleton |
 | `pw defaults --project NAME` | `pw_defaults` | Read-only selected root and effective defaults |
+| `pw setup` | `pw_project_timer setup` | First-run Hermes requirement check; optionally enable detected Telegram approval plugin/timer after confirmation (`--yes` is explicit unattended opt-in, `--no-telegram` skips). |
 | `pw setup-user` | `pw_project_timer setup-user` | Explicit non-root approval timer/plugin onboarding; also available as `pw-timer setup-user` |
 
 Each command has its own `--help`, which `pw` forwards. `pw --help`
@@ -36,4 +37,4 @@ not permission to begin work.
 
 `pw worker --project NAME --dry-run` previews selection; `--journal-status` inspects durable task state; `--quota-check` evaluates optional quota; `--authorize-retry TASK_ID` is an explicit reviewed recovery action. `pw tick --no-telegram` suppresses legacy worker progress messages, not milestone acceptance. `pw notify` is a preview unless `--send` is supplied, which sends an actual Telegram approval request.
 
-`pw-timer setup-user --minutes 10 --enable-hermes-plugin` is the verified non-root approval onboarding command; it can enable a user timer and plugin. It is separate from `pw timer check|install-disabled|enable|disable|status PROJECT`, which manages project dispatch timers. See [manual](manual.md) and [packaging operations](packaging-and-operations.md).
+Run `pw setup` as the intended non-root Hermes user after installation. It checks Hermes availability/configuration, detects Telegram bot token and authorized-user configuration, explains plugin/timer changes and requires confirmation before enabling them. `pw setup --no-telegram` skips optional Telegram onboarding; `pw setup --yes` is an explicit noninteractive authorization. `pw-timer setup-user --minutes 10 --enable-hermes-plugin` remains a compatibility/advanced direct command. It is separate from `pw timer check|install-disabled|enable|disable|status PROJECT`, which manages project dispatch timers. See [manual](manual.md) and [packaging operations](packaging-and-operations.md).
