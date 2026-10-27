@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build an uninstalled Debian preview from an already verified pure-Python wheel.
+# Build an uninstalled Debian package from an already verified pure-Python wheel.
 set -euo pipefail
 
 if [[ $# -ne 2 ]]; then
@@ -63,16 +63,16 @@ EOF
 chmod 0755 "$stage/usr/bin/pw"
 cat > "$stage/DEBIAN/control" <<'EOF'
 Package: projectwright
-Version: 0.1.0~dev0-1
+Version: 0.1.0-1
 Section: utils
 Priority: optional
 Architecture: all
 Maintainer: Projectwright Contributors <noreply@github.com>
 Depends: python3 (>= 3.10), git
-Description: Development preview of project task orchestration
- A pre-release packaging checkpoint for Projectwright. External agent
- services and project configuration are not provisioned by this package.
+Description: Hermes-based project task orchestration
+ Projectwright orchestrates bounded project tasks with Git and approval gates.
+ Hermes and per-user configuration are required and provisioned separately.
 EOF
 chmod 0644 "$stage/DEBIAN/control"
-dpkg-deb --build --root-owner-group "$stage" "$output/projectwright_0.1.0~dev0-1_all.deb"
-dpkg-deb --field "$output/projectwright_0.1.0~dev0-1_all.deb"
+dpkg-deb --build --root-owner-group "$stage" "$output/projectwright_0.1.0-1_all.deb"
+dpkg-deb --field "$output/projectwright_0.1.0-1_all.deb"
