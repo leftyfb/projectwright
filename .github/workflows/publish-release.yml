@@ -36,10 +36,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      GH_TOKEN: \${{ github.token }}
-      RELEASE_VERSION: \${{ inputs.version || '0.1.0' }}
-      SOURCE_SHA: \${{ inputs.source_sha || 'a07c39a844439c8b20ef7aa58ee57d7e0aa3e0e0' }}
-      ARTIFACT_RUN_ID: \${{ inputs.artifact_run_id || '40437443529' }}
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ inputs.version || '0.1.0' }}
+      SOURCE_SHA: ${{ inputs.source_sha || 'a07c39a844439c8b20ef7aa58ee57d7e0aa3e0e0' }}
+      ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id || '40437443529' }}
     steps:
       - name: Reject unexpected release request
         shell: bash
@@ -54,7 +54,7 @@ jobs:
           [[ "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]] || {
             echo 'REFUSED: CI run ID must be numeric' >&2; exit 2;
           }
-          if [[ "\${{ github.event_name }}" == push ]]; then
+          if [[ "${{ github.event_name }}" == push ]]; then
             test "$RELEASE_VERSION" = '0.1.0'
             test "$SOURCE_SHA" = 'a07c39a844439c8b20ef7aa58ee57d7e0aa3e0e0'
             test "$ARTIFACT_RUN_ID" = '40437443529'
@@ -65,7 +65,7 @@ jobs:
       - name: Check out the exact tested release source
         uses: actions/checkout@v4
         with:
-          ref: \${{ env.SOURCE_SHA }}
+          ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
           persist-credentials: true
 
@@ -112,14 +112,14 @@ jobs:
             --name projectwright-ubuntu-lts-matrix-deb --dir "$RUNNER_TEMP/release-assets"
           cd "$RUNNER_TEMP/release-assets"
           test "$(find . -maxdepth 1 -type f | wc -l)" -eq 2
-          test ! -L "projectwright_\${RELEASE_VERSION}-1_all.deb"
+          test ! -L "projectwright_${RELEASE_VERSION}-1_all.deb"
           test ! -L SHA256SUMS
-          test -f "projectwright_\${RELEASE_VERSION}-1_all.deb"
+          test -f "projectwright_${RELEASE_VERSION}-1_all.deb"
           test -f SHA256SUMS
           sha256sum -c SHA256SUMS
-          test "$(dpkg-deb --field "projectwright_\${RELEASE_VERSION}-1_all.deb" Package)" = projectwright
-          test "$(dpkg-deb --field "projectwright_\${RELEASE_VERSION}-1_all.deb" Version)" = "$RELEASE_VERSION-1"
-          test "$(dpkg-deb --field "projectwright_\${RELEASE_VERSION}-1_all.deb" Architecture)" = all
+          test "$(dpkg-deb --field "projectwright_${RELEASE_VERSION}-1_all.deb" Package)" = projectwright
+          test "$(dpkg-deb --field "projectwright_${RELEASE_VERSION}-1_all.deb" Version)" = "$RELEASE_VERSION-1"
+          test "$(dpkg-deb --field "projectwright_${RELEASE_VERSION}-1_all.deb" Architecture)" = all
           echo "PASS: artifact SHA256 and exact Debian metadata verified"
 
       - name: Create immutable version marker and publish release
@@ -156,13 +156,13 @@ jobs:
             echo 'Install after downloading both attached files:'
             echo
             echo '    sha256sum -c SHA256SUMS'
-            echo "    sudo apt install ./projectwright_\${RELEASE_VERSION}-1_all.deb"
+            echo "    sudo apt install ./projectwright_${RELEASE_VERSION}-1_all.deb"
             echo '    pw setup'
             echo
             echo 'See docs/release-notes.md and docs/packaging-and-operations.md in the tagged source for prerequisites, upgrade, removal and known limitations.'
           } > "$RUNNER_TEMP/release-body.md"
           gh release create "$RELEASE_VERSION" \
-            "$RUNNER_TEMP/release-assets/projectwright_\${RELEASE_VERSION}-1_all.deb" \
+            "$RUNNER_TEMP/release-assets/projectwright_${RELEASE_VERSION}-1_all.deb" \
             "$RUNNER_TEMP/release-assets/SHA256SUMS" \
             --verify-tag --title "Projectwright $RELEASE_VERSION" \
             --notes-file "$RUNNER_TEMP/release-body.md" \
