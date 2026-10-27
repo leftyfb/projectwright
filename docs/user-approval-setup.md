@@ -15,8 +15,10 @@ pw setup
 ```
 
 Run it as the intended ordinary user, **not with sudo**. Hermes is required:
-the command checks that the `hermes` executable and the user's
-`~/.hermes/` configuration directory exist. When it detects both
+the command finds a `hermes` executable on PATH or in common user-local locations,
+checks the user's `~/.hermes/` directory, and runs a 20-second read-only
+`hermes plugins list --plain --no-bundled` probe. A failing or timed-out probe
+refuses setup without printing Hermes output. When it detects both
 `TELEGRAM_BOT_TOKEN` and a valid numeric `TELEGRAM_ALLOWED_USERS` list
 in `~/.hermes/.env`, it explains the Hermes plugin and user timer changes,
 then prompts **Enable Projectwright Hermes/Telegram approvals now? [y/N]**.
