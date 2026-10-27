@@ -33,7 +33,7 @@ class TestWorkflowSideEffects(unittest.TestCase):
         for name in workflows:
             with self.subTest(workflow=name):
                 text = (REPO / ".github/workflows" / name).read_text()
-                jobs = text.split("\\njobs:\\n", 1)[1]
+                jobs = text.split("\njobs:\n", 1)[1]
                 self.assertEqual(jobs.count("    runs-on:"), jobs.count("    " + guard))
 
     def test_live_delivery_requires_isolation_before_send(self):
