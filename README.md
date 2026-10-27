@@ -48,7 +48,9 @@ python3 -B -m unittest discover -s tests -p 'test_*.py' -v
 python3 -B scripts/validate-baseline.py --mode development
 ```
 
-After installing the Debian package, run **`pw setup` as your ordinary Hermes user** to verify Hermes and optionally activate detected Telegram approval integration. The command explains changes and asks before enabling the plugin or approval notifier timer; use `pw setup --no-telegram` to defer Telegram. A gateway restart remains a separate manual step.\n\nRead-only CLI exploration in an environment where Projectwright is installed:
+After installing the Debian package, run **`pw setup` as your ordinary Hermes user** to verify Hermes and optionally activate detected Telegram approval integration. The command explains changes and asks before enabling the plugin or approval notifier timer; use `pw setup --no-telegram` to defer Telegram. A gateway restart remains a separate manual step.
+
+Read-only CLI exploration in an environment where Projectwright is installed:
 
 ```sh
 pw --help
