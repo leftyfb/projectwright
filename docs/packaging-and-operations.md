@@ -1,10 +1,10 @@
 # Debian packaging, installation and operations
 
-The current published version is **0.1.0**, distributed as `projectwright_0.1.0-1_all.deb` via [GitHub Releases](https://github.com/leftyfb/projectwright/releases/tag/0.1.0). The original development snapshots and `~dev0` test artifacts described below are historical test evidence, not the published installer. A signed APT feed is still pending; `apt update` will not find Projectwright until that repository is deployed. Review [release-checklist.md](release-checklist.md) for detailed testing evidence.
+The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides the downloadable Debian package and checksums. Older development snapshots and test artifacts are documented as historical evidence in [release-checklist.md](release-checklist.md). A signed APT feed is still pending; `apt update` will not find Projectwright until that repository is deployed.
 
 ## How the artifact is built
 
-`pyproject.toml` declares a setuptools wheel of flat modules. `scripts/build-deb.sh` installs the built wheel into a Debian staging tree, writes executable wrappers and a `DEBIAN/control` file, adds integration assets, then produces a versioned `.deb` (published 0.1.0: `projectwright_0.1.0-1_all.deb`). The package is `Architecture: all` and declares `python3 (>= 3.10)` and `git`; the project metadata currently lists **no** Python runtime dependencies. Optional Hermes, Telegram and systemd integrations are deliberately configured outside the core package; their external environments and full production combinations are not covered by the Debian dependency declaration.
+`pyproject.toml` declares a setuptools wheel of flat modules. `scripts/build-deb.sh` installs the built wheel into a Debian staging tree, writes executable wrappers and a `DEBIAN/control` file, adds integration assets, then produces a versioned `.deb`. The package is `Architecture: all` and declares `python3 (>= 3.10)` and `git`; the project metadata currently lists **no** Python runtime dependencies. Optional Hermes, Telegram and systemd integrations are deliberately configured outside the core package; their external environments and full production combinations are not covered by the Debian dependency declaration.
 
 | Installed location | Responsibility |
 |---|---|
@@ -26,7 +26,7 @@ A source import audit of all 21 canonical `pw_*.py` modules found that the **cor
 | Python 3.10+ | **Required:** declared as `python3 (>= 3.10)`; clean Debian install, CLI smoke and purge passed on Ubuntu 24.04/Python 3.12 and 26.04/Python 3.14 |
 | Git CLI | **Required** for normal worktree operations; declared as `git` |
 | Python third-party packages for core CLI | **None found in canonical runtime imports**; `dependencies = []` remains correct for the core wheel |
-| Hermes executable and user configuration | **Required for supported 0.1.0 use:** separately installed, not declared as a Debian APT dependency; `pw setup` checks Hermes plugin discovery before onboarding |
+| Hermes executable and user configuration | **Required for supported use:** separately installed, not declared as a Debian APT dependency; `pw setup` checks Hermes plugin discovery before onboarding |
 | `python-telegram-bot` (`telegram.ext`) | **Optional Hermes gateway plugin dependency:** must be supplied compatibly in the gateway environment, not blindly installed into system Python |
 | systemd user manager | **Optional scheduling/onboarding integration:** not required for manual CLI execution |
 | Home Assistant | **Optional external HTTP service:** quota code uses `urllib`; no HA client package is required |
@@ -36,11 +36,11 @@ The audit is a **source/import contract**. The hosted [Ubuntu LTS matrix 4042824
 
 ## Install the published package
 
-Download both `projectwright_0.1.0-1_all.deb` and `SHA256SUMS` from the [0.1.0 release](https://github.com/leftyfb/projectwright/releases/tag/0.1.0) to the same directory:
+Download the `projectwright_*_all.deb` artifact and `SHA256SUMS` from the [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) into a clean directory containing only that release's files:
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./projectwright_0.1.0-1_all.deb
+sudo apt install ./projectwright_*_all.deb
 pw setup
 ```
 
@@ -54,24 +54,24 @@ From a disposable checkout with wheel/build tools already available:
 python3 -B -m unittest discover -s tests -p 'test_*.py' -v
 python3 -B scripts/validate-baseline.py --mode development
 python3 -m pip wheel --no-deps --wheel-dir dist .
-bash scripts/build-deb.sh dist/projectwright-0.1.0.dev0-py3-none-any.whl dist
+bash scripts/build-deb.sh dist/projectwright-*.whl dist
 ```
 
-The `0.1.0.dev0` wheel example above is historical; on the release branch use the actual `0.1.0` wheel filename. The wheel filename above follows the development setuptools version; inspect the actual `dist/` wheel name before running the script. The build script requires exactly a wheel path and output directory; inspect it and `dpkg-deb --info`, `dpkg-deb --contents` and the resulting SHA-256 before any privileged operation. Prefer the exact GitHub-hosted, tested artifact over rebuilding with an unknown environment. Never assume a `~dev0` package has a stable migration promise.
+Build in a clean `dist/` directory so the wheel glob selects exactly one artifact. The build script requires one wheel path and one output directory. Inspect its output with `dpkg-deb --info`, `dpkg-deb --contents` and SHA-256 before any privileged operation. Prefer the GitHub-hosted tested artifact over rebuilding in an unknown environment. Development packages do not imply stable migration support.
 
 A safe metadata-only inspection is:
 
 ```sh
-dpkg-deb --info /absolute/path/projectwright_0.1.0~dev0-1_all.deb
-dpkg-deb --contents /absolute/path/projectwright_0.1.0~dev0-1_all.deb
-sha256sum /absolute/path/projectwright_0.1.0~dev0-1_all.deb
+dpkg-deb --info /absolute/path/projectwright_<version>_<architecture>.deb
+dpkg-deb --contents /absolute/path/projectwright_<version>_<architecture>.deb
+sha256sum /absolute/path/projectwright_<version>_<architecture>.deb
 ```
 
 ## Explicit isolated install lifecycle
 
 A package was installed, reinstalled and purged successfully in the dedicated `disposable-test-container` LXD container (Actions run [40244321910](https://github.com/leftyfb/projectwright/actions/runs/40244321910)). An earlier synthetic lower Debian revision was upgraded and purged ([40244873728](https://github.com/leftyfb/projectwright/actions/runs/40244873728)); more importantly, a [genuine distinct-source upgrade 40427522957](https://github.com/leftyfb/projectwright/actions/runs/40427522957) then preserved the content hashes and permission modes of 35 disposable user-owned files through upgrade and purge. This does not guarantee future schema migration or downgrade behavior. Per-user timer onboarding, Hermes native plugin registration, gateway plugin loading, a real outbound Telegram request and a real inbound Approve callback were subsequently verified in that disposable environment. The cleanup run [40258658872](https://github.com/leftyfb/projectwright/actions/runs/40258658872) removed the test assets and preserved Hermes credentials.
 
-The retired disposable LXD lifecycle harness enforced a strict host identity and cleanup contract. **Do not run it on the `isolated-test-host` host or an existing Hermes installation.** Its cleanup is designed for a temporary empty fixture; it is not a general-purpose production uninstaller.
+The retired disposable LXD lifecycle harness enforced a strict host identity and cleanup contract. **Do not run it on an existing Hermes installation.** Its cleanup is designed for a temporary empty fixture; it is not a general-purpose production uninstaller.
 
 The former self-hosted test workflows and runners have been retired. Do not start that container, elevate actions, install packages, send real Telegram messages or restart a gateway without explicit authorization.
 
