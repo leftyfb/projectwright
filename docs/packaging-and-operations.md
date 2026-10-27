@@ -15,6 +15,23 @@ This page documents the **current preview**, not a production installation endor
 
 The Debian package does **not** install per-user secrets, create a configured project, enable timers, enable the Hermes plugin, restart the gateway, or publish an APT repository. The Hermes bridge must preserve the Hermes venv's import precedence and append the Debian module path only as a fallback; a regression test covers the previously observed `cryptography` conflict.
 
+## Dependency audit (2026-10-26)
+
+A source import audit of all 21 canonical `pw_*.py` modules found that the **core CLI, manager, planner, worker, Git/approval guards, notifier HTTP sender, quota client and notes tools use the Python standard library and local Projectwright modules**. The optional `pw_plugin.py` imports `telegram.ext.CallbackQueryHandler` when registering a callback into the Hermes gateway. The native Hermes adapter bridges to Debian's module directory after preserving the Hermes virtualenv's import precedence.
+
+| Requirement | Debian packaging decision |
+|---|---|
+| Python 3.10+ | **Required:** declared as `python3 (>= 3.10)`; supported Ubuntu versions still need a distribution-level clean-install matrix |
+| Git CLI | **Required** for normal worktree operations; declared as `git` |
+| Python third-party packages for core CLI | **None found in canonical runtime imports**; `dependencies = []` remains correct for the core wheel |
+| Hermes executable/model service | **Optional integration:** not a Debian dependency; required when `provider.type=hermes` is selected |
+| `python-telegram-bot` (`telegram.ext`) | **Optional Hermes gateway plugin dependency:** must be supplied compatibly in the gateway environment, not blindly installed into system Python |
+| systemd user manager | **Optional scheduling/onboarding integration:** not required for manual CLI execution |
+| Home Assistant | **Optional external HTTP service:** quota code uses `urllib`; no HA client package is required |
+| Alternative command provider | **Optional local executable:** configured via absolute argv, not a Python package dependency |
+
+The audit is a **source/import contract**, not yet a verified clean install on every supported Ubuntu release. The earlier guarded LXD install/purge run proves the package works on that one Ubuntu container only. The release should declare the support matrix and verify optional Hermes/Telegram compatibility on the chosen target versions before a stable tag.
+
 ## Build and inspect without installing
 
 From a disposable checkout with wheel/build tools already available:
