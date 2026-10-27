@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   build-pair:
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -75,6 +76,7 @@ jobs:
 
   guarded-upgrade:
     needs: build-pair
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
     runs-on: [self-hosted, linux, projectwright-lxd-install]
     timeout-minutes: 15
     steps:
