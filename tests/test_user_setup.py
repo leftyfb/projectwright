@@ -10,6 +10,68 @@ import pw_project_timer as timer
 
 
 class ApprovalSetupTests(unittest.TestCase):
+    def test_first_run_requires_hermes_without_side_effects(self):
+        with tempfile.TemporaryDirectory(prefix="pw-setup-hermes-") as temp:
+            with patch.object(Path, "home", return_value=Path(temp)), \
+                 patch.object(timer.os, "geteuid", return_value=1000), \
+                 patch.object(timer.shutil, "which", return_value=None):
+                with self.assertRaisesRegex(ValueError, "Hermes is required"):
+                    timer.setup_interactive(yes=True, runner=lambda *a, **k: self.fail("called"))
+
+    def test_first_run_missing_telegram_stays_inert(self):
+        with tempfile.TemporaryDirectory(prefix="pw-setup-optional-") as temp:
+            home = Path(temp)
+            (home / ".hermes").mkdir()
+            with patch.object(Path, "home", return_value=home), \
+                 patch.object(timer.os, "geteuid", return_value=1000), \
+                 patch.object(timer.shutil, "which", return_value="/usr/bin/hermes"), \
+                 patch("pw_notify.config_values", return_value={}):
+                timer.setup_interactive(yes=True, runner=lambda *a, **k: self.fail("called"))
+            self.assertFalse((home / ".config/systemd").exists())
+
+    def test_first_run_decline_does_not_change_integration(self):
+        with tempfile.TemporaryDirectory(prefix="pw-setup-decline-") as temp:
+            home = Path(temp)
+            (home / ".hermes").mkdir()
+            values = {"TELEGRAM_BOT_TOKEN": "fixture", "TELEGRAM_ALLOWED_USERS": "111"}
+            with patch.object(Path, "home", return_value=home), \
+                 patch.object(timer.os, "geteuid", return_value=1000), \
+                 patch.object(timer.shutil, "which", return_value="/usr/bin/hermes"), \
+                 patch.object(timer.sys.stdin, "isatty", return_value=True), \
+                 patch("pw_notify.config_values", return_value=values):
+                timer.setup_interactive(prompt=lambda _: "no", runner=lambda *a, **k: self.fail("called"))
+            self.assertFalse((home / ".config/systemd").exists())
+
+    def test_first_run_confirmation_enables_detected_integration(self):
+        with tempfile.TemporaryDirectory(prefix="pw-setup-confirm-") as temp:
+            home = Path(temp)
+            (home / ".hermes").mkdir()
+            calls = []
+            values = {"TELEGRAM_BOT_TOKEN": "fixture", "TELEGRAM_ALLOWED_USERS": "111"}
+            with patch.object(Path, "home", return_value=home), \
+                 patch.object(timer.os, "geteuid", return_value=1000), \
+                 patch.object(timer.shutil, "which", return_value="/usr/bin/hermes"), \
+                 patch.object(timer.sys.stdin, "isatty", return_value=True), \
+                 patch("pw_notify.config_values", return_value=values):
+                timer.setup_interactive(prompt=lambda _: "yes",
+                                        runner=lambda argv, *, check: calls.append(argv))
+            self.assertEqual(calls[0], ["hermes", "plugins", "enable", "projectwright-approvals"])
+            self.assertTrue((home / ".config/systemd/user/projectwright-approval-notify.timer").is_file())
+
+    def test_first_run_noninteractive_requires_explicit_yes(self):
+        with tempfile.TemporaryDirectory(prefix="pw-setup-tty-") as temp:
+            home = Path(temp)
+            (home / ".hermes").mkdir()
+            values = {"TELEGRAM_BOT_TOKEN": "fixture", "TELEGRAM_ALLOWED_USERS": "111"}
+            with patch.object(Path, "home", return_value=home), \
+                 patch.object(timer.os, "geteuid", return_value=1000), \
+                 patch.object(timer.shutil, "which", return_value="/usr/bin/hermes"), \
+                 patch.object(timer.sys.stdin, "isatty", return_value=False), \
+                 patch("pw_notify.config_values", return_value=values):
+                with self.assertRaisesRegex(ValueError, "Interactive confirmation required"):
+                    timer.setup_interactive(runner=lambda *a, **k: self.fail("called"))
+            self.assertFalse((home / ".config/systemd").exists())
+
     def test_unit_generation_and_idempotent_user_setup(self):
         with tempfile.TemporaryDirectory(prefix="pw-setup-user-") as temp:
             home = Path(temp)
