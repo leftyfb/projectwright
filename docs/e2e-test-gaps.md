@@ -25,13 +25,13 @@ Standalone worker calls retain their historical post-worker manager behavior.
 This is covered indirectly by the real subprocess completion test.
 
 CI uses seven-day GitHub Actions log artifacts rather than Git commits.
-The tux self-hosted source-checkout workflow is operational on the registered
-unprivileged `tux-projectwright` runner. This still does not validate the
+The isolated-test-host self-hosted source-checkout workflow is operational on the registered
+unprivileged `isolated-test-host-projectwright` runner. This still does not validate the
 installed Hermes environment or production services.
 
 ## Host runner validation (2026-10-23)
 
-The registered `tux-projectwright` self-hosted runner successfully completed
+The registered `isolated-test-host-projectwright` self-hosted runner successfully completed
 [run 40042397907](https://github.com/leftyfb/projectwright/actions/runs/40042397907)
 with **107/107 offline tests passing**, the development validator passing, and
 seven-day ephemeral logs uploaded. Additional subprocess tests now cover a
@@ -39,7 +39,7 @@ wrong-task completion report, an explicit blocked result, and unauthorized Git
 worktree mutation by a READ task. All are deliberately refused without advancing
 the task checkbox.
 
-This is source-based subprocess integration **running on tux**, not an invocation
+This is source-based subprocess integration **running on isolated-test-host**, not an invocation
 of the installed Hermes model, Telegram or production project state. The
 one-file smoke trigger was removed after verification; the self-hosted workflow
 is manual-only again.
@@ -55,15 +55,15 @@ unapproved path after Git has committed, refuses to advance the COMMIT queue
 item, and leaves the cycle journal for manual recovery. The test does not
 claim to automatically revert such an unauthorized commit.
 
-## tux verification of Git-cycle suite
+## isolated-test-host verification of Git-cycle suite
 
 The full 113-test isolated suite also passed on the registered
-`tux-projectwright` self-hosted runner in
+`isolated-test-host-projectwright` self-hosted runner in
 [run 40043167593](https://github.com/leftyfb/projectwright/actions/runs/40043167593)
 with the development validator and ephemeral log upload successful.
 This was a source-checkout test within the unprivileged runner context; no
 installed Hermes binary or production project was executed. The one-file push
-trigger was removed and `tux-isolated.yml` returned to manual-only dispatch
+trigger was removed and `isolated-test-host-isolated.yml` returned to manual-only dispatch
 immediately afterward.
 
 ## Git-cycle integration checkpoint (2026-10-23)
@@ -128,7 +128,7 @@ authorization, provider events and concurrency still require separate tests.
 ## Real acceptance and callback verification (2026-10-23)
 
 GitHub-hosted offline [run 40045055013](https://github.com/leftyfb/projectwright/actions/runs/40045055013)
-and isolated tux [run 40045160995](https://github.com/leftyfb/projectwright/actions/runs/40045160995)
+and isolated isolated-test-host [run 40045160995](https://github.com/leftyfb/projectwright/actions/runs/40045160995)
 both passed **139/139 tests** with zero failures/skips, passing validator and
 artifact upload. This phase adds actual Git-backed approval guard tests, including
 execution of a harmless acceptance command, receipt persistence, callback-to-guard
@@ -149,9 +149,9 @@ directory, checked all five console-script `--help` entrypoints, and uploaded
 the wheel as a seven-day Actions artifact. The wheel includes all 18
 historical Python modules (validated by an explicit manifest contract).
 
-The isolated `tux-projectwright` source checkout in
+The isolated `isolated-test-host-projectwright` source checkout in
 [run 40046438890](https://github.com/leftyfb/projectwright/actions/runs/40046438890)
-also passed **143/143** tests, validator, and log upload. The one-time tux
+also passed **143/143** tests, validator, and log upload. The one-time isolated-test-host
 push trigger was removed; self-hosted verification is manual-only again.
 The source now resolves dispatcher/worker siblings and generated timer
 dispatcher paths relative to their installed modules, while supporting
@@ -166,7 +166,7 @@ passed its 143-test offline suite, development validator, pure Python wheel
 build/import checks, Debian package creation via `scripts/build-deb.sh`,
 inspection and extraction, and upload of seven-day artifacts for both
 `projectwright_0.1.0~dev0-1_all.deb` and the wheel. Neither artifact was
-installed on `tux` or published to an APT repository. A follow-up CI change
+installed on `isolated-test-host` or published to an APT repository. A follow-up CI change
 smoke-tests each of the five extracted Debian executable wrappers.
 
 ## XDG configuration and alternate provider checkpoint

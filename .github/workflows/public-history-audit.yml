@@ -1,0 +1,32 @@
+name: Public disclosure audit (manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  history:
+    if: github.repository == 'leftyfb/projectwright'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Fetch all reachable branches and tags
+        run: |
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
+      - name: Scan Git objects and retained Actions logs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 -B scripts/audit-public-disclosure.py
+      - name: Upload private summary without credential values
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-disclosure-audit
+          path: public-disclosure-audit.json
+          retention-days: 7
+          if-no-files-found: warn

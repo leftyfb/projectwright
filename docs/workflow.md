@@ -94,6 +94,6 @@ from its root-run installation script. The separate non-root onboarding, real De
 The **current** canonical `pw_*.py` implementations, compatibility shims, packaging, CI and tests are mapped in [file-reference.md](file-reference.md). The older [component inventory](component-inventory.md) is a historical 18-file baseline.
 The [test coverage matrix](test-coverage-matrix.md) identifies maintained
 tests by subsystem; [end-to-end gaps](e2e-test-gaps.md) distinguishes source
-tests on `tux` from live model, Telegram and systemd operations. CI builds
+tests on `isolated-test-host` from live model, Telegram and systemd operations. CI builds
 both a development wheel and a Debian preview without installing either into
 the existing Hermes environment.

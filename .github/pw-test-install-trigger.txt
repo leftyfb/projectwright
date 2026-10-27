@@ -1,3 +1,0 @@
-User-authorized 2026-10-26: exact pw-test LXD sudo dpkg install, installed CLI checks and purge only.
-Pinned artifact hosted-CI run 40352449079 at 60112fcc867077794396f735c1a41d8793ade0c8.
-No gateway, plugin, Telegram or user timer changes.

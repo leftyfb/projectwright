@@ -1,4 +1,4 @@
-> **Historical preview-build notes.** The package has since been installed, upgraded synthetically, purged and exercised with Hermes/Telegram in an isolated `pw-test` LXD container. Those passes do not make it a stable release. Read [packaging-and-operations.md](packaging-and-operations.md) and the dated [release-checklist.md](release-checklist.md) for current status.
+> **Historical preview-build notes.** The package has since been installed, upgraded synthetically, purged and exercised with Hermes/Telegram in an isolated `disposable-test-container` LXD container. Those passes do not make it a stable release. Read [packaging-and-operations.md](packaging-and-operations.md) and the dated [release-checklist.md](release-checklist.md) for current status.
 
 # Development wheel preview
 

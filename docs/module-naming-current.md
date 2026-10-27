@@ -1,6 +1,6 @@
 # Current module naming and compatibility map
 
-This document describes the **development branch** `test/review-followups` on
+This document records the canonical module naming state as of
 2026-10-24. Historical audit files such as `component-inventory.md` and
 `architecture-current.md` describe the original snapshot, not the current
 canonical module names.

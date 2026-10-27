@@ -1,6 +1,6 @@
 # Independent review follow-up tests
 
-Branch: `test/review-followups`, based on `fix/contract-hardening`.
+Historical independent-review follow-up notes; not tied to the current working branch.
 
 The new `tests/integration/test_review_followups.py` contains three **expected-failure specifications**. They must not be counted as fixes or as successful live integration validation:
 
@@ -8,14 +8,12 @@ The new `tests/integration/test_review_followups.py` contains three **expected-f
 2. **Callback allowed-user configuration refresh.** The Hermes callback plugin captures the allowed IDs when the handler is registered; changing the configuration without recreating the handler leaves the old policy in force until plugin/gateway reload. Determine whether runtime refresh is required or whether restart-on-change is an explicit supported operational contract.
 3. **Dispatcher dynamic import isolation.** The active Git-cycle gate can obtain `project_queue_manager` from `sys.modules`, rather than guaranteeing the helper came from the selected scripts directory. A preloaded unrelated module can change the decision. Prefer source-scoped import resolution while retaining fail-closed Git-cycle validation.
 
-## Validation on tux
+## Validation on isolated-test-host
 
-No tests were executed by the GitHub file-editing operation. After fetching this branch, run:
+No tests were executed by the GitHub file-editing operation. From the checkout you intend to validate, run:
 
 ```sh
 cd ~/repos/projectwright
-git fetch origin
-git switch test/review-followups
 python3 -B -m unittest tests.integration.test_review_followups -v
 python3 -B -m unittest discover -s tests -p 'test_*.py' -v
 python3 -B scripts/validate-baseline.py --mode development

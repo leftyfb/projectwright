@@ -1,4 +1,0 @@
-User-authorized 2026-10-26 cross-source Debian package upgrade inside pw-test only.
-Older source 7af7ff9a319c058a9750453961bb13b767bdf145 -> current branch source.
-Disposable home/project/journal/credentials fixture; verify exact file hashes before and after upgrade and purge.
-No Hermes gateway/plugin, Telegram, or systemd activation.

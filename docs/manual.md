@@ -1,10 +1,10 @@
 # Projectwright user and operator manual
 
-> **Development branch:** `test/review-followups`. This describes the current implementation, not a supported production release. The Debian artifact is `0.1.0~dev0-1`; no stable upgrade or unattended deployment contract is promised. Commands that execute tasks can modify a configured Git worktree. First practice with a disposable project and account.
+> **Safety boundary:** This manual describes the current source and published installation workflow, not a production-readiness guarantee. Commands that execute tasks can modify a configured Git worktree. Practice with a disposable project and account first. Obtain the Debian package from the [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest).
 
 ## 1. What Projectwright does
 
-Projectwright turns a project's requirements and Markdown task queue into bounded agent work, with policy checks before planning, before running a task, during Git changes, and at milestone acceptance. It is an orchestrator, **not** the model or coding agent itself. The supported 0.1.0 installation requires a locally configured Hermes CLI. An experimental command adapter exists but is not a supported replacement for Hermes in this release. Git is the authoritative evidence for worktree state and scoped commits. Optional Home Assistant telemetry can block work when a configured quota threshold is reached. Telegram and a Hermes gateway plugin provide optional human **milestone** approval; ordinary worker-progress messaging is a separate integration.
+Projectwright turns a project's requirements and Markdown task queue into bounded agent work, with policy checks before planning, before running a task, during Git changes, and at milestone acceptance. It is an orchestrator, **not** the model or coding agent itself. The supported installation requires a locally configured Hermes CLI. An experimental command adapter exists but is not a supported replacement for Hermes in this release. Git is the authoritative evidence for worktree state and scoped commits. Optional Home Assistant telemetry can block work when a configured quota threshold is reached. Telegram and a Hermes gateway plugin provide optional human **milestone** approval; ordinary worker-progress messaging is a separate integration.
 
 The primary command is `pw`. The installed `pw-dispatch`, `pw-manager`, `pw-worker`, `pw-notify`, and `pw-timer` entrypoints remain available. Python source modules are currently flat `pw_*.py` modules; `project_*.py` imports are compatibility shims, not independent implementations.
 
@@ -15,11 +15,11 @@ The primary command is `pw`. The installed `pw-dispatch`, `pw-manager`, `pw-work
 - A configured worker/provider can change files and make Git commits. A completed queue checkbox is **not** an accepted milestone.
 - `pw notify` without `--send` previews; `--send` contacts Telegram. A timer that was explicitly enabled may send autonomously.
 - Missing credentials, invalid queue/state, wrong branch, dirty worktree, active journal, unresolved recovery incident, stale callback, or acceptance failure should block progress. Do not delete evidence files merely to clear a block.
-- `pw-test` is a disposable LXD environment, not the production host. Its runner is intentionally left offline between test sessions; do not run its workflows without authorization.
+- Earlier live integration tests used a disposable LXD environment. Its self-hosted runner and machine have been retired; do not attempt to recreate live test workflows against an existing Hermes account.
 
-## 3. Install and inspect the preview
+## 3. Install and inspect Projectwright
 
-The source tree requires Python 3.10+ and Git. It defines a setuptools wheel in `pyproject.toml` and constructs an all-architecture Debian development package via `scripts/build-deb.sh`. The Debian package places Python modules under `/usr/lib/python3/dist-packages`, executable wrappers under `/usr/bin`, and *inactive* Hermes and systemd assets under `/usr/share/projectwright`. See [packaging and lifecycle](packaging-and-operations.md) for the precise supported test status and cleanup boundaries.
+The source tree requires Python 3.10+ and Git. It defines a setuptools wheel in `pyproject.toml` and constructs an all-architecture Debian package via `scripts/build-deb.sh`. The Debian package places Python modules under `/usr/lib/python3/dist-packages`, executable wrappers under `/usr/bin`, and *inactive* Hermes and systemd assets under `/usr/share/projectwright`. See [packaging and lifecycle](packaging-and-operations.md) for the precise supported test status and cleanup boundaries.
 
 In a disposable source checkout, offline verification is:
 
@@ -28,7 +28,7 @@ python3 -B -m unittest discover -s tests -p 'test_*.py' -v
 python3 -B scripts/validate-baseline.py --mode development
 ```
 
-Inspect a verified installed preview with:
+Inspect an installed package with:
 
 ```sh
 pw --help
@@ -37,7 +37,7 @@ pw status --project demo
 pw-timer --help
 ```
 
-Do not install this development preview onto production Hermes just to follow this guide. Hermes is a hard requirement for the supported release, but is typically installed/configured independently of Debian; Telegram activation remains optional and explicitly confirmed during `pw setup`.
+Do not install Projectwright onto production Hermes just to follow this guide. Hermes is a hard requirement for the supported release, but is typically installed/configured independently of Debian; Telegram activation remains optional and explicitly confirmed during `pw setup`.
 
 ## 4. Project layout and configuration selection
 

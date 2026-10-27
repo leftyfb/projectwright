@@ -1,48 +1,30 @@
-"""Guard against accidental Telegram delivery in routine preflight CI."""
+"""Prevent accidental self-hosted runner use in the public repository."""
 from pathlib import Path
 import unittest
 
+WORKFLOWS = Path(__file__).resolve().parents[1] / ".github" / "workflows"
 
-REPO = Path(__file__).resolve().parents[1]
 
+class PublicWorkflowSafetyTests(unittest.TestCase):
+    def test_active_workflows_are_hosted_only(self):
+        paths = tuple(WORKFLOWS.glob("*.yml"))
+        self.assertTrue(paths)
+        for path in paths:
+            with self.subTest(workflow=path.name):
+                lines = path.read_text().splitlines()
+                runner_lines = [line.strip() for line in lines
+                                if line.strip().startswith("runs-on:")]
+                self.assertTrue(runner_lines)
+                for runner in runner_lines:
+                    self.assertIn("ubuntu-", runner)
+                    self.assertNotIn("self-hosted", runner)
 
-class TestWorkflowSideEffects(unittest.TestCase):
-    def test_read_only_pw_test_preflight_cannot_send_telegram(self):
-        workflow = (REPO / ".github/workflows/pw-test-preflight.yml").read_text()
-        # Live bot sends belong exclusively to an explicitly triggered,
-        # isolated approval workflow, never to a routine preflight.
-        for forbidden in (
-            "/sendMessage",
-            "pw-notify --root",
-            "pw_notify.notify_pending(",
-            "scripts/pw-test-live-approval.py prepare",
-        ):
-            with self.subTest(forbidden=forbidden):
-                self.assertNotIn(forbidden, workflow)
-        self.assertIn("Inspect", workflow)
-
-    def test_isolated_self_hosted_jobs_refuse_main_and_other_branches(self):
-        workflows = [
-            "pw-test-cli-smoke.yml", "pw-test-deb-staging.yml",
-            "pw-test-install-purge.yml", "pw-test-live-approval.yml",
-            "pw-test-live-cleanup.yml", "pw-test-preflight.yml",
-            "pw-test-send-approval.yml", "pw-test-source-upgrade.yml",
-            "pw-test-verify-approval.yml", "tux-isolated.yml",
-        ]
-        guard = "if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}"
-        for name in workflows:
-            with self.subTest(workflow=name):
-                text = (REPO / ".github/workflows" / name).read_text()
-                jobs = text.split("\njobs:\n", 1)[1]
-                self.assertEqual(jobs.count("    runs-on:"), jobs.count("    " + guard))
-
-    def test_live_delivery_requires_isolation_before_send(self):
-        workflow = (REPO / ".github/workflows/pw-test-send-approval.yml").read_text()
-        scope = "PROJECTWRIGHT_APPROVAL_ROOT=/home/ubuntu/projectwright-live-test/projects"
-        self.assertIn(scope, workflow)
-        self.assertIn("telegram_approval_pending.json", workflow)
-        self.assertIn("pw-notify --root /home/ubuntu/projectwright-live-test/projects --send", workflow)
-        self.assertLess(workflow.index(scope), workflow.index("pw-notify --root"))
+    def test_no_live_test_triggers(self):
+        for path in WORKFLOWS.glob("*.yml"):
+            with self.subTest(workflow=path.name):
+                text = path.read_text()
+                self.assertNotIn("runs-on: [self-hosted", text)
+                self.assertNotIn("telegram/sendMessage", text)
 
 
 if __name__ == "__main__":
