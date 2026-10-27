@@ -55,7 +55,7 @@ class ApprovalSetupTests(unittest.TestCase):
                  patch("pw_notify.config_values", return_value=values):
                 timer.setup_interactive(prompt=lambda _: "yes",
                                         probe=lambda *a, **k: Mock(returncode=0), runner=lambda argv, *, check: calls.append(argv))
-            self.assertEqual(calls[0], ["hermes", "plugins", "enable", "projectwright-approvals"])
+            self.assertEqual(calls[0], ["/usr/bin/hermes", "plugins", "enable", "projectwright-approvals"])
             self.assertTrue((home / ".config/systemd/user/projectwright-approval-notify.timer").is_file())
 
     def test_first_run_noninteractive_requires_explicit_yes(self):
