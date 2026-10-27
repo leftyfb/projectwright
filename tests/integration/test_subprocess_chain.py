@@ -31,8 +31,17 @@ class RealSubprocessChain(unittest.TestCase):
         self.base = Path(self.temp.name)
         self.home = self.base / "home"
         self.home.mkdir()
-        self.scripts = self.base / "scripts"
-        shutil.copytree(SRC, self.scripts)
+        # CI can exercise the exact extracted Debian module tree. Ordinary
+        # discovery still copies the source into an isolated scripts directory.
+        installed_scripts = os.environ.get("PROJECTWRIGHT_TEST_SCRIPTS")
+        self.installed_dispatch = os.environ.get("PROJECTWRIGHT_TEST_DISPATCH")
+        if installed_scripts:
+            self.scripts = Path(installed_scripts)
+            if not self.scripts.is_absolute() or not (self.scripts / "pw_dispatch.py").is_file():
+                raise ValueError("Invalid installed Projectwright scripts fixture")
+        else:
+            self.scripts = self.base / "scripts"
+            shutil.copytree(SRC, self.scripts)
         self.root = self.base / "projects"
         self.project = self.root / "fixture"
         self.project.mkdir(parents=True)
@@ -143,8 +152,10 @@ class RealSubprocessChain(unittest.TestCase):
         (self.project / "config.json").write_text(json.dumps(self.config))
 
     def dispatch(self, *extra):
-        return subprocess.run([sys.executable, "-B", str(self.scripts / "pw_dispatch.py"),
-                               "--project", "fixture", "--scripts", str(self.scripts), *extra],
+        launcher = ([self.installed_dispatch] if self.installed_dispatch else
+                    [sys.executable, "-B", str(self.scripts / "pw_dispatch.py")])
+        return subprocess.run([*launcher, "--project", "fixture",
+                               "--scripts", str(self.scripts), *extra],
                               env=self.env, capture_output=True, text=True, timeout=35)
 
     def test_real_subprocess_chain_finishes_read_and_is_idempotent(self):
