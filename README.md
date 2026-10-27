@@ -4,7 +4,7 @@
 
 Projectwright turns `requirements.md` and an ordered `queue.md` into bounded planning and agent tasks, validates structured completion reports and Git evidence, and pauses at configured milestones for acceptance. Hermes CLI and its per-user configuration are required for the supported 0.1.0 experience; a command-based adapter is experimental, not a supported replacement. Telegram approval is expected and offered during first-run setup when Hermes Telegram settings are detected, but enabling it is optional and requires confirmation. Home Assistant quota telemetry, notes mirroring and user-level project dispatch timers are optional integrations.
 
-> **Development release only.** This branch (`test/review-followups`) builds a working preview wheel and `.deb`, but it is not approved for production deployment. The [release checklist](docs/release-checklist.md) records verified isolated installs, Hermes/Telegram approval testing and remaining release gates. No install step should automatically alter a user's Hermes credentials, project files, plugin or timers.
+> **0.1.0 release candidate.** This `release/0.1.0` branch prepares the first versioned Debian package but has **not yet been tagged or published**. See [release notes](docs/release-notes.md), [packaging operations](docs/packaging-and-operations.md), and [acceptance evidence](docs/release-checklist.md). Package installation must not alter a user's Hermes credentials, project files, plugin or timers.
 
 ## Start here
 
@@ -12,7 +12,7 @@ Projectwright turns `requirements.md` and an ordered `queue.md` into bounded pla
 |---|---|
 | Understand how it works and run a safe first project | **[Full user and operator manual](docs/manual.md)** |
 | See the role of **every source, packaging, workflow and test file** | **[Current file-by-file reference](docs/file-reference.md)** |
-| Build or inspect the Debian preview, plan upgrades/uninstalls | **[Packaging and operations](docs/packaging-and-operations.md)** |
+| Build or inspect the Debian package, plan upgrades/uninstalls | **[Packaging and operations](docs/packaging-and-operations.md)** |
 | Follow requirements → planning → work → Git → human acceptance | [Workflow](docs/workflow.md) |
 | Find CLI commands and options | [CLI reference](docs/cli.md) |
 | Understand project roots, XDG paths, defaults and config-free mode | [Configuration guide](docs/configuration-home.md) |
@@ -39,9 +39,9 @@ requirements.md -> planner -> queue.md -> dispatcher/manager gates
 
 `pw status` inspects a project; `pw plan` can request new queue items; `pw tick` plans when allowed and executes at most one task; `pw worker` runs a single task; `pw notify` previews approval requests (only `--send` transmits). A configured agent can change the selected Git worktree; always test against disposable data first. For the exact safeguards and execution types, see the [manual](docs/manual.md).
 
-## Inspect and test the development source
+## Install and inspect the release candidate
 
-For source development, requires Python 3.10+ and Git. The **supported Debian installation targets are Ubuntu 24.04 LTS and 26.04 LTS only** (22.04 is not supported). From the repository root:
+After publication, download the release `.deb` and `SHA256SUMS` from the [GitHub Releases page](https://github.com/leftyfb/projectwright/releases), verify the checksum, and run `sudo apt install ./projectwright_0.1.0-1_all.deb`. **Hermes is required and must already be installed and configured for the intended ordinary user.** Run `pw setup` as that user after installing the package; Telegram integration is only enabled with confirmation. See [0.1.0 release notes](docs/release-notes.md) for the full procedure.\n\nFor source development, requires Python 3.10+ and Git. The **supported Debian installation targets are Ubuntu 24.04 LTS and 26.04 LTS only** (22.04 is not supported). From the repository root:
 
 ```sh
 python3 -B -m unittest discover -s tests -p 'test_*.py' -v
@@ -75,4 +75,4 @@ The older [component inventory](docs/component-inventory.md), [architecture snap
 
 The isolated `pw-test` LXD environment verified Debian install/purge, user timer onboarding, Hermes plugin/gateway loading, Telegram delivery, real Approve and Reject callbacks, receipt verification and cleanup. Hosted tests also passed clean package installation/purge on Ubuntu 24.04 and 26.04, packaged fake-provider READ and EDIT/TEST/COMMIT execution, and a genuine two-source Debian upgrade preserving 35 user-owned files. These checks do **not** establish a stable package, all authorization/recovery edge cases, future schema migrations, a live-model EDIT/TEST/COMMIT run, or production installation. No self-hosted `pw-test` workflow should be triggered while its runner/container is intentionally stopped.
 
-Development and review belong on `test/review-followups`; do not modify `main` or a production Hermes instance without specific authorization. The [release checklist](docs/release-checklist.md) is the evidence-backed authority for sign-off.
+Release-candidate changes belong on `release/0.1.0`; do not modify a production Hermes instance without specific authorization. The [release checklist](docs/release-checklist.md) is the evidence-backed authority for sign-off.
