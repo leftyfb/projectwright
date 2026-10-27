@@ -21,6 +21,21 @@ class TestWorkflowSideEffects(unittest.TestCase):
                 self.assertNotIn(forbidden, workflow)
         self.assertIn("Inspect", workflow)
 
+    def test_isolated_self_hosted_jobs_refuse_main_and_other_branches(self):
+        workflows = [
+            "pw-test-cli-smoke.yml", "pw-test-deb-staging.yml",
+            "pw-test-install-purge.yml", "pw-test-live-approval.yml",
+            "pw-test-live-cleanup.yml", "pw-test-preflight.yml",
+            "pw-test-send-approval.yml", "pw-test-source-upgrade.yml",
+            "pw-test-verify-approval.yml", "tux-isolated.yml",
+        ]
+        guard = "if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}"
+        for name in workflows:
+            with self.subTest(workflow=name):
+                text = (REPO / ".github/workflows" / name).read_text()
+                jobs = text.split("\\njobs:\\n", 1)[1]
+                self.assertEqual(jobs.count("    runs-on:"), jobs.count("    " + guard))
+
     def test_live_delivery_requires_isolation_before_send(self):
         workflow = (REPO / ".github/workflows/pw-test-send-approval.yml").read_text()
         scope = "PROJECTWRIGHT_APPROVAL_ROOT=/home/ubuntu/projectwright-live-test/projects"
