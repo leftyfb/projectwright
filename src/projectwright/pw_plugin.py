@@ -8,7 +8,8 @@ import sys
 LOG = logging.getLogger('projectwright.telegram')
 SCRIPTS = Path.home() / '.hermes' / 'scripts'
 if str(SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS))
+    # Prefer installed package modules; retain legacy scripts as a fallback only.
+    sys.path.append(str(SCRIPTS))
 
 
 def _authorized_ids():
@@ -24,7 +25,17 @@ def _authorized_ids():
 def _factory(app, adapter):
     from telegram.ext import CallbackQueryHandler
     from pw_buttons import approve, reject
-    root = Path.home() / '.hermes' / 'projects'
+    from project_queue_manager import default_project_root
+    root = default_project_root()
+    # A gateway can be pinned to a dedicated project tree for isolated tests.
+    # Require an absolute, existing, nonsymlink directory; do not silently
+    # fall back if an explicit override is malformed.
+    scoped = os.environ.get('PROJECTWRIGHT_APPROVAL_ROOT')
+    if scoped is not None:
+        candidate = Path(scoped)
+        if not candidate.is_absolute() or candidate.is_symlink() or not candidate.is_dir():
+            raise ValueError('PROJECTWRIGHT_APPROVAL_ROOT must be an existing absolute directory')
+        root = candidate
 
     async def on_press(update, context):
         q = update.callback_query

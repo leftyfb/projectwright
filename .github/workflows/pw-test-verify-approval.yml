@@ -1,0 +1,71 @@
+name: pw-test Verify Live Approval
+on:
+  workflow_dispatch:
+  push:
+    branches: [test/review-followups]
+    paths: [.github/pw-test-verify-trigger.txt]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
+    runs-on: [self-hosted, linux, projectwright-lxd-install]
+    timeout-minutes: 5
+    steps:
+      - name: Check disposable approval receipt without modifying it
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          python3 -B - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('/home/ubuntu/projectwright-live-test/projects/pwtelecheck')
+          receipt=p/'planning_state.json'
+          reject=p/'telegram_approval_rejected.json'
+          pending=p/'telegram_approval_pending.json'
+          if receipt.exists():
+              state=json.loads(receipt.read_text())
+              assert 'DEMO-1-M1' in state.get('verified_milestones',{})
+              assert not pending.exists()
+              print('PASS: Telegram callback wrote verified acceptance receipt; request consumed')
+          elif reject.exists():
+              assert pending.is_file() and not pending.is_symlink()
+              assert reject.is_file() and not reject.is_symlink()
+              pinned=json.loads(pending.read_text())
+              rejected=json.loads(reject.read_text())
+              assert rejected == pinned, 'rejection must equal pinned pending evidence'
+              assert pinned.get('project') == 'pwtelecheck'
+              assert pinned.get('milestone') == 'DEMO-1-M1'
+              assert not receipt.exists() or 'DEMO-1-M1' not in json.loads(receipt.read_text()).get('verified_milestones',{})
+              print('PASS: real Reject callback persisted exact pinned evidence; pending retained; no approval receipt')
+          elif pending.exists():
+              print('PENDING: user has not completed an approval/rejection callback yet')
+          else:
+              raise SystemExit('FAIL: no pending or resolved approval record')
+          PY
+
+      - name: Inspect Telegram adapter readiness without printing credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          systemctl --user is-active --quiet hermes-gateway.service
+          python3 -B - <<'PY'
+          import subprocess
+          lines=subprocess.check_output(
+              ['journalctl','--user','-u','hermes-gateway.service','--since','2026-10-26 01:36:00','--no-pager','-o','cat'],
+              text=True,errors='replace').splitlines()
+          interesting=[line for line in lines if any(term in line.lower() for term in
+                       ('no adapter available for telegram','no adapter could be created',
+                        'telegram polling','telegram adapter','cryptography','telegram-platform'))]
+          print('Gateway running: yes')
+          print('Adapter startup failures observed:',sum('no adapter available for telegram' in line.lower() for line in interesting))
+          print('Crypto import failures observed:',sum('cryptography' in line.lower() for line in interesting))
+          print('Selected gateway diagnostic line count:',len(interesting))
+          PY

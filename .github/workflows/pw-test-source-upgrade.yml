@@ -1,0 +1,218 @@
+name: pw-test genuine source-version upgrade
+
+# User authorized 2026-10-26: two real source snapshots, isolated pw-test only.
+# No Hermes gateway/plugin, Telegram, real user config or systemd changes.
+on:
+  push:
+    branches: [test/review-followups]
+    paths: [.github/pw-test-source-upgrade-trigger.txt]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pw-test-source-upgrade
+  cancel-in-progress: false
+
+jobs:
+  build-pair:
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout earlier tested source
+        uses: actions/checkout@v4
+        with:
+          ref: 7af7ff9a319c058a9750453961bb13b767bdf145
+          path: older
+          persist-credentials: false
+      - name: Checkout current reviewed source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: current
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Build two source-distinct Debian packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f older/scripts/build-deb.sh
+          test -f current/scripts/build-deb.sh
+          if cmp -s older/src/projectwright/pw_dispatch.py current/src/projectwright/pw_dispatch.py; then
+            echo 'REFUSED: source snapshots do not differ in dispatcher' >&2
+            exit 2
+          fi
+          mkdir -p "$RUNNER_TEMP/older-wheel" "$RUNNER_TEMP/newer-wheel" "$RUNNER_TEMP/older-deb" "$RUNNER_TEMP/newer-deb" "$RUNNER_TEMP/pair"
+          (
+            cd older
+            python3 -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/older-wheel" .
+            bash scripts/build-deb.sh "$RUNNER_TEMP"/older-wheel/*.whl "$RUNNER_TEMP/older-deb"
+          )
+          (
+            cd current
+            python3 -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/newer-wheel" .
+            bash scripts/build-deb.sh "$RUNNER_TEMP"/newer-wheel/*.whl "$RUNNER_TEMP/newer-deb"
+          )
+          dpkg-deb --raw-extract "$RUNNER_TEMP/older-deb/projectwright_0.1.0~dev0-1_all.deb" "$RUNNER_TEMP/older-tree"
+          grep -Fxq 'Version: 0.1.0~dev0-1' "$RUNNER_TEMP/older-tree/DEBIAN/control"
+          sed -i 's/^Version: 0.1.0~dev0-1$/Version: 0.1.0~dev0-0/' "$RUNNER_TEMP/older-tree/DEBIAN/control"
+          dpkg-deb --build --root-owner-group "$RUNNER_TEMP/older-tree" "$RUNNER_TEMP/pair/projectwright_0.1.0~dev0-0_all.deb"
+          cp "$RUNNER_TEMP/newer-deb/projectwright_0.1.0~dev0-1_all.deb" "$RUNNER_TEMP/pair/"
+          test "$(dpkg-deb --field "$RUNNER_TEMP/pair/projectwright_0.1.0~dev0-0_all.deb" Version)" = '0.1.0~dev0-0'
+          test "$(dpkg-deb --field "$RUNNER_TEMP/pair/projectwright_0.1.0~dev0-1_all.deb" Version)" = '0.1.0~dev0-1'
+          dpkg --compare-versions '0.1.0~dev0-0' lt '0.1.0~dev0-1'
+          sha256sum "$RUNNER_TEMP"/pair/*.deb
+          echo 'PASS: package pair was built from two different checked-out source commits'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectwright-real-source-upgrade-pair
+          path: ${{ runner.temp }}/pair/*.deb
+          retention-days: 7
+          if-no-files-found: error
+
+  guarded-upgrade:
+    needs: build-pair
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
+    runs-on: [self-hosted, linux, projectwright-lxd-install]
+    timeout-minutes: 15
+    steps:
+      - name: Assert isolated empty LXD installation state
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(id -u)" -ne 0
+          test "$(systemd-detect-virt --container)" = lxc
+          test -f /run/systemd/container
+          test "$RUNNER_NAME" = pw-test-projectwright
+          test ! -e /usr/bin/pw
+          test ! -L /usr/bin/pw
+          test ! -e /usr/share/projectwright
+          test ! -L /usr/share/projectwright
+          if dpkg-query -W -f='${Status}' projectwright 2>/dev/null |
+             grep -Eq '(installed|unpacked|half-installed|half-configured|config-files)'; then
+            echo 'REFUSED: Projectwright already has dpkg state' >&2
+            exit 2
+          fi
+          if grep -Eq ' /(home|etc|usr|var/lib/dpkg) (none|ext4|btrfs|zfs|overlay) .*bind' /proc/mounts; then
+            echo 'REFUSED: suspicious host bind mount' >&2
+            exit 2
+          fi
+          sudo -n true
+      - uses: actions/download-artifact@v4
+        with:
+          name: projectwright-real-source-upgrade-pair
+          path: ${{ runner.temp }}/pw-source-pair
+      - name: Install older source, preserve user files through upgrade and purge
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          old="$RUNNER_TEMP/pw-source-pair/projectwright_0.1.0~dev0-0_all.deb"
+          new="$RUNNER_TEMP/pw-source-pair/projectwright_0.1.0~dev0-1_all.deb"
+          test -f "$old" && test -f "$new"
+          test ! -L "$old" && test ! -L "$new"
+          test "$(dpkg-deb --field "$old" Package)" = projectwright
+          test "$(dpkg-deb --field "$new" Package)" = projectwright
+          test "$(dpkg-deb --field "$old" Version)" = '0.1.0~dev0-0'
+          test "$(dpkg-deb --field "$new" Version)" = '0.1.0~dev0-1'
+          dpkg --compare-versions '0.1.0~dev0-0' lt '0.1.0~dev0-1'
+          test ! -e /usr/bin/pw
+          if dpkg-query -W -f='${Status}' projectwright 2>/dev/null |
+             grep -Eq '(installed|unpacked|half-installed|half-configured|config-files)'; then
+            echo 'REFUSED: Projectwright became installed before upgrade step' >&2
+            exit 2
+          fi
+          work="$(mktemp -d "$RUNNER_TEMP/pw-real-upgrade.XXXXXXXX")"
+          cleanup() {
+            rc=$?
+            trap - EXIT
+            if dpkg-query -W -f='${Status}' projectwright 2>/dev/null |
+               grep -Eq '(installed|unpacked|half-installed|half-configured|config-files)'; then
+              sudo -n dpkg --purge projectwright || rc=1
+            fi
+            if test -e /usr/bin/pw || test -L /usr/bin/pw ||
+               test -e /usr/share/projectwright || test -L /usr/share/projectwright; then
+              echo 'ERROR: package paths remain after cleanup' >&2
+              rc=1
+            fi
+            rm -rf "$work"
+            exit "$rc"
+          }
+          trap cleanup EXIT
+          export HOME="$work/home"
+          export XDG_CONFIG_HOME="$HOME/.config"
+          mkdir -m 700 "$HOME"
+          sha256sum "$old" "$new"
+          sudo -n dpkg --install "$old"
+          test "$(dpkg-query -W -f='${Version}' projectwright)" = '0.1.0~dev0-0'
+          pw init --project upgradefixture --config-dir "$HOME/.config/projectwright" >"$work/init.json"
+          project="$HOME/.config/projectwright/projects/upgradefixture"
+          test -f "$project/config.json"
+          mkdir -p "$project/results" "$project/worktree" "$HOME/.hermes" "$HOME/.config/systemd/user"
+          echo '- [ ] **T101 — READ** Retain this task across a package upgrade' >"$project/queue.md"
+          echo 'Historical work record' >"$project/work_log.md"
+          echo '{"current_task":null,"last_completed_task":{"id":"T100","kind":"READ"}}' >"$project/worker_journal.json"
+          echo '{"version":1,"fixture":"preserve"}' >"$project/planning_state.json"
+          echo '{"task_id":"T100","status":"completed"}' >"$project/results/T100.json"
+          echo 'TELEGRAM_BOT_TOKEN=DISPOSABLE_NOT_A_REAL_TOKEN' >"$HOME/.hermes/.env"
+          echo 'Description=Do not enable this disposable user unit' >"$HOME/.config/systemd/user/projectwright-test-placeholder.service"
+          git -C "$project/worktree" init -q -b main
+          git -C "$project/worktree" config user.email fixture@example.invalid
+          git -C "$project/worktree" config user.name Fixture
+          echo 'v1' >"$project/worktree/probe.txt"
+          git -C "$project/worktree" add probe.txt
+          git -C "$project/worktree" commit -qm baseline
+          python3 -B - "$HOME" "$work/before.json" <<'PY'
+          import hashlib, json, pathlib, stat, sys
+          root=pathlib.Path(sys.argv[1])
+          out={}
+          for p in sorted(root.rglob('*')):
+              if p.is_symlink():
+                  raise SystemExit('REFUSED: symlink in disposable fixture')
+              if p.is_file():
+                  out[str(p.relative_to(root))] = [hashlib.sha256(p.read_bytes()).hexdigest(), stat.S_IMODE(p.stat().st_mode)]
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(out, sort_keys=True))
+          print('Baseline user-owned files:', len(out))
+          PY
+          sudo -n dpkg --install "$new"
+          test "$(dpkg-query -W -f='${Version}' projectwright)" = '0.1.0~dev0-1'
+          test "$(dpkg-query -W -f='${Status}' projectwright)" = 'install ok installed'
+          grep -Fq "'setup-user': ('pw_project_timer', ['setup-user'])" /usr/lib/python3/dist-packages/pw_dispatch.py
+          pw status --project upgradefixture --config-dir "$HOME/.config/projectwright" >"$work/status.json"
+          python3 -B -c 'import json,sys; assert json.load(open(sys.argv[1]))["decision"] == "disabled"' "$work/status.json"
+          python3 -B - "$HOME" "$work/before.json" <<'PY'
+          import hashlib, json, pathlib, stat, sys
+          root=pathlib.Path(sys.argv[1]); expected=json.loads(pathlib.Path(sys.argv[2]).read_text())
+          actual={}
+          for p in sorted(root.rglob('*')):
+              if p.is_symlink():
+                  raise SystemExit('REFUSED: symlink after upgrade')
+              if p.is_file():
+                  actual[str(p.relative_to(root))] = [hashlib.sha256(p.read_bytes()).hexdigest(), stat.S_IMODE(p.stat().st_mode)]
+          assert actual == expected, 'user project/config/credentials/unit content changed during upgrade'
+          print('PASS: user files and permissions unchanged by cross-source upgrade')
+          PY
+          sudo -n dpkg --purge projectwright
+          test ! -e /usr/bin/pw
+          test ! -e /usr/share/projectwright
+          python3 -B - "$HOME" "$work/before.json" <<'PY'
+          import hashlib, json, pathlib, stat, sys
+          root=pathlib.Path(sys.argv[1]); expected=json.loads(pathlib.Path(sys.argv[2]).read_text())
+          actual={}
+          for p in sorted(root.rglob('*')):
+              if p.is_symlink():
+                  raise SystemExit('REFUSED: symlink after purge')
+              if p.is_file():
+                  actual[str(p.relative_to(root))] = [hashlib.sha256(p.read_bytes()).hexdigest(), stat.S_IMODE(p.stat().st_mode)]
+          assert actual == expected, 'user data changed after purge'
+          print('PASS: user files survived purge unchanged; temporary fixture cleaned by EXIT trap')
+          PY

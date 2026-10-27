@@ -1,0 +1,3 @@
+Validate Projectwright Debian beta targets Ubuntu 24.04 LTS and 26.04 LTS only.
+Hosted clean container install, CLI smoke and purge; explicitly exclude 22.04.
+No self-hosted runners, Hermes, Telegram, or systemd activation.

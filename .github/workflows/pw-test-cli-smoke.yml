@@ -1,0 +1,135 @@
+name: pw-test extracted Debian CLI smoke
+
+# Manual-equivalent, branch-scoped non-root check. No dpkg, sudo, systemd,
+# Hermes gateway changes, network notifications or existing user credentials.
+on:
+  push:
+    branches: [test/review-followups]
+    paths: [.github/pw-test-cli-smoke-trigger.txt]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: pw-test-extracted-cli
+  cancel-in-progress: false
+
+jobs:
+  extracted-cli:
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
+    runs-on: [self-hosted, linux, projectwright-lxd-install]
+    timeout-minutes: 15
+    steps:
+      - name: Prove exact isolated runner identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(id -u)" -ne 0
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          test ! -e /usr/bin/pw
+          test ! -e /usr/share/projectwright
+
+      - name: Find successful hosted Debian artifact from this branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          python3 -B - <<'PY'
+          import json, os, urllib.request
+          repo = os.environ["GH_REPOSITORY"]
+          url = ("https://api.github.com/repos/" + repo
+                 + "/actions/workflows/offline-tests.yml/runs"
+                 + "?branch=test%2Freview-followups&status=success&per_page=30")
+          request = urllib.request.Request(url, headers={
+              "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+              "Accept": "application/vnd.github+json",
+              "User-Agent": "projectwright-isolated-cli-smoke",
+          })
+          with urllib.request.urlopen(request, timeout=25) as response:
+              runs = json.load(response)["workflow_runs"]
+          for run in runs:
+              if (run["event"] == "push"
+                  and run["head_branch"] == "test/review-followups"
+                  and run["conclusion"] == "success"
+                  and run["repository"]["full_name"] == repo):
+                  with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as out:
+                      out.write("DEB_RUN_ID=" + str(run["id"]) + "\n")
+                      out.write("DEB_SOURCE_SHA=" + run["head_sha"] + "\n")
+                  print("Selected hosted CI:", run["id"], run["head_sha"])
+                  break
+          else:
+              raise SystemExit("No successful branch-hosted CI run found")
+          PY
+
+      - name: Download the exact hosted artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: projectwright-deb-${{ env.DEB_RUN_ID }}
+          run-id: ${{ env.DEB_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/pw-cli-artifact
+
+      - name: Extract and test commands with a disposable home
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          work="$(mktemp -d "$RUNNER_TEMP/pw-cli-smoke.XXXXXXXX")"
+          trap 'rm -rf "$work"' EXIT
+          shopt -s nullglob
+          debs=("$RUNNER_TEMP"/pw-cli-artifact/*.deb)
+          test "${#debs[@]}" -eq 1
+          test "$(dpkg-deb --field "${debs[0]}" Package)" = projectwright
+          test "$(dpkg-deb --field "${debs[0]}" Version)" = '0.1.0~dev0-1'
+          sha256sum "${debs[0]}"
+          dpkg-deb --extract "${debs[0]}" "$work/root"
+          export PYTHONPATH="$work/root/usr/lib/python3/dist-packages"
+          export HOME="$work/home"
+          export XDG_CONFIG_HOME="$HOME/.config"
+          mkdir -m 700 "$HOME"
+          echo 'CHECK: entrypoint help'
+          for cmd in pw pw-dispatch pw-manager pw-worker pw-notify pw-timer; do
+            "$work/root/usr/bin/$cmd" --help >/dev/null
+          done
+          echo 'CHECK: config-free init'
+          "$work/root/usr/bin/pw" init --project demo --no-config \
+            --config-dir "$HOME/.config/projectwright" >"$work/init.json"
+          test -f "$HOME/.config/projectwright/projects/demo/queue.md"
+          test -f "$HOME/.config/projectwright/projects/demo/work_log.md"
+          test ! -e "$HOME/.config/projectwright/projects/demo/config.json"
+          echo 'CHECK: defaults'
+          "$work/root/usr/bin/pw" defaults --project demo \
+            --config-dir "$HOME/.config/projectwright" >"$work/defaults.json"
+          python3 -B -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["configured"] is False' "$work/defaults.json"
+          echo 'CHECK: disabled status'
+          "$work/root/usr/bin/pw" status --project demo \
+            --config-dir "$HOME/.config/projectwright" >"$work/status.json"
+          python3 -B -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["decision"] == "disabled"' "$work/status.json"
+          # With no credentials in this disposable home, the *correct* setup
+          # route must reach the non-root token preflight and fail before writes.
+          echo 'CHECK: setup-user credential refusal'
+          if "$work/root/usr/bin/pw" setup-user --minutes 10 >"$work/setup.out" 2>"$work/setup.err"; then
+            echo 'ERROR: setup-user unexpectedly enabled services' >&2
+            exit 1
+          fi
+          if ! grep -Fq 'Configure Telegram bot token' "$work/setup.err"; then
+            echo 'ERROR: setup-user did not reach expected credential preflight' >&2
+            sed -n '1,12p' "$work/setup.err" >&2
+            exit 1
+          fi
+          echo 'CHECK: no account/service/host writes'
+          test ! -e "$HOME/.hermes"
+          test ! -e "$HOME/.config/systemd/user"
+          test ! -e /usr/bin/pw
+          test ! -e /usr/share/projectwright
+          echo "PASS: Debian artifact from $DEB_SOURCE_SHA passed isolated extracted CLI smoke"

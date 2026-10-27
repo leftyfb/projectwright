@@ -1,6 +1,8 @@
+> **Historical baseline audit only.** This page inventories the original 18 flat modules and historical installed Hermes state. It is **not** the current development branch manual. Read [manual.md](manual.md), [file-reference.md](file-reference.md) and [release-checklist.md](release-checklist.md) for current names, workflows and verified live test status.
+
 # Component inventory
 
-Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. All 18 tracked Python files under `src/projectwright/` were AST-parsed and inventoried. The checked-in source manifest pins the 18 source hashes and expected installed paths; a separate read-only audit compared installed copies and reported all 18 matching source at audit time. “Used” below means direct call/launcher evidence, not merely import reachability.
+Baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. The baseline inventory is historical; development now includes a canonical `pw_worker_progress.py` implementation and a compatibility-only `project_worker_progress.py` shim. Both ship during migration. All 18 tracked Python files under `src/projectwright/` were AST-parsed and inventoried. The checked-in source manifest pins the 18 source hashes and expected installed paths; a separate read-only audit compared installed copies and reported all 18 matching source at audit time. “Used” below means direct call/launcher evidence, not merely import reachability.
 
 | File | Classification | Imports / dependencies | Runtime or actual-usage evidence |
 |---|---|---|---|
@@ -57,3 +59,16 @@ The following is generated from AST parsing of the source, including imports ins
 - `project_notes_publisher.py`, `project_telegram_approval.py`, `pw_buttons.py` and `pw_plugin.py` modify `sys.path` for sibling-module resolution. `pw_notify.py` uses ordinary sibling imports with its script directory on the interpreter path. This assumes the installed flat-script layout.
 - Static imports alone do not establish runtime use. In particular, the timer utility is a manual operations command with no normal-flow caller observed; it is not called “unused” or “legacy” absent direct evidence.
 - No module is positively classified as legacy or unused. The active/optional classifications above are based on direct call/launcher evidence and the enabled plugin/timer observations.
+
+## Filename migration ledger
+
+| Canonical module | Legacy alias | State | Notes |
+|---|---|---|---|
+| `pw_worker_progress.py` | `project_worker_progress.py` | Migrated | Worker imports canonical module; shim re-exports the API. Persisted `worker_state.json` schema and semantics are unchanged and covered by compatibility tests. |
+| `pw_milestone_sequence.py` | `project_milestone_sequence.py` | Migrated | Manager, planner and approval scanner use the canonical module. Legacy import remains as a compatibility alias; pure sequencing behavior is unchanged. |
+| `pw_acceptance_gate.py` | `project_acceptance_gate.py` | Migrated | Manager and planner consume canonical gate; compatibility alias preserves fail-closed acceptance behavior. |
+| `pw_quota.py` | `project_quota.py` | Migrated | Manager, planner and worker import canonical quota policy; legacy alias preserves current policy API and optional Home Assistant gate behavior. |
+
+Remaining `project_*.py` files are pending canonical renaming. Do not remove
+legacy import aliases until installation, project upgrade and rollback paths
+have been verified.

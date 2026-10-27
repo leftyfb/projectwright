@@ -8,6 +8,20 @@ import re
 import subprocess
 import sys
 
+def default_project_root():
+    """Select project-root path without loading potentially injected modules."""
+    custom = os.environ.get('PROJECTWRIGHT_CONFIG_DIR')
+    if custom:
+        return Path(custom).expanduser() / 'projects'
+    legacy_override = os.environ.get('HERMES_PROJECT_CONFIG_DIR')
+    if legacy_override:
+        return Path(legacy_override).expanduser()
+    xdg = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
+    root = xdg / 'projectwright' / 'projects'
+    legacy = Path.home() / '.hermes' / 'projects'
+    return legacy if legacy.is_dir() and not root.is_dir() else root
+
+
 SAFE_IDLE = {'awaiting_acceptance', 'disabled', 'no_op'}
 CYCLE_BLOCKERS = {'branch_or_worktree', 'active_git_cycle'}
 MANAGER_EXIT_CODES = {
@@ -154,14 +168,14 @@ def authorized_cycle_task(project, scripts, report):
         return False
     try:
         import importlib.util
-        root = Path(os.environ.get('HERMES_PROJECT_CONFIG_DIR', str(Path.home()/'.hermes/projects')))
+        root = default_project_root()
         cfg = json.loads((root / project / 'config.json').read_text())
         if cfg.get('id') != project or not cfg.get('cycle_file'):
             return False
         cycle = json.loads(Path(cfg['cycle_file']).expanduser().read_text())
         if not isinstance(cycle, dict) or cycle.get('version') != 1 or cycle.get('phase') != 'active':
             return False
-        spec = importlib.util.spec_from_file_location('pw_cycle_worker_gate', scripts/'project_task_worker.py')
+        spec = importlib.util.spec_from_file_location('pw_cycle_worker_gate', scripts/'pw_task_worker.py')
         if spec is None or spec.loader is None:
             return False
         # Import the authoritative worker implementation, not a duplicated Git validator.
@@ -176,7 +190,7 @@ def authorized_cycle_task(project, scripts, report):
         # Load the manager helpers from the selected scripts tree, not sys.modules.
         # This read-only gate must not trust an unrelated pre-imported manager.
         import runpy
-        manager_helpers = runpy.run_path(str(scripts / 'project_queue_manager.py'))
+        manager_helpers = runpy.run_path(str(scripts / 'pw_queue_manager.py'))
         summary = manager_helpers['queue_summary'](queue)
         if summary['invalid_lines'] or summary['blocked_count'] or not summary['pending']:
             return False
@@ -223,8 +237,8 @@ def authorized_cycle_task(project, scripts, report):
         return False
 
 
-def run_tick(project, scripts, *, runner=subprocess.run):
-    manager = [sys.executable, '-B', str(scripts/'project_queue_manager.py'), '--project', project, '--once']
+def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False):
+    manager = [sys.executable, '-B', str(scripts/'pw_queue_manager.py'), '--project', project, '--once']
     m = runner(manager, capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1'}, timeout=650)
     try:
         report = parse_manager_response(m.stdout, project, m.returncode)
@@ -247,13 +261,21 @@ def run_tick(project, scripts, *, runner=subprocess.run):
     if cycle_route:
         print('Active Git cycle: dispatching authorized next task to worker; planner remains blocked', flush=True)
     elif decision in SAFE_IDLE:
-        if decision != 'no_op' or report['pending'] == 0:
+        config_free_ready = False
+        if decision == 'disabled':
+            from pw_config import load as load_config, ready_for_config_free_worker
+            config_path, effective = load_config(project)
+            # A disabled configured project is never treated as config-free.
+            config_free_ready = not config_path.exists() and ready_for_config_free_worker(effective)
+        if not config_free_ready and (decision != 'no_op' or report['pending'] == 0):
             return 0
     elif decision != 'queued':
         print('FAIL unexpected planning decision='+decision, file=sys.stderr)
         return 20
-    worker = [sys.executable, '-B', str(scripts/'project_task_worker.py'), '--project', project, '--once']
-    w = runner(worker, capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1'}, timeout=2700)
+    worker = [sys.executable, '-B', str(scripts/'pw_task_worker.py'), '--project', project, '--once']
+    if no_telegram or not (default_project_root() / project / 'config.json').is_file():
+        worker.append('--no-telegram')
+    w = runner(worker, capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1', 'PROJECTWRIGHT_DISPATCHED':'1'}, timeout=2700)
     print('WORKER rc='+str(w.returncode))
     if w.stdout: print(w.stdout[-4000:])
     if w.stderr: print(w.stderr[-4000:], file=sys.stderr)
@@ -261,11 +283,11 @@ def run_tick(project, scripts, *, runner=subprocess.run):
         # Read-only observability: journal and queue are written by the worker.
         # Missing/inconsistent data is reported, not inferred as successful work.
         try:
-            root = Path(os.environ.get('HERMES_PROJECT_CONFIG_DIR', str(Path.home()/'.hermes/projects'))) / project
+            root = default_project_root() / project
             journal = json.loads((root/'worker_journal.json').read_text())
             queue = (root/'queue.md').read_text(encoding='utf-8')
             import importlib.util
-            spec = importlib.util.spec_from_file_location('pw_dispatch_manager_summary', scripts/'project_queue_manager.py')
+            spec = importlib.util.spec_from_file_location('pw_dispatch_manager_summary', scripts/'pw_queue_manager.py')
             manager_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(manager_module)
             summary = manager_module.queue_summary(queue)
@@ -282,8 +304,40 @@ def run_tick(project, scripts, *, runner=subprocess.run):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--project',required=True)
-    p.add_argument('--scripts',type=Path,default=Path.home()/'.hermes/scripts')
+    p.add_argument('--scripts',type=Path,default=Path(__file__).resolve().parent)
+    p.add_argument('--no-telegram',action='store_true',help='Do not send worker progress through Hermes Telegram')
+    p.add_argument('--config-dir',type=Path,help='Projectwright configuration home (projects are in its projects/ subdirectory)')
     a=p.parse_args()
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',a.project):p.error('Invalid project ID')
-    return run_tick(a.project,a.scripts)
+    if a.config_dir is not None:
+        if not a.config_dir.is_absolute(): p.error('--config-dir must be absolute')
+        os.environ['PROJECTWRIGHT_CONFIG_DIR'] = str(a.config_dir)
+    return run_tick(a.project,a.scripts,no_telegram=a.no_telegram)
+def cli():
+    """Preliminary unified command launcher; each service retains its own parser."""
+    commands = {
+        'tick': ('pw_dispatch', []),
+        'status': ('pw_queue_manager', ['--status']),
+        'plan': ('pw_queue_manager', ['--once']),
+        'worker': ('pw_task_worker', []),
+        'notify': ('pw_notify', []),
+        'timer': ('pw_project_timer', []),
+        'setup': ('pw_project_timer', ['setup']),
+        'setup-user': ('pw_project_timer', ['setup-user']),
+        'defaults': ('pw_defaults', []),
+        'init': ('pw_init', []),
+    }
+    usage = 'usage: pw {tick|status|plan|worker|notify|timer|setup|setup-user|defaults|init} [options]'
+    if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
+        print(usage)
+        return 0 if len(sys.argv) > 1 else 2
+    command = sys.argv[1]
+    if command not in commands:
+        print(f'Unknown Projectwright command: {command}\\n{usage}', file=sys.stderr)
+        return 2
+    module, fixed = commands[command]
+    return subprocess.run([sys.executable, '-B', '-m', module, *fixed, *sys.argv[2:]],
+                          check=False).returncode
+
+
 if __name__=='__main__':raise SystemExit(main())

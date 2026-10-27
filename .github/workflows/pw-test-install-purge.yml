@@ -1,0 +1,157 @@
+name: pw-test guarded Debian install and purge
+
+# Explicitly authorized 2026-10-26: install and purge Projectwright in
+# isolated pw-test LXD only. No Hermes plugin, gateway, Telegram or user timers.
+on:
+  push:
+    branches: [test/review-followups]
+    paths: [.github/pw-test-install-trigger.txt]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: pw-test-guarded-install
+  cancel-in-progress: false
+
+jobs:
+  install-and-purge:
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
+    runs-on: [self-hosted, linux, projectwright-lxd-install]
+    timeout-minutes: 15
+    steps:
+      - name: Guard exact LXD runner and clean package state
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(id -u)" -ne 0
+          test "$(systemd-detect-virt --container)" = lxc
+          test -f /run/systemd/container
+          test "$RUNNER_NAME" = pw-test-projectwright
+          test ! -e /usr/bin/pw
+          test ! -L /usr/bin/pw
+          test ! -e /usr/share/projectwright
+          test ! -L /usr/share/projectwright
+          if dpkg-query -W -f='${Status}' projectwright 2>/dev/null |
+             grep -Eq '(installed|unpacked|half-installed|half-configured|config-files)'; then
+            echo 'REFUSED: existing Projectwright dpkg state' >&2
+            exit 2
+          fi
+          if grep -Eq ' /(home|etc|usr|var/lib/dpkg) (none|ext4|btrfs|zfs|overlay) .*bind' /proc/mounts; then
+            echo 'REFUSED: suspicious host bind mount' >&2
+            exit 2
+          fi
+          sudo -n true
+          echo 'PASS: exact pw-test isolation, clean dpkg state, explicit sudo available'
+
+      - name: Verify pinned successful hosted-CI Debian artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          python3 -B - <<'PY'
+          import json, os, urllib.request
+          repo = os.environ["GH_REPOSITORY"]
+          run_id = 40352449079
+          expected_sha = "60112fcc867077794396f735c1a41d8793ade0c8"
+          url = "https://api.github.com/repos/" + repo + "/actions/runs/" + str(run_id)
+          req = urllib.request.Request(url, headers={
+              "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+              "Accept": "application/vnd.github+json",
+              "User-Agent": "projectwright-guarded-install",
+          })
+          with urllib.request.urlopen(req, timeout=25) as response:
+              run = json.load(response)
+          if not (run["event"] == "push"
+                  and run["head_branch"] == "test/review-followups"
+                  and run["conclusion"] == "success"
+                  and run["repository"]["full_name"] == repo
+                  and run["head_sha"] == expected_sha):
+              raise SystemExit("REFUSED: hosted CI source/provenance mismatch")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as out:
+              out.write("DEB_RUN_ID=" + str(run_id) + "\n")
+              out.write("DEB_SOURCE_SHA=" + expected_sha + "\n")
+          print("Pinned successful hosted CI:", run_id, expected_sha)
+          PY
+
+      - name: Download exact artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: projectwright-deb-${{ env.DEB_RUN_ID }}
+          run-id: ${{ env.DEB_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/pw-install-artifact
+
+      - name: Install, test CLI as ordinary user, and purge even on failure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(id -u)" -ne 0
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          test ! -e /usr/bin/pw
+          test ! -L /usr/bin/pw
+          test ! -e /usr/share/projectwright
+          test ! -L /usr/share/projectwright
+          shopt -s nullglob
+          debs=("$RUNNER_TEMP"/pw-install-artifact/*.deb)
+          test "${#debs[@]}" -eq 1
+          deb="${debs[0]}"
+          test -f "$deb"
+          test ! -L "$deb"
+          test "$(dpkg-deb --field "$deb" Package)" = projectwright
+          test "$(dpkg-deb --field "$deb" Version)" = '0.1.0~dev0-1'
+          if dpkg-query -W -f='${Status}' projectwright 2>/dev/null |
+             grep -Eq '(installed|unpacked|half-installed|half-configured|config-files)'; then
+            echo 'REFUSED: pre-existing Projectwright package' >&2
+            exit 2
+          fi
+          work="$(mktemp -d "$RUNNER_TEMP/pw-dpkg-smoke.XXXXXXXX")"
+          cleanup() {
+            rc=$?
+            trap - EXIT
+            if dpkg-query -W -f='${Status}' projectwright 2>/dev/null |
+               grep -Eq '(installed|unpacked|half-installed|half-configured|config-files)'; then
+              sudo -n dpkg --purge projectwright || rc=1
+            fi
+            if test -e /usr/bin/pw || test -L /usr/bin/pw ||
+               test -e /usr/share/projectwright || test -L /usr/share/projectwright; then
+              echo 'ERROR: package cleanup left installed paths' >&2
+              rc=1
+            fi
+            rm -rf "$work"
+            exit "$rc"
+          }
+          trap cleanup EXIT
+          sha256sum "$deb"
+          sudo -n dpkg --install "$deb"
+          test "$(dpkg-query -W -f='${Status}' projectwright)" = 'install ok installed'
+          test "$(dpkg-query -W -f='${Version}' projectwright)" = '0.1.0~dev0-1'
+          for cmd in pw pw-dispatch pw-manager pw-worker pw-notify pw-timer; do
+            command -v "$cmd" >/dev/null
+            "$cmd" --help >/dev/null
+          done
+          export HOME="$work/home"
+          export XDG_CONFIG_HOME="$HOME/.config"
+          mkdir -m 700 "$HOME"
+          pw init --project demo --no-config --config-dir "$HOME/.config/projectwright" >"$work/init.json"
+          pw defaults --project demo --config-dir "$HOME/.config/projectwright" >"$work/defaults.json"
+          python3 -B -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["configured"] is False' "$work/defaults.json"
+          pw status --project demo --config-dir "$HOME/.config/projectwright" >"$work/status.json"
+          python3 -B -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["decision"] == "disabled"' "$work/status.json"
+          if pw setup-user --minutes 10 >"$work/setup.out" 2>"$work/setup.err"; then
+            echo 'ERROR: approval setup unexpectedly succeeded without credentials' >&2
+            exit 1
+          fi
+          grep -Fq 'Configure Telegram bot token' "$work/setup.err"
+          test ! -e "$HOME/.hermes"
+          test ! -e "$HOME/.config/systemd/user"
+          echo 'PASS: installed CLI and safe setup refusal; purge is enforced by EXIT trap'

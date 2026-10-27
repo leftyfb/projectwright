@@ -44,7 +44,7 @@ class DispatchFixture(unittest.TestCase):
         self.project_dir.mkdir(parents=True)
         self.scripts = self.root / "scripts"
         self.scripts.mkdir()
-        for name in ("project_queue_manager.py", "project_task_worker.py"):
+        for name in ("pw_queue_manager.py", "pw_task_worker.py"):
             shutil.copy2(SRC / name, self.scripts / name)
 
     def config(self, *, queue_text="", cycle_file=None, worktree=None, **extra):
@@ -278,7 +278,7 @@ class TestTick(DispatchFixture):
         result, calls = self.run_tick({"decision": "queued"})
         self.assertEqual(result, 0)
         self.assertEqual(len(calls), 2)
-        self.assertIn("project_task_worker.py", calls[1][2])
+        self.assertIn("pw_task_worker.py", calls[1][2])
 
     def test_idle_never_invokes_worker(self):
         for mode in ("awaiting_acceptance", "disabled"):
@@ -328,7 +328,7 @@ class DispatcherHardening(DispatchFixture):
         with contextlib.redirect_stdout(io.StringIO()) as out:
             result, calls = self.run_tick(report, manager_rc=2)
         self.assertEqual(result, 0)
-        self.assertEqual([Path(call[2]).name for call in calls], ["project_queue_manager.py"])
+        self.assertEqual([Path(call[2]).name for call in calls], ["pw_queue_manager.py"])
         self.assertIn("DEFERRED", out.getvalue())
 
     def test_busy_malformed_or_mismatched_refused(self):
@@ -370,7 +370,7 @@ class DispatcherHardening(DispatchFixture):
 
 class NoOpContract(unittest.TestCase):
     def test_pending_assigned_from_validated_queue_inside_lock(self):
-        tree = ast.parse((SRC / "project_queue_planner.py").read_text())
+        tree = ast.parse((SRC / "pw_queue_planner.py").read_text())
         func = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "plan_once")
         assigns = [
             n for n in ast.walk(func)
@@ -453,7 +453,7 @@ class BusyContract(unittest.TestCase):
             fixture.doCleanups()
 
     def test_only_intended_planner_line_changed(self):
-        text = (SRC / "project_queue_planner.py").read_text()
+        text = (SRC / "pw_queue_planner.py").read_text()
         self.assertEqual(text.count("return {**out, 'decision': 'busy', 'reason': 'Project lock held; skip planning'}"), 1)
 
 
@@ -523,13 +523,13 @@ class CycleTests(DispatchFixture):
 
     def test_test_then_commit_permitted(self):
         result, calls = self.run_tick({"decision": "blocked", "reason": "branch_or_worktree, active_git_cycle"}, manager_rc=2)
-        self.assertEqual((result, [Path(c[2]).name for c in calls]), (0, ["project_queue_manager.py", "project_task_worker.py"]))
+        self.assertEqual((result, [Path(c[2]).name for c in calls]), (0, ["pw_queue_manager.py", "pw_task_worker.py"]))
         self.cfg_queue = Path(self.cfg["queue"])
         self.cfg_queue.write_text(self.queue_text.replace("[ ] **P103", "[x] **P103"))
         self.record["last_task"] = "P103"
         self._save_cycle()
         result, calls = self.run_tick({"decision": "blocked", "reason": "branch_or_worktree, active_git_cycle"}, manager_rc=2)
-        self.assertEqual((result, [Path(c[2]).name for c in calls]), (0, ["project_queue_manager.py", "project_task_worker.py"]))
+        self.assertEqual((result, [Path(c[2]).name for c in calls]), (0, ["pw_queue_manager.py", "pw_task_worker.py"]))
 
     def test_stale_snapshot_refused(self):
         (self.repo / "approval_probe.py").write_text("unauthorized mutation\n")

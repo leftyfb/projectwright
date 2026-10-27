@@ -1,0 +1,2 @@
+Run one-time isolated live Telegram approval fixture staging. No message send during setup.
+User-authorized 2026-10-26 disposable Reject callback setup; no send at this stage.

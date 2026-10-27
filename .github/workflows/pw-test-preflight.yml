@@ -1,0 +1,117 @@
+name: pw-test LXD preflight
+
+# Never trigger this job from pushes or pull requests. Only trusted
+# maintainers should dispatch reviewed code to a self-hosted runner.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test/review-followups
+    paths:
+      - .github/pw-test-preflight-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pw-test-lxd-preflight
+  cancel-in-progress: false
+
+jobs:
+  container-preflight:
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
+    runs-on: [self-hosted, linux, projectwright-lxd-install]
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Confirm intended container and unprivileged user
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = 'pw-test'
+          test "$(id -un)" = 'ubuntu'
+          test "$(id -u)" -ne 0
+          test "$(systemd-detect-virt --container)" = 'lxc'
+          test -d /run/systemd/system
+          test "$RUNNER_NAME" = 'pw-test-projectwright'
+          echo 'Verified pw-test LXC runner with ordinary ubuntu account'
+
+      - name: Check out trusted development branch (read-only)
+        uses: actions/checkout@v4
+        with:
+          ref: test/review-followups
+          persist-credentials: false
+
+      - name: Inspect package tooling without installing anything
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 --version
+          git --version
+          command -v dpkg-deb
+          command -v systemctl
+          python3 -B scripts/validate-baseline.py --mode development
+
+      - name: Inspect isolated Hermes CLI without changing configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          test "$(systemd-detect-virt --container)" = lxc
+          test "$RUNNER_NAME" = pw-test-projectwright
+          cli=""
+          for candidate in "$(command -v hermes 2>/dev/null || true)" \
+              "$HOME/.local/bin/hermes" \
+              "$HOME/.hermes/venv/bin/hermes" \
+              "$HOME/hermes-agent/venv/bin/hermes" \
+              "$HOME/hermes-agent/.venv/bin/hermes" \
+              "$HOME/.venvs/hermes/bin/hermes"; do
+            if test -n "$candidate" && test -x "$candidate"; then
+              cli="$candidate"
+              break
+            fi
+          done
+          if test -z "$cli"; then
+            echo 'Hermes executable not found on PATH or common user-local paths' >&2
+            echo 'Searched ~/.local/bin, ~/.hermes/venv, ~/hermes-agent/venv and .venv' >&2
+            exit 2
+          fi
+          echo "Hermes executable: $cli"
+          "$cli" plugins --help
+          "$cli" plugins list --plain --no-bundled
+          # Read-only gateway/service discovery; never start gateway or dump env.
+          "$cli" gateway --help
+          systemctl --user list-units --type=service --no-pager --plain 'hermes*' || true
+          echo 'PASS: Hermes CLI can be reached from the GitHub runner'
+
+      - name: Check Telegram test prerequisites without exposing or using credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -s)" = pw-test
+          test "$(id -un)" = ubuntu
+          python3 -B - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd() / "src" / "projectwright"))
+          from pw_notify import config_values, parse_allowed_users
+          env = Path.home() / ".hermes" / ".env"
+          if env.is_symlink():
+              raise SystemExit("REFUSED: symlinked Hermes credential file")
+          if not env.is_file():
+              print("NOT READY: test Hermes credential file absent")
+          else:
+              values = config_values(env)
+              token = values.get("TELEGRAM_BOT_TOKEN", "")
+              print("Telegram token configured:", bool(token))
+              try:
+                  users = parse_allowed_users(values.get("TELEGRAM_ALLOWED_USERS", ""))
+              except ValueError:
+                  print("NOT READY: TELEGRAM_ALLOWED_USERS is missing or invalid for Projectwright")
+              else:
+                  print("Authorized recipient count:", len(users))
+              print("Delivery skipped: destination is not verified as test-only")
+          PY
+

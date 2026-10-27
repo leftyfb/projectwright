@@ -1,0 +1,129 @@
+name: Ubuntu 24.04 and 26.04 Debian compatibility
+
+# Beta target matrix only. Hosted disposable containers, never self-hosted.
+on:
+  push:
+    branches: [test/review-followups]
+    paths: [.github/ubuntu-release-matrix-trigger.txt]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/review-followups
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Build one tested pure-Python Debian package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s tests -p 'test_*.py' >"$RUNNER_TEMP/unittest.log" 2>&1 || {
+            tail -80 "$RUNNER_TEMP/unittest.log"
+            exit 1
+          }
+          python3 -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/wheels" .
+          bash scripts/build-deb.sh "$RUNNER_TEMP"/wheels/*.whl "$RUNNER_TEMP/debs"
+          test "$(dpkg-deb --field "$RUNNER_TEMP/debs/projectwright_0.1.0~dev0-1_all.deb" Package)" = projectwright
+          sha256sum "$RUNNER_TEMP"/debs/*.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectwright-ubuntu-lts-matrix-deb
+          path: ${{ runner.temp }}/debs/*.deb
+          retention-days: 7
+          if-no-files-found: error
+
+  clean-install:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ubuntu: '24.04'
+            python: '3.12'
+          - ubuntu: '26.04'
+            python: '3.14'
+    container:
+      image: ubuntu:${{ matrix.ubuntu }}
+    steps:
+      - name: Install target distribution prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          test "$ID" = ubuntu
+          test "$VERSION_ID" = '${{ matrix.ubuntu }}'
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 git ca-certificates
+          python3 --version
+          EXPECTED_PYTHON='${{ matrix.python }}' python3 -B - <<'PY'
+          import os, sys
+          expected = tuple(map(int, os.environ['EXPECTED_PYTHON'].split('.')))
+          assert sys.version_info[:2] == expected, (sys.version_info[:2], expected)
+          print('PASS: expected distribution Python', expected)
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: projectwright-ubuntu-lts-matrix-deb
+          path: ${{ runner.temp }}/release-deb
+      - name: Install, exercise and purge in clean Ubuntu container
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          debs=("$RUNNER_TEMP"/release-deb/*.deb)
+          test "${#debs[@]}" -eq 1
+          test "$(dpkg-deb --field "${debs[0]}" Package)" = projectwright
+          test "$(dpkg-deb --field "${debs[0]}" Version)" = '0.1.0~dev0-1'
+          test ! -e /usr/bin/pw
+          work="$(mktemp -d /tmp/projectwright-ubuntu-matrix.XXXXXXXX)"
+          cleanup() {
+            rc=$?
+            trap - EXIT
+            if dpkg-query -W -f='${Status}' projectwright 2>/dev/null |
+               grep -Eq '(installed|unpacked|half-installed|half-configured|config-files)'; then
+              dpkg --purge projectwright || rc=1
+            fi
+            if test -e /usr/bin/pw || test -L /usr/bin/pw || test -e /usr/share/projectwright; then
+              echo 'ERROR: package-owned files remain after purge' >&2
+              rc=1
+            fi
+            rm -rf "$work"
+            exit "$rc"
+          }
+          trap cleanup EXIT
+          dpkg --install "${debs[0]}"
+          test "$(dpkg-query -W -f='${Status}' projectwright)" = 'install ok installed'
+          for cmd in pw pw-dispatch pw-manager pw-worker pw-notify pw-timer; do
+            command -v "$cmd" >/dev/null
+            "$cmd" --help >/dev/null
+          done
+          export HOME="$work/home"
+          export XDG_CONFIG_HOME="$HOME/.config"
+          mkdir -m 700 "$HOME"
+          pw init --project demo --no-config --config-dir "$HOME/.config/projectwright" >"$work/init.json"
+          test -f "$HOME/.config/projectwright/projects/demo/queue.md"
+          test -f "$HOME/.config/projectwright/projects/demo/work_log.md"
+          test ! -e "$HOME/.config/projectwright/projects/demo/config.json"
+          pw defaults --project demo --config-dir "$HOME/.config/projectwright" >"$work/defaults.json"
+          python3 -B -c 'import json,sys; assert json.load(open(sys.argv[1]))["configured"] is False' "$work/defaults.json"
+          pw status --project demo --config-dir "$HOME/.config/projectwright" >"$work/status.json"
+          python3 -B -c 'import json,sys; assert json.load(open(sys.argv[1]))["decision"] == "disabled"' "$work/status.json"
+          if pw setup-user --minutes 10 >"$work/setup.out" 2>"$work/setup.err"; then
+            echo 'ERROR: root unexpectedly enabled per-user setup' >&2
+            exit 1
+          fi
+          grep -Fq 'Run setup-user as the intended non-root user' "$work/setup.err"
+          test ! -e "$HOME/.hermes"
+          test ! -e "$HOME/.config/systemd/user"
+          echo 'PASS: clean Debian install and CLI behavior on Ubuntu ${{ matrix.ubuntu }}'

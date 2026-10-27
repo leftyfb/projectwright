@@ -1,3 +1,5 @@
+> **Historical baseline audit only.** This page inventories the original 18 flat modules and historical installed Hermes state. It is **not** the current development branch manual. Read [manual.md](manual.md), [file-reference.md](file-reference.md) and [release-checklist.md](release-checklist.md) for current names, workflows and verified live test status.
+
 # Runtime entry points and integrations
 
 Audit baseline: `7fe441c9cf46ea3c67ce6cd03fa82eaa4f6124fd`. Commands below describe source/runtime wiring; credentials and token values are deliberately omitted.

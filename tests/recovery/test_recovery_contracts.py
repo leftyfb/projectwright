@@ -280,7 +280,7 @@ class RecoveryContracts(unittest.TestCase):
         unit_dir = home / ".config/systemd/user"
         service = (unit_dir / "projectwright-worker-pw-timer-fixture.service").read_text()
         timer_unit = (unit_dir / "projectwright-worker-pw-timer-fixture.timer").read_text()
-        self.assertIn("ExecStart=/usr/bin/python3 -B " + str(scripts / "pw_dispatch.py"), service)
+        self.assertIn("ExecStart=/usr/bin/python3 -B " + str(SRC / "pw_dispatch.py"), service)
         self.assertNotIn("--once", service)
         self.assertIn("Persistent=false", timer_unit)
 

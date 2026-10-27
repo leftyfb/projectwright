@@ -10,6 +10,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: projectwright-offline-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -43,6 +47,94 @@ jobs:
           python3 -B scripts/validate-baseline.py --mode development \
             2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/validator.log"
 
+      - name: Build and smoke-test development wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/projectwright-wheels" . \
+            2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/wheel-build.log"
+          python3 -m pip install --no-deps --target "$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP"/projectwright-wheels/*.whl
+          PYTHONPATH="$RUNNER_TEMP/projectwright-install" python3 -B -c \
+            "import pw_dispatch, project_queue_manager, project_task_worker, pw_project_timer; print('wheel imports OK')"
+          for cmd in pw pw-dispatch pw-manager pw-worker pw-notify pw-timer; do
+            PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+              "$RUNNER_TEMP/projectwright-install/bin/$cmd" --help > /dev/null
+          done
+          PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP/projectwright-install/bin/pw" setup-user --help > /dev/null
+          mkdir -p "$RUNNER_TEMP/pw-empty-home"
+          HOME="$RUNNER_TEMP/pw-empty-home" PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP/projectwright-install/bin/pw" defaults --project fixture \
+            > "$RUNNER_TEMP/projectwright-test-logs/defaults.json"
+          python3 -B -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['configured'] is False and d['defaults']['worker_execution_enabled'] is False and d['defaults']['telegram_delivery_enabled'] is False" \
+            "$RUNNER_TEMP/projectwright-test-logs/defaults.json"
+          PYTHONPATH="$RUNNER_TEMP/projectwright-install" python3 -B -c "import project_recovery as oldr, pw_recovery as newr, project_worker_journal as oldj, pw_worker_journal as newj, project_quota as oldq, pw_quota as newq, project_worker_progress as oldp, pw_worker_progress as newp, project_milestone_sequence as oldm, pw_milestone_sequence as newm, project_acceptance_gate as olda, pw_acceptance_gate as newa; assert oldq.evaluate is newq.evaluate; assert oldp.record_completed is newp.record_completed; assert oldm.evaluate is newm.evaluate; assert olda.awaiting_acceptance is newa.awaiting_acceptance; assert oldr.evidence is newr.evidence; assert oldj.journal_path is newj.journal_path"
+          HOME="$RUNNER_TEMP/pw-empty-home" PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP/projectwright-install/bin/pw" init --project scaffold \
+            --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" \
+            > "$RUNNER_TEMP/projectwright-test-logs/init.json"
+          HOME="$RUNNER_TEMP/pw-empty-home" PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP/projectwright-install/bin/pw" status --project scaffold \
+            --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" \
+            | python3 -B -c "import json,sys; assert json.load(sys.stdin)['decision']=='disabled'"
+          HOME="$RUNNER_TEMP/pw-empty-home" PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+            "$RUNNER_TEMP/projectwright-install/bin/pw" init --project configless \
+            --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" --no-config \
+            > "$RUNNER_TEMP/projectwright-test-logs/init-configless.json"
+          test -f "$RUNNER_TEMP/pw-empty-home/.config/projectwright/projects/configless/queue.md"
+          test -f "$RUNNER_TEMP/pw-empty-home/.config/projectwright/projects/configless/work_log.md"
+          test ! -e "$RUNNER_TEMP/pw-empty-home/.config/projectwright/projects/configless/config.json"
+          echo "Wheel canonical and legacy module checks OK"
+
+      - name: Build and inspect development Debian package
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/build-deb.sh "$RUNNER_TEMP"/projectwright-wheels/*.whl "$RUNNER_TEMP/projectwright-debs" \
+            2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/deb-build.log"
+          dpkg-deb --contents "$RUNNER_TEMP"/projectwright-debs/*.deb \
+            | tee "$RUNNER_TEMP/projectwright-test-logs/deb-contents.log"
+          mkdir -p "$RUNNER_TEMP/projectwright-deb-extract"
+          dpkg-deb --extract "$RUNNER_TEMP"/projectwright-debs/*.deb "$RUNNER_TEMP/projectwright-deb-extract"
+          for name in dispatch manager worker notify timer; do
+            PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" \
+              "$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw-$name" --help > /dev/null
+          done
+          PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" \
+            "$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw" --help > /dev/null
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals.py"
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals/plugin.yaml"
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals/__init__.py"
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.service"
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.timer"
+          grep -Fq 'ExecStart=/usr/bin/pw-notify --send' "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/systemd/user/projectwright-approval-notify.service"
+          PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" python3 -B -c "import project_quota as oldq, pw_quota as newq, project_worker_progress as oldp, pw_worker_progress as newp, project_milestone_sequence as oldm, pw_milestone_sequence as newm, project_acceptance_gate as olda, pw_acceptance_gate as newa; assert oldq.evaluate is newq.evaluate; assert oldp.record_completed is newp.record_completed; assert oldm.evaluate is newm.evaluate; assert olda.awaiting_acceptance is newa.awaiting_acceptance"
+          echo "Debian canonical, legacy and integration asset checks OK"
+
+      - name: Exercise extracted Debian READ and Git cycle in disposable repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PROJECTWRIGHT_TEST_SCRIPTS="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages"
+          export PROJECTWRIGHT_TEST_DISPATCH="$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw-dispatch"
+          export PYTHONPATH="$PROJECTWRIGHT_TEST_SCRIPTS"
+          test -f "$PROJECTWRIGHT_TEST_SCRIPTS/pw_dispatch.py"
+          test -x "$PROJECTWRIGHT_TEST_DISPATCH"
+          python3 -B -m unittest -v \
+            tests.integration.test_subprocess_chain.RealSubprocessChain.test_real_subprocess_chain_finishes_read_and_is_idempotent \
+            tests.integration.test_subprocess_chain.RealSubprocessChain.test_real_edit_test_commit_cycle_preserves_git_scope \
+            2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/deb-installed-cycle.log"
+
+      - name: Upload development Debian package
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: projectwright-deb-${{ github.run_id }}
+          path: ${{ runner.temp }}/projectwright-debs/*.deb
+          retention-days: 7
+          if-no-files-found: error
+
       - name: Verify whitespace
         if: always()
         shell: bash
@@ -51,6 +143,15 @@ jobs:
           mkdir -p "$RUNNER_TEMP/projectwright-test-logs"
           git diff --check \
             2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/diff-check.log"
+
+      - name: Upload development wheel
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: projectwright-wheel-${{ github.run_id }}
+          path: ${{ runner.temp }}/projectwright-wheels/*.whl
+          retention-days: 7
+          if-no-files-found: error
 
       - name: Upload ephemeral test logs
         if: always()

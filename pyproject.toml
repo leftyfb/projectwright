@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "projectwright"
+version = "0.1.0.dev0"
+description = "Project task orchestration (development preview)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools]
+package-dir = {"" = "src/projectwright"}
+py-modules = [
+    "project_acceptance_gate",
+    "project_milestone_guard",
+    "pw_milestone_guard",
+    "project_milestone_sequence",
+    "project_notes_publisher",
+    "pw_notes_publisher",
+    "project_notes_sync",
+    "pw_notes_sync",
+    "project_queue_manager",
+    "pw_queue_manager",
+    "project_queue_planner",
+    "pw_queue_planner",
+    "project_quota",
+    "pw_quota",
+    "project_recovery",
+    "pw_recovery",
+    "project_task_worker",
+    "pw_task_worker",
+    "project_telegram_approval",
+    "pw_telegram_approval",
+    "project_worker_journal",
+    "pw_worker_journal",
+    "project_worker_progress",
+    "pw_buttons",
+    "pw_dispatch",
+    "pw_defaults",
+    "pw_config",
+    "pw_init",
+    "pw_notify",
+    "pw_plugin",
+    "pw_worker_progress",
+    "pw_milestone_sequence",
+    "pw_acceptance_gate",
+    "pw_project_timer",
+]
+
+[project.scripts]
+pw = "pw_dispatch:cli"
+pw-dispatch = "pw_dispatch:main"
+pw-manager = "pw_queue_manager:main"
+pw-worker = "pw_task_worker:main"
+pw-notify = "pw_notify:main"
+pw-timer = "pw_project_timer:main"
