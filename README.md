@@ -41,7 +41,7 @@ requirements.md -> planner -> queue.md -> dispatcher/manager gates
 
 ## Inspect and test the development source
 
-Requires Python 3.10+ and Git. From the repository root:
+For source development, requires Python 3.10+ and Git. The **supported Debian installation targets are Ubuntu 24.04 LTS and 26.04 LTS only** (22.04 is not supported). From the repository root:
 
 ```sh
 python3 -B -m unittest discover -s tests -p 'test_*.py' -v
@@ -71,6 +71,6 @@ The older [component inventory](docs/component-inventory.md), [architecture snap
 
 ## Safety and current status
 
-The isolated `pw-test` LXD environment has verified a real Debian install/purge, user timer onboarding, Hermes plugin/gateway loading, Telegram message delivery, a real Approve callback, receipt verification and cleanup. That does **not** verify a stable package, every rejection/auth edge case, cross-source-version migration, a full live EDIT/TEST/COMMIT path, or production installation. No self-hosted `pw-test` workflow should be triggered while its runner/container is intentionally stopped.
+The isolated `pw-test` LXD environment verified Debian install/purge, user timer onboarding, Hermes plugin/gateway loading, Telegram delivery, real Approve and Reject callbacks, receipt verification and cleanup. Hosted tests also passed clean package installation/purge on Ubuntu 24.04 and 26.04, packaged fake-provider READ and EDIT/TEST/COMMIT execution, and a genuine two-source Debian upgrade preserving 35 user-owned files. These checks do **not** establish a stable package, all authorization/recovery edge cases, future schema migrations, a live-model EDIT/TEST/COMMIT run, or production installation. No self-hosted `pw-test` workflow should be triggered while its runner/container is intentionally stopped.
 
 Development and review belong on `test/review-followups`; do not modify `main` or a production Hermes instance without specific authorization. The [release checklist](docs/release-checklist.md) is the evidence-backed authority for sign-off.
