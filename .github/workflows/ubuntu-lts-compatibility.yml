@@ -9,6 +9,8 @@ on:
       - 'pyproject.toml'
       - 'scripts/build-deb.sh'
       - 'docs/release-notes.md'
+      - 'docs/packaging-and-operations.md'
+      - 'README.md'
   workflow_dispatch:
 
 concurrency:
@@ -39,8 +41,10 @@ jobs:
             exit 1
           }
           python3 -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/wheels" .
+          test -f "$RUNNER_TEMP/wheels/projectwright-0.1.0-py3-none-any.whl"
           bash scripts/build-deb.sh "$RUNNER_TEMP"/wheels/*.whl "$RUNNER_TEMP/debs"
           test "$(dpkg-deb --field "$RUNNER_TEMP/debs/projectwright_0.1.0-1_all.deb" Package)" = projectwright
+          test "$(dpkg-deb --field "$RUNNER_TEMP/debs/projectwright_0.1.0-1_all.deb" Version)" = 0.1.0-1
           (cd "$RUNNER_TEMP/debs" && sha256sum ./*.deb > SHA256SUMS && sha256sum -c SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
