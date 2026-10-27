@@ -26,7 +26,7 @@ class ApprovalSetupTests(unittest.TestCase):
                  patch.object(timer.os, "geteuid", return_value=1000), \
                  patch.object(timer, "find_hermes_cli", return_value="/usr/bin/hermes"), \
                  patch("pw_notify.config_values", return_value={}):
-                timer.setup_interactive(yes=True, runner=lambda *a, **k: self.fail("called"))
+                timer.setup_interactive(yes=True, probe=lambda *a, **k: Mock(returncode=0), runner=lambda *a, **k: self.fail("called"))
             self.assertFalse((home / ".config/systemd").exists())
 
     def test_first_run_decline_does_not_change_integration(self):
@@ -51,7 +51,7 @@ class ApprovalSetupTests(unittest.TestCase):
             with patch.object(Path, "home", return_value=home), \
                  patch.object(timer.os, "geteuid", return_value=1000), \
                  patch.object(timer, "find_hermes_cli", return_value="/usr/bin/hermes"), \
-                 patch.object(timer.sys.stdin, "isatty", return_value=True), \
+                 patch.object(timer.sys, "stdin", Mock(isatty=lambda: True)), \
                  patch("pw_notify.config_values", return_value=values):
                 timer.setup_interactive(prompt=lambda _: "yes",
                                         probe=lambda *a, **k: Mock(returncode=0), runner=lambda argv, *, check: calls.append(argv))
