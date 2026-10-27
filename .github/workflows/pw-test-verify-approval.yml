@@ -34,8 +34,15 @@ jobs:
               assert not pending.exists()
               print('PASS: Telegram callback wrote verified acceptance receipt; request consumed')
           elif reject.exists():
-              assert pending.exists()
-              print('REJECTED: callback saved rejection and retained request')
+              assert pending.is_file() and not pending.is_symlink()
+              assert reject.is_file() and not reject.is_symlink()
+              pinned=json.loads(pending.read_text())
+              rejected=json.loads(reject.read_text())
+              assert rejected == pinned, 'rejection must equal pinned pending evidence'
+              assert pinned.get('project') == 'pwtelecheck'
+              assert pinned.get('milestone') == 'DEMO-1-M1'
+              assert not receipt.exists() or 'DEMO-1-M1' not in json.loads(receipt.read_text()).get('verified_milestones',{})
+              print('PASS: real Reject callback persisted exact pinned evidence; pending retained; no approval receipt')
           elif pending.exists():
               print('PENDING: user has not completed an approval/rejection callback yet')
           else:
