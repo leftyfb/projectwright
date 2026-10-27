@@ -1,4 +1,4 @@
-# File-by-file guide (current development branch)
+# File-by-file guide
 
 This is the **current canonical source and repository map**, not the historical 18-file baseline. It covers every tracked runtime Python module and the surrounding packaging, CI and documentation surfaces. Source lives under `src/projectwright/` as flat installed modules; no `src/projectwright/__init__.py` package namespace is installed yet.
 
