@@ -65,13 +65,13 @@ No further `pw-test` self-hosted workflow should run while its container/runner 
 
 ## Per-user onboarding is separate from dpkg
 
-The administrator installs a package for the OS; only the **intended ordinary user** can decide which Hermes account, bot, projects and systemd user manager to integrate. After inspecting their `~/.hermes/.env`, existing plugin and user units, the explicit action is:
+The administrator installs a package for the OS; only the **intended ordinary user** can decide which Hermes account, bot, projects and systemd user manager to integrate. After installing the `.deb`, the **required Hermes user** runs the standard first-run check:
 
 ```sh
-pw-timer setup-user --minutes 10 --enable-hermes-plugin
+pw setup
 ```
 
-This can install matching user units, enable/start the approval notifier timer and enable the native Hermes plugin. It refuses root and conflicting/symlinked targets. A Hermes gateway restart/reload may be separately required for callback registration. This is an operational change, **not** a dry-run. The unified `pw setup-user` action forwarding was corrected on this development branch; previously built preview artifacts may still require the direct `pw-timer setup-user` form.
+This checks for a Hermes executable and `~/.hermes/` configuration directory. It examines existing Telegram bot credentials and an authorized numeric user list without printing secrets. If both exist, it explains the plugin/timer changes and asks for confirmation (default No) before activating them. If Telegram is missing, setup explains how to configure it and leaves approvals disabled. `pw setup --no-telegram` deliberately defers integration; `pw setup --yes` is an explicit opt-in for unattended setup. The older `pw setup-user` and `pw-timer setup-user --enable-hermes-plugin` remain compatibility/advanced routes. Setup refuses root and conflicting or symlinked targets. A Hermes gateway restart/reload may separately be required for callback registration; setup does **not** do that automatically.
 
 To disable the approval timer:
 
