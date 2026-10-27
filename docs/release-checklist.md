@@ -262,6 +262,8 @@ a disposable account before a stable tag or deployment.
 - **PASS:** [pw-test cleanup run 40258658872](https://github.com/leftyfb/projectwright/actions/runs/40258658872) disabled and removed the test approval plugin, removed the gateway root override, restarted the test gateway with its prior environment, purged the temporary Debian package, and deleted the isolated disposable Git fixture. It reported both `PASS: gateway test-only environment override removed` and `PASS: disposable Projectwright assets removed; Hermes credentials preserved`. No production `tux` actions were performed.
 - **Regression fix:** Hermes adapter's Debian fallback appends `/usr/lib/python3/dist-packages` rather than prepending it; this preserves Hermes's venv `cryptography` import precedence. An offline test prohibits reintroducing the prepend. Do not confuse success of the one-time live test with a production deployment or release approval.
 
+> **Stable-release backlog snapshot:** The following unchecked boxes represent broader final-production requirements, not a fresh beta acceptance result. Some accompanying implementation notes predate the passing tests summarized at the top of this file. In particular, live Approve and Reject, packaged entrypoints, actual install/purge, cross-source upgrade, and the Ubuntu 24.04/26.04 matrix have now passed their scoped gates. The top dated evidence takes precedence over historical notes below.
+
 ## 1. Consistent filenames, modules, and commands
 
 - [x] Select one canonical internal naming scheme. The unified `pw`
@@ -328,7 +330,7 @@ a disposable account before a stable tag or deployment.
 ## 5. Telegram approval experience
 
 - [x] Deliver milestone requests with Telegram inline **Approve / Reject**
-  buttons. The button callback, not free-form chat parsing, is authoritative. Verified with disposable live Approve callback in run 40258567183; real Reject path remains a separate gate.
+  buttons. The button callback, not free-form chat parsing, is authoritative. Verified with disposable live Approve callback in run 40258567183 and real Reject callback in run 40426908750.
 - [ ] Authorize users dynamically against the configured allow-list and private
   chats; stale, replayed, altered, revoked and rejected requests fail closed.
 - [x] Run acceptance checks against current policy, queue and Git evidence
@@ -394,5 +396,6 @@ a disposable account before a stable tag or deployment.
 The development branch already has offline callback/guard tests, a working
 source-checkout runner on `tux`, a development wheel and a Debian preview.
 The flat module names, default `~/.hermes` assumptions and Telegram/Hermes
-coupling are **not** yet fully migrated, and no live install lifecycle has
-been tested. See `docs/e2e-test-gaps.md` and `docs/development-wheel.md`.
+coupling are **not** yet fully migrated. Real Debian install/purge, upgrade,
+packaged execution and isolated live Telegram callback gates have since passed;
+consult the current verified state above for their precise scope. See `docs/e2e-test-gaps.md` and `docs/development-wheel.md`.
