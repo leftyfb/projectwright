@@ -17,6 +17,8 @@ The Debian package does **not** install per-user secrets, create a configured pr
 
 ## Dependency audit (2026-10-26)
 
+**Beta operating-system support policy:** Ubuntu **24.04 LTS** (distribution Python 3.12) and **26.04 LTS** (distribution Python 3.14) only. Ubuntu 22.04 is explicitly out of scope. This is an OS support promise to validate with clean installs, separate from the wheel's Python >=3.10 syntax/runtime floor. The Debian `Architecture: all` setting describes pure-Python package content; it does not imply testing every Ubuntu release or CPU platform.
+
 A source import audit of all 21 canonical `pw_*.py` modules found that the **core CLI, manager, planner, worker, Git/approval guards, notifier HTTP sender, quota client and notes tools use the Python standard library and local Projectwright modules**. The optional `pw_plugin.py` imports `telegram.ext.CallbackQueryHandler` when registering a callback into the Hermes gateway. The native Hermes adapter bridges to Debian's module directory after preserving the Hermes virtualenv's import precedence.
 
 | Requirement | Debian packaging decision |
