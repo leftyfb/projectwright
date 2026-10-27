@@ -59,7 +59,7 @@ Each `project_*.py` file below exists to preserve older import/script consumers 
 | `installed-source-manifest.json` | Immutable original 18-file source baseline; not a current canonical-module manifest. |
 | `scripts/validate-baseline.py` | Baseline-vs-development source, import, syntax, dependency and offline-suite validator. |
 
-The machine-specific live-test harnesses and trigger files used during pre-release testing were retired before public source distribution. Their historical CI evidence remains available in GitHub Actions; the active repository no longer ships scripts for those private hosts.
+The machine-specific live-test harnesses and one-time release trigger files used during pre-release testing were retired before public source distribution. Their historical CI evidence remains available in GitHub Actions; the active repository no longer ships scripts for those private hosts.
 
 ## CI and test files
 
@@ -68,7 +68,6 @@ The machine-specific live-test harnesses and trigger files used during pre-relea
 | `.github/workflows/offline-tests.yml` | Hosted offline unit/integration/recovery/acceptance suite, validators, wheel and Debian preview smoke/artifacts. |
 | `.github/workflows/public-history-audit.yml` | Manually triggered disclosure scanner for reachable Git blobs and retained GitHub Actions logs; reports categories and locations, never secret contents. |
 | `.github/workflows/ubuntu-lts-compatibility.yml` | Hosted-only package build and independent clean `dpkg` install/smoke/purge in Ubuntu 24.04 and 26.04 containers; no live integrations. |
-| `.github/ubuntu-release-matrix-trigger.txt` | Branch-scoped trigger for the hosted Ubuntu compatibility matrix. |
 | `tests/unit/` | Deterministic policy, quota, sequencing and validator tests. |
 | `tests/integration/` | Mock/fake-provider dispatcher, manager, worker, delivery and Git lifecycle tests. |
 | `tests/acceptance/` | Acceptance evidence, Telegram callback/authorization/replay contracts. |
@@ -113,7 +112,6 @@ These are the branch's top-level targeted regression files; the directory suites
 | `tests/test_guard_pinned_evidence.py` | Approval guard pinned evidence and stale-state refusal |
 | `tests/test_milestone_module_compat.py` | Milestone module alias compatibility |
 | `tests/test_notes_xdg_paths.py` | Notes and configuration-root path selection |
-| `tests/test_packaged_manager_handoff.py` | Installed manager/dispatcher module handoff |
 | `tests/test_packaged_worker_utilities.py` | Installed worker helper imports |
 | `tests/test_packaging_manifest.py` | Wheel module list / packaging contract |
 | `tests/test_progress_module_compat.py` | Progress helper compatibility |
