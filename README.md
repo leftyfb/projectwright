@@ -41,7 +41,9 @@ requirements.md -> planner -> queue.md -> dispatcher/manager gates
 
 ## Install and inspect the release candidate
 
-After publication, download the release `.deb` and `SHA256SUMS` from the [GitHub Releases page](https://github.com/leftyfb/projectwright/releases), verify the checksum, and run `sudo apt install ./projectwright_0.1.0-1_all.deb`. **Hermes is required and must already be installed and configured for the intended ordinary user.** Run `pw setup` as that user after installing the package; Telegram integration is only enabled with confirmation. See [0.1.0 release notes](docs/release-notes.md) for the full procedure.\n\nFor source development, requires Python 3.10+ and Git. The **supported Debian installation targets are Ubuntu 24.04 LTS and 26.04 LTS only** (22.04 is not supported). From the repository root:
+After publication, download the release `.deb` and `SHA256SUMS` from the [GitHub Releases page](https://github.com/leftyfb/projectwright/releases), verify the checksum, and run `sudo apt install ./projectwright_0.1.0-1_all.deb`. **Hermes is required and must already be installed and configured for the intended ordinary user.** Run `pw setup` as that user after installing the package; Telegram integration is only enabled with confirmation. See [0.1.0 release notes](docs/release-notes.md) for the full procedure.
+
+For source development, requires Python 3.10+ and Git. The **supported Debian installation targets are Ubuntu 24.04 LTS and 26.04 LTS only** (22.04 is not supported). From the repository root:
 
 ```sh
 python3 -B -m unittest discover -s tests -p 'test_*.py' -v
