@@ -27,9 +27,7 @@ a disposable account before a stable tag or deployment.
 
 **Up-to-date canonical module reference:** [module-naming-current.md](module-naming-current.md). Historical inventories document the original baseline, not the current naming.
 
-- **Repository:** `leftyfb/projectwright`; **working branch:**
-  `test/review-followups`. Do not modify `main`, the user's installed
-  Hermes environment, or production project data without explicit direction.
+- **Repository:** `leftyfb/projectwright`. These are historical handoff notes; do not modify the default branch, the user's installed Hermes environment, or production project data without explicit direction.
 - **Last verified CI prior to this documentation update:** GitHub Actions run
   [40108642704](https://github.com/leftyfb/projectwright/actions/runs/40108642704)
   at commit `7af7ff9a319c058a9750453961bb13b767bdf145`
@@ -88,7 +86,7 @@ a disposable account before a stable tag or deployment.
   exact runner-name/host/user/container checks, and no sudo or package writes.
   The required custom runner label is working.
 - A push trigger limited to changes to `.github/disposable-test-container-preflight-trigger.txt`
-  on `test/review-followups` enables execution without changing `main`.
+  on the then-current development branch enabled execution without changing the default branch.
   `workflow_dispatch` remains available once GitHub's default-branch
   registration requirement is met. Initial push-trigger run **passed**.
 - Running in the foreground is sufficient for initial testing; if that
@@ -160,7 +158,7 @@ a disposable account before a stable tag or deployment.
   ```sh
   hostname -s
   systemd-detect-virt --container
-  # Within disposable-test-container, from the reviewed test/review-followups checkout:
+  # Historical disposable test container, from the reviewed source checkout:
   sha256sum /absolute/path/projectwright_0.1.0~dev0-1_all.deb
   sudo bash scripts/disposable-test-container-deb-lifecycle.sh /absolute/path/projectwright_0.1.0~dev0-1_all.deb
   ```
