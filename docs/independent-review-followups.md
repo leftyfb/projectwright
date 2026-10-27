@@ -1,6 +1,6 @@
 # Independent review follow-up tests
 
-Branch: `test/review-followups`, based on `fix/contract-hardening`.
+Historical independent-review follow-up notes; not tied to the current working branch.
 
 The new `tests/integration/test_review_followups.py` contains three **expected-failure specifications**. They must not be counted as fixes or as successful live integration validation:
 
@@ -10,12 +10,10 @@ The new `tests/integration/test_review_followups.py` contains three **expected-f
 
 ## Validation on isolated-test-host
 
-No tests were executed by the GitHub file-editing operation. After fetching this branch, run:
+No tests were executed by the GitHub file-editing operation. From the checkout you intend to validate, run:
 
 ```sh
 cd ~/repos/projectwright
-git fetch origin
-git switch test/review-followups
 python3 -B -m unittest tests.integration.test_review_followups -v
 python3 -B -m unittest discover -s tests -p 'test_*.py' -v
 python3 -B scripts/validate-baseline.py --mode development
