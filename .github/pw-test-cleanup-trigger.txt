@@ -1,1 +1,2 @@
 Clean up live test after real Telegram approval receipt verified.
+Cleanup authorized disposable 2026-10-26 Reject fixture after verified exact rejection, no receipt.
