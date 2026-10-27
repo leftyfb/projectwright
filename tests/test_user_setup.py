@@ -10,6 +10,17 @@ import pw_project_timer as timer
 
 
 class ApprovalSetupTests(unittest.TestCase):
+    def test_find_hermes_in_user_local_path(self):
+        with tempfile.TemporaryDirectory(prefix="pw-hermes-local-") as temp:
+            home = Path(temp)
+            executable = home / ".local/bin/hermes"
+            executable.parent.mkdir(parents=True)
+            executable.write_text("#!/bin/sh\\nexit 0\\n")
+            executable.chmod(0o700)
+            with patch.object(Path, "home", return_value=home), \
+                 patch.object(timer.shutil, "which", return_value=None):
+                self.assertEqual(timer.find_hermes_cli(), str(executable))
+
     def test_first_run_requires_hermes_without_side_effects(self):
         with tempfile.TemporaryDirectory(prefix="pw-setup-hermes-") as temp:
             with patch.object(Path, "home", return_value=Path(temp)), \
