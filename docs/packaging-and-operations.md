@@ -62,9 +62,9 @@ Build in a clean `dist/` directory so the wheel glob selects exactly one artifac
 A safe metadata-only inspection is:
 
 ```sh
-dpkg-deb --info /absolute/path/projectwright_<version>_<architecture>.deb
-dpkg-deb --contents /absolute/path/projectwright_<version>_<architecture>.deb
-sha256sum /absolute/path/projectwright_<version>_<architecture>.deb
+dpkg-deb --info /absolute/path/package.deb
+dpkg-deb --contents /absolute/path/package.deb
+sha256sum /absolute/path/package.deb
 ```
 
 ## Explicit isolated install lifecycle
