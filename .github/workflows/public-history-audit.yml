@@ -1,7 +1,6 @@
-name: Public disclosure audit (retry)
+name: Public disclosure audit (manual)
 on:
-  push:
-    branches: [chore/public-readiness]
+  workflow_dispatch:
 permissions:
   contents: read
   actions: read
