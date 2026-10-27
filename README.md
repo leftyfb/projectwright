@@ -4,7 +4,7 @@
 
 Projectwright turns `requirements.md` and an ordered `queue.md` into bounded planning and agent tasks, validates structured completion reports and Git evidence, and pauses at configured milestones for acceptance. Hermes CLI and its per-user configuration are required for the supported 0.1.0 experience; a command-based adapter is experimental, not a supported replacement. Telegram approval is expected and offered during first-run setup when Hermes Telegram settings are detected, but enabling it is optional and requires confirmation. Home Assistant quota telemetry, notes mirroring and user-level project dispatch timers are optional integrations.
 
-> **Development release only.** This branch (`test/review-followups`) builds a working preview wheel and `.deb`, but it is not approved for production deployment. The [release checklist](docs/release-checklist.md) records verified isolated installs, Hermes/Telegram approval testing and remaining release gates. No install step should automatically alter a user's Hermes credentials, project files, plugin or timers.
+> **Release status:** `0.1.0` is published as a [GitHub Release](https://github.com/leftyfb/projectwright/releases/tag/0.1.0) with a tested Debian artifact for Ubuntu 24.04 and 26.04. It is an early release: install in a non-production environment first. A signed APT feed is **not yet available**; until then, installation and upgrades require the downloadable `.deb`. No install step automatically alters Hermes credentials, project files, plugins, or timers.
 
 ## Start here
 
@@ -12,7 +12,7 @@ Projectwright turns `requirements.md` and an ordered `queue.md` into bounded pla
 |---|---|
 | Understand how it works and run a safe first project | **[Full user and operator manual](docs/manual.md)** |
 | See the role of **every source, packaging, workflow and test file** | **[Current file-by-file reference](docs/file-reference.md)** |
-| Build or inspect the Debian preview, plan upgrades/uninstalls | **[Packaging and operations](docs/packaging-and-operations.md)** |
+| Install or inspect the Debian release, plan upgrades/uninstalls | **[Packaging and operations](docs/packaging-and-operations.md)** |
 | Follow requirements → planning → work → Git → human acceptance | [Workflow](docs/workflow.md) |
 | Find CLI commands and options | [CLI reference](docs/cli.md) |
 | Understand project roots, XDG paths, defaults and config-free mode | [Configuration guide](docs/configuration-home.md) |
@@ -38,6 +38,18 @@ requirements.md -> planner -> queue.md -> dispatcher/manager gates
 ```
 
 `pw status` inspects a project; `pw plan` can request new queue items; `pw tick` plans when allowed and executes at most one task; `pw worker` runs a single task; `pw notify` previews approval requests (only `--send` transmits). A configured agent can change the selected Git worktree; always test against disposable data first. For the exact safeguards and execution types, see the [manual](docs/manual.md).
+
+## Install the 0.1.0 Debian release
+
+Download `projectwright_0.1.0-1_all.deb` and `SHA256SUMS` from [the 0.1.0 release](https://github.com/leftyfb/projectwright/releases/tag/0.1.0) into the same directory. Verify the download, then install it:
+
+```sh
+sha256sum -c SHA256SUMS
+sudo apt install ./projectwright_0.1.0-1_all.deb
+pw setup
+```
+
+Run `pw setup` as your ordinary Hermes user (not via `sudo`). An APT repository for automatic updates is planned but **not yet deployed**. Hermes CLI and a configured Hermes account are required for supported use; Telegram setup is offered with confirmation when detected.
 
 ## Inspect and test the development source
 
@@ -66,7 +78,7 @@ To create an inert private project, `pw init --project demo` disables execution 
 - `src/projectwright/project_*.py` — retained legacy compatibility imports.
 - `packaging/`, `pyproject.toml`, `scripts/build-deb.sh` — build and inert installation assets.
 - `tests/` — offline unit, integration, acceptance, recovery and migration regressions.
-- `.github/workflows/` — hosted CI and **separately gated** disposable LXD live tests.
+- `.github/workflows/` — hosted offline CI and guarded release publishing. Historical isolated LXD testing is archived in Git history; do not reconnect a self-hosted runner without a new security review.
 - `docs/` — operating manual, reference, acceptance evidence and historical audit records.
 
 The older [component inventory](docs/component-inventory.md), [architecture snapshot](docs/architecture-current.md) and [runtime entrypoint snapshot](docs/runtime-entrypoints.md) describe the original 18-file audit; consult the **current file reference** for the newer canonical modules and branch behavior.
@@ -75,4 +87,4 @@ The older [component inventory](docs/component-inventory.md), [architecture snap
 
 The isolated `pw-test` LXD environment verified Debian install/purge, user timer onboarding, Hermes plugin/gateway loading, Telegram delivery, real Approve and Reject callbacks, receipt verification and cleanup. Hosted tests also passed clean package installation/purge on Ubuntu 24.04 and 26.04, packaged fake-provider READ and EDIT/TEST/COMMIT execution, and a genuine two-source Debian upgrade preserving 35 user-owned files. These checks do **not** establish a stable package, all authorization/recovery edge cases, future schema migrations, a live-model EDIT/TEST/COMMIT run, or production installation. No self-hosted `pw-test` workflow should be triggered while its runner/container is intentionally stopped.
 
-Development and review belong on `test/review-followups`; do not modify `main` or a production Hermes instance without specific authorization. The [release checklist](docs/release-checklist.md) is the evidence-backed authority for sign-off.
+For public contributions, follow [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Before changing repository visibility, complete the [public-release readiness checklist](docs/public-release-readiness.md). The [release checklist](docs/release-checklist.md) preserves historical testing evidence; do not run against production Hermes without explicit authorization.

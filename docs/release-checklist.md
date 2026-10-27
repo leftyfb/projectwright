@@ -1,4 +1,6 @@
-# Projectwright final-release acceptance checklist
+# Projectwright release acceptance checklist
+
+> **Historical test record:** Projectwright `0.1.0` has since been tagged and published. Earlier development-preview language and test evidence below describe the prerelease process, not a statement that no GitHub Release exists. The signed APT feed and public-source readiness are separately tracked in [public-release-readiness.md](public-release-readiness.md).
 
 **Status:** release requirements, not a claim of implementation. No item below is
 considered done merely because a development wheel or Debian preview builds.

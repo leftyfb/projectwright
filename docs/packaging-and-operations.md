@@ -1,10 +1,10 @@
-# Debian packaging, installation and operations (development)
+# Debian packaging, installation and operations
 
-This page documents the **current preview**, not a production installation endorsement. Branch: `test/review-followups`; Python project version `0.1.0.dev0`; generated Debian revision `0.1.0~dev0-1`. Review [release-checklist.md](release-checklist.md) for current evidence and blockers.
+The current published version is **0.1.0**, distributed as `projectwright_0.1.0-1_all.deb` via [GitHub Releases](https://github.com/leftyfb/projectwright/releases/tag/0.1.0). The original development snapshots and `~dev0` test artifacts described below are historical test evidence, not the published installer. A signed APT feed is still pending; `apt update` will not find Projectwright until that repository is deployed. Review [release-checklist.md](release-checklist.md) for detailed testing evidence.
 
 ## How the artifact is built
 
-`pyproject.toml` declares a setuptools wheel of flat modules. `scripts/build-deb.sh` installs the built wheel into a Debian staging tree, writes executable wrappers and a `DEBIAN/control` file, adds integration assets, then produces `projectwright_0.1.0~dev0-1_all.deb`. The package is `Architecture: all` and declares `python3 (>= 3.10)` and `git`; the project metadata currently lists **no** Python runtime dependencies. Optional Hermes, Telegram and systemd integrations are deliberately configured outside the core package; their external environments and full production combinations are not covered by the Debian dependency declaration.
+`pyproject.toml` declares a setuptools wheel of flat modules. `scripts/build-deb.sh` installs the built wheel into a Debian staging tree, writes executable wrappers and a `DEBIAN/control` file, adds integration assets, then produces a versioned `.deb` (published 0.1.0: `projectwright_0.1.0-1_all.deb`). The package is `Architecture: all` and declares `python3 (>= 3.10)` and `git`; the project metadata currently lists **no** Python runtime dependencies. Optional Hermes, Telegram and systemd integrations are deliberately configured outside the core package; their external environments and full production combinations are not covered by the Debian dependency declaration.
 
 | Installed location | Responsibility |
 |---|---|
@@ -17,7 +17,7 @@ The Debian package does **not** install per-user secrets, create a configured pr
 
 ## Dependency audit (2026-10-26)
 
-**Beta operating-system support policy:** Ubuntu **24.04 LTS** (distribution Python 3.12) and **26.04 LTS** (distribution Python 3.14) only. Ubuntu 22.04 is explicitly out of scope. This is an OS support promise to validate with clean installs, separate from the wheel's Python >=3.10 syntax/runtime floor. The Debian `Architecture: all` setting describes pure-Python package content; it does not imply testing every Ubuntu release or CPU platform.
+**Initial-release operating-system support policy:** Ubuntu **24.04 LTS** (distribution Python 3.12) and **26.04 LTS** (distribution Python 3.14) only. Ubuntu 22.04 is explicitly out of scope. This is an OS support promise to validate with clean installs, separate from the wheel's Python >=3.10 syntax/runtime floor. The Debian `Architecture: all` setting describes pure-Python package content; it does not imply testing every Ubuntu release or CPU platform.
 
 A source import audit of all 21 canonical `pw_*.py` modules found that the **core CLI, manager, planner, worker, Git/approval guards, notifier HTTP sender, quota client and notes tools use the Python standard library and local Projectwright modules**. The optional `pw_plugin.py` imports `telegram.ext.CallbackQueryHandler` when registering a callback into the Hermes gateway. The native Hermes adapter bridges to Debian's module directory after preserving the Hermes virtualenv's import precedence.
 
@@ -34,6 +34,18 @@ A source import audit of all 21 canonical `pw_*.py` modules found that the **cor
 
 The audit is a **source/import contract**. The hosted [Ubuntu LTS matrix 40428244006](https://github.com/leftyfb/projectwright/actions/runs/40428244006) separately verified clean installation, CLI smoke, and purge on both supported releases. The matrix does **not** exercise optional live Hermes/Telegram integrations on both releases; that remains a stable-release compatibility consideration.
 
+## Install the published package
+
+Download both `projectwright_0.1.0-1_all.deb` and `SHA256SUMS` from the [0.1.0 release](https://github.com/leftyfb/projectwright/releases/tag/0.1.0) to the same directory:
+
+```sh
+sha256sum -c SHA256SUMS
+sudo apt install ./projectwright_0.1.0-1_all.deb
+pw setup
+```
+
+Run `pw setup` as the unprivileged user who owns the Hermes installation. Repository-backed `sudo apt install projectwright` and automatic upgrades are not supported until the signed public APT feed is published.
+
 ## Build and inspect without installing
 
 From a disposable checkout with wheel/build tools already available:
@@ -45,7 +57,7 @@ python3 -m pip wheel --no-deps --wheel-dir dist .
 bash scripts/build-deb.sh dist/projectwright-0.1.0.dev0-py3-none-any.whl dist
 ```
 
-The wheel filename above follows the current setuptools version; inspect the actual `dist/` wheel name before running the script. The build script requires exactly a wheel path and output directory; inspect it and `dpkg-deb --info`, `dpkg-deb --contents` and the resulting SHA-256 before any privileged operation. Prefer the exact GitHub-hosted, tested artifact over rebuilding with an unknown environment. Never assume a `~dev0` package has a stable migration promise.
+The `0.1.0.dev0` wheel example above is historical; on the release branch use the actual `0.1.0` wheel filename. The wheel filename above follows the development setuptools version; inspect the actual `dist/` wheel name before running the script. The build script requires exactly a wheel path and output directory; inspect it and `dpkg-deb --info`, `dpkg-deb --contents` and the resulting SHA-256 before any privileged operation. Prefer the exact GitHub-hosted, tested artifact over rebuilding with an unknown environment. Never assume a `~dev0` package has a stable migration promise.
 
 A safe metadata-only inspection is:
 
