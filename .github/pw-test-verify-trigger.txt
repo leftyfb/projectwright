@@ -1,3 +1,4 @@
 Read-only verification of the disposable Telegram callback receipt.
 Read-only post-fix gateway health and pending milestone verification.
 Verify receipt after Telegram approval button press.
+Read-only verify 2026-10-26 user-pressed Reject callback and absent acceptance receipt.
