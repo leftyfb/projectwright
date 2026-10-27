@@ -14,9 +14,9 @@ class ApprovalSetupTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="pw-setup-hermes-") as temp:
             with patch.object(Path, "home", return_value=Path(temp)), \
                  patch.object(timer.os, "geteuid", return_value=1000), \
-                 patch.object(timer.shutil, "which", return_value=None):
+                 patch.object(timer, "find_hermes_cli", return_value=None):
                 with self.assertRaisesRegex(ValueError, "Hermes is required"):
-                    timer.setup_interactive(yes=True, runner=lambda *a, **k: self.fail("called"))
+                    timer.setup_interactive(yes=True, probe=lambda *a, **k: Mock(returncode=0), runner=lambda *a, **k: self.fail("called"))
 
     def test_first_run_missing_telegram_stays_inert(self):
         with tempfile.TemporaryDirectory(prefix="pw-setup-optional-") as temp:
@@ -24,7 +24,7 @@ class ApprovalSetupTests(unittest.TestCase):
             (home / ".hermes").mkdir()
             with patch.object(Path, "home", return_value=home), \
                  patch.object(timer.os, "geteuid", return_value=1000), \
-                 patch.object(timer.shutil, "which", return_value="/usr/bin/hermes"), \
+                 patch.object(timer, "find_hermes_cli", return_value="/usr/bin/hermes"), \
                  patch("pw_notify.config_values", return_value={}):
                 timer.setup_interactive(yes=True, runner=lambda *a, **k: self.fail("called"))
             self.assertFalse((home / ".config/systemd").exists())
@@ -36,10 +36,10 @@ class ApprovalSetupTests(unittest.TestCase):
             values = {"TELEGRAM_BOT_TOKEN": "fixture", "TELEGRAM_ALLOWED_USERS": "111"}
             with patch.object(Path, "home", return_value=home), \
                  patch.object(timer.os, "geteuid", return_value=1000), \
-                 patch.object(timer.shutil, "which", return_value="/usr/bin/hermes"), \
+                 patch.object(timer, "find_hermes_cli", return_value="/usr/bin/hermes"), \
                  patch.object(timer.sys, "stdin", Mock(isatty=lambda: True)), \
                  patch("pw_notify.config_values", return_value=values):
-                timer.setup_interactive(prompt=lambda _: "no", runner=lambda *a, **k: self.fail("called"))
+                timer.setup_interactive(prompt=lambda _: "no", probe=lambda *a, **k: Mock(returncode=0), runner=lambda *a, **k: self.fail("called"))
             self.assertFalse((home / ".config/systemd").exists())
 
     def test_first_run_confirmation_enables_detected_integration(self):
@@ -50,11 +50,11 @@ class ApprovalSetupTests(unittest.TestCase):
             values = {"TELEGRAM_BOT_TOKEN": "fixture", "TELEGRAM_ALLOWED_USERS": "111"}
             with patch.object(Path, "home", return_value=home), \
                  patch.object(timer.os, "geteuid", return_value=1000), \
-                 patch.object(timer.shutil, "which", return_value="/usr/bin/hermes"), \
+                 patch.object(timer, "find_hermes_cli", return_value="/usr/bin/hermes"), \
                  patch.object(timer.sys.stdin, "isatty", return_value=True), \
                  patch("pw_notify.config_values", return_value=values):
                 timer.setup_interactive(prompt=lambda _: "yes",
-                                        runner=lambda argv, *, check: calls.append(argv))
+                                        probe=lambda *a, **k: Mock(returncode=0), runner=lambda argv, *, check: calls.append(argv))
             self.assertEqual(calls[0], ["hermes", "plugins", "enable", "projectwright-approvals"])
             self.assertTrue((home / ".config/systemd/user/projectwright-approval-notify.timer").is_file())
 
@@ -65,12 +65,42 @@ class ApprovalSetupTests(unittest.TestCase):
             values = {"TELEGRAM_BOT_TOKEN": "fixture", "TELEGRAM_ALLOWED_USERS": "111"}
             with patch.object(Path, "home", return_value=home), \
                  patch.object(timer.os, "geteuid", return_value=1000), \
-                 patch.object(timer.shutil, "which", return_value="/usr/bin/hermes"), \
+                 patch.object(timer, "find_hermes_cli", return_value="/usr/bin/hermes"), \
                  patch.object(timer.sys, "stdin", Mock(isatty=lambda: False)), \
                  patch("pw_notify.config_values", return_value=values):
                 with self.assertRaisesRegex(ValueError, "Interactive confirmation required"):
-                    timer.setup_interactive(runner=lambda *a, **k: self.fail("called"))
+                    timer.setup_interactive(probe=lambda *a, **k: Mock(returncode=0), runner=lambda *a, **k: self.fail("called"))
             self.assertFalse((home / ".config/systemd").exists())
+
+    def test_first_run_failing_hermes_probe_refuses_activation(self):
+        with tempfile.TemporaryDirectory(prefix="pw-setup-probe-") as temp:
+            home = Path(temp)
+            (home / ".hermes").mkdir()
+            with patch.object(Path, "home", return_value=home), \
+                 patch.object(timer.os, "geteuid", return_value=1000), \
+                 patch.object(timer, "find_hermes_cli", return_value="/usr/bin/hermes"):
+                with self.assertRaisesRegex(ValueError, "plugin discovery check failed"):
+                    timer.setup_interactive(yes=True, probe=lambda *a, **k: Mock(returncode=1),
+                                            runner=lambda *a, **k: self.fail("called"))
+            self.assertFalse((home / ".config/systemd").exists())
+
+    def test_first_run_hermes_probe_uses_bounded_read_only_command(self):
+        with tempfile.TemporaryDirectory(prefix="pw-setup-probe-argv-") as temp:
+            home = Path(temp)
+            (home / ".hermes").mkdir()
+            calls = []
+            def probe(argv, **kwargs):
+                calls.append((argv, kwargs))
+                return Mock(returncode=0)
+            with patch.object(Path, "home", return_value=home), \
+                 patch.object(timer.os, "geteuid", return_value=1000), \
+                 patch.object(timer, "find_hermes_cli", return_value="/usr/bin/hermes"):
+                timer.setup_interactive(no_telegram=True, probe=probe,
+                                        runner=lambda *a, **k: self.fail("called"))
+            self.assertEqual(calls, [(
+                ["/usr/bin/hermes", "plugins", "list", "--plain", "--no-bundled"],
+                {"capture_output": True, "text": True, "timeout": 20, "check": False},
+            )])
 
     def test_unit_generation_and_idempotent_user_setup(self):
         with tempfile.TemporaryDirectory(prefix="pw-setup-user-") as temp:
