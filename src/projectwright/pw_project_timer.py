@@ -35,7 +35,7 @@ def approval_plugin_assets() -> Path:
     return shipped if shipped.is_dir() else source
 
 
-def setup_user_approvals(*, minutes=10, enable_plugin=False, runner=subprocess.run) -> None:
+def setup_user_approvals(*, minutes=10, enable_plugin=False, hermes_cli='hermes', runner=subprocess.run) -> None:
     """Per-user setup; never called automatically from root-owned dpkg postinst."""
     if os.geteuid() == 0:
         raise ValueError('Run setup-user as the intended non-root user')
@@ -82,7 +82,7 @@ def setup_user_approvals(*, minutes=10, enable_plugin=False, runner=subprocess.r
             target = plugin_dest / name
             if not target.exists():
                 shutil.copyfile(source / name, target)
-        runner(['hermes', 'plugins', 'enable', 'projectwright-approvals'], check=True)
+        runner([hermes_cli, 'plugins', 'enable', 'projectwright-approvals'], check=True)
     dest.mkdir(parents=True, exist_ok=True)
     for path, contents in targets.items():
         if not path.exists():
@@ -159,7 +159,7 @@ def setup_interactive(*, minutes=10, yes=False, no_telegram=False,
         if answer not in ('y', 'yes'):
             print('Telegram integration left unchanged.')
             return
-    setup_user_approvals(minutes=minutes, enable_plugin=True, runner=runner)
+    setup_user_approvals(minutes=minutes, enable_plugin=True, hermes_cli=hermes, runner=runner)
     print('Hermes/Telegram plugin and approval notifier enabled for this user.')
     print('Check Hermes gateway plugin loading before relying on callbacks.')
 
