@@ -7,18 +7,19 @@ GitHub's private-to-public conversion exposes all reachable branches, tags, full
 ## Completed in this preparation branch
 
 - [x] Replace outdated development-only README status with published `0.1.0` installation instructions and explicitly state that no signed APT feed exists yet.
-- [x] Add security-reporting and contributor guidance.
+- [x] Add an MIT LICENSE, security-reporting and contributor guidance.
+- [x] Run the first read-only history scan on a GitHub-hosted runner: [Actions run 40517774799](https://github.com/leftyfb/projectwright/actions/runs/40517774799) checked 687 reachable Git blobs and 695 retained Actions run log archives with **no matches** for the scanner's credential patterns. 31 of 726 Actions runs returned inaccessible logs; the job intentionally reports an incomplete audit rather than a clean pass. The private summary artifact expires after seven days.
 - [x] Remove the legacy self-hosted `pw-test` and `tux` workflow definitions from the proposed default branch while preserving the historical commits for traceability. **This does not deactivate an existing runner or remove those workflows from old branches/tags.**
 
 ## Blocking before visibility changes
 
 - [ ] **Disconnect/delete the `pw-test` repository self-hosted runner in GitHub Settings → Actions → Runners**, and verify no persistent runner or production Hermes machine is registered. The operator must perform/verify this in GitHub; deleting workflows alone is insufficient.
-- [ ] **Audit the full Git history and every branch/tag**, including deleted-file history, Actions artifacts/logs, PR comments and committed fixtures, for secrets or private data. The GitHub connector cannot furnish an authenticated full clone or inspect private secret stores. Rotate any accidentally exposed credentials before publication; history rewriting requires a separately approved plan.
-- [ ] **Choose and add an explicit OSS LICENSE** (e.g. MIT or Apache-2.0) with copyright holder approval. Without a license, public visibility does not grant reuse rights.
+- [ ] **Complete the disclosure review for unavailable historical material:** investigate the 31 inaccessible Actions log archives, expired artifacts, issue/PR discussion content and any unreachable/dangling Git history. The automated scan covered all reachable branch/tag Git blobs but detects only defined token formats; manual review of private project details remains necessary. Rotate credentials if subsequently identified; history rewriting needs a separately approved plan.
+- [x] **Choose and add an OSS LICENSE:** MIT, copyright (c) 2026 Mike Rushton, in this preparation PR.
 - [ ] Review every historical internal reference (`tux`, `pw-test`, local paths and identities) and decide whether their disclosure is acceptable; remove machine-specific testing instructions from active public docs if unnecessary.
 - [ ] Review GitHub repository settings: default-branch protection/rulesets, Actions fork-PR approval, token permissions, secret access, environments, Pages publishing and private vulnerability reporting.
 - [ ] Confirm `0.1.0` release notes, Debian artifact, `SHA256SUMS`, package contents, Python/Hermes dependency policy, and supported Ubuntu versions are public-safe.
-- [ ] Independently review the proposed changes and run hosted CI before merging; **do not modify the existing `0.1.0` tag**.
+- [ ] Independently review the proposed changes and run hosted CI before merging; the offline regression suite passed on [run 40517242022](https://github.com/leftyfb/projectwright/actions/runs/40517242022). **Do not modify the existing `0.1.0` tag.**
 
 ## After visibility changes
 
