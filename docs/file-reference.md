@@ -58,32 +58,17 @@ Each `project_*.py` file below exists to preserve older import/script consumers 
 | `packaging/hermes-plugin/projectwright-approvals/__init__.py` | Native plugin bridge; makes installed Debian modules discoverable in Hermes's virtual environment without taking precedence over Hermes dependencies. |
 | `installed-source-manifest.json` | Immutable original 18-file source baseline; not a current canonical-module manifest. |
 | `scripts/validate-baseline.py` | Baseline-vs-development source, import, syntax, dependency and offline-suite validator. |
-| `scripts/preflight-pw-test.py` | Read-only SSH/container identity/systemd preflight with explicit `ubuntu@pw-test` target. |
-| `scripts/pw-test-deb-lifecycle.sh` | Guarded root-only test-container dpkg install/reinstall/purge harness with cleanup trap. Never use on `tux` or production. |
-| `scripts/pw-test-user-onboarding.sh` | Disposable installed package/user timer onboarding test harness and cleanup. |
-| `scripts/pw-test-hermes-plugin.sh` | Disposable native Hermes plugin registration/doctor lifecycle and cleanup. |
-| `scripts/pw-test-hermes-gateway.sh` | Isolated Hermes gateway plugin load/restart and restoration test harness. |
-| `scripts/pw-test-hermes-callback.py` | Stub callback-handler registration/dispatch probe against installed bridge. |
-| `scripts/pw-test-live-approval.py` | Disposable Git milestone fixture and real acceptance/callback test support. |
+
+The machine-specific live-test harnesses and trigger files used during pre-release testing were retired before public source distribution. Their historical CI evidence remains available in GitHub Actions; the active repository no longer ships scripts for those private hosts.
 
 ## CI and test files
 
 | Path | Role |
 |---|---|
 | `.github/workflows/offline-tests.yml` | Hosted offline unit/integration/recovery/acceptance suite, validators, wheel and Debian preview smoke/artifacts. |
-| `.github/workflows/tux-isolated.yml` | Manually triggered unprivileged source-based verification runner on `tux`; not production deployment. |
-| `.github/workflows/pw-test-preflight.yml` | Dedicated LXD runner read-only identity and safety checks; ordinary preflight must not send Telegram. |
-| `.github/workflows/pw-test-deb-staging.yml` | Container-scoped artifact staging/inspection and separately guarded package lifecycle fixtures. |
-| `.github/workflows/pw-test-live-approval.yml` | Explicitly gated disposable project/gateway preparation for live Telegram approval. |
-| `.github/workflows/pw-test-send-approval.yml` | Deliberate live actionable Telegram test-message send, not routine CI. |
-| `.github/workflows/pw-test-verify-approval.yml` | Read-only inspection of callback receipt or rejection evidence. |
-| `.github/workflows/pw-test-live-cleanup.yml` | Explicit cleanup of disposable Projectwright package, plugin, gateway override and Git fixture; credentials preserved. |
-| `.github/workflows/pw-test-install-purge.yml` | Guarded genuine `.deb` install, wrapper smoke and purge within the dedicated LXD test runner. |
-| `.github/workflows/pw-test-cli-smoke.yml` | Packaged CLI checks in a disposable, isolated environment. |
-| `.github/workflows/pw-test-source-upgrade.yml` | Real older-source-to-newer-source Debian upgrade with user-owned state preservation and purge checks. |
+| `.github/workflows/public-history-audit.yml` | Manually triggered disclosure scanner for reachable Git blobs and retained GitHub Actions logs; reports categories and locations, never secret contents. |
 | `.github/workflows/ubuntu-lts-compatibility.yml` | Hosted-only package build and independent clean `dpkg` install/smoke/purge in Ubuntu 24.04 and 26.04 containers; no live integrations. |
 | `.github/ubuntu-release-matrix-trigger.txt` | Branch-scoped trigger for the hosted Ubuntu compatibility matrix. |
-| `.github/pw-test-*-trigger.txt` | Branch-scoped, intentionally edited trigger files for workflows that cannot yet be manually dispatched from non-default branch. Editing one can trigger container work. |
 | `tests/unit/` | Deterministic policy, quota, sequencing and validator tests. |
 | `tests/integration/` | Mock/fake-provider dispatcher, manager, worker, delivery and Git lifecycle tests. |
 | `tests/acceptance/` | Acceptance evidence, Telegram callback/authorization/replay contracts. |
@@ -110,7 +95,7 @@ Each `project_*.py` file below exists to preserve older import/script consumers 
 | `docs/baseline-validation.md`, `docs/test-source-inventory.md` | Original source validation and test provenance. |
 | `docs/architecture-current.md`, `docs/component-inventory.md`, `docs/runtime-entrypoints.md` | **Historical baseline snapshots**; some runtime claims are superseded by the current guide. |
 | `docs/technical-debt.md`, `docs/independent-review-followups.md` | Audit findings and follow-up work. |
-| `docs/tux-test-runner.md`, `docs/development-wheel.md` | Runner and preview-build context. |
+| `docs/development-wheel.md` | Historical preview-build context. |
 
 ## Individual test-file index
 

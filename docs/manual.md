@@ -15,7 +15,7 @@ The primary command is `pw`. The installed `pw-dispatch`, `pw-manager`, `pw-work
 - A configured worker/provider can change files and make Git commits. A completed queue checkbox is **not** an accepted milestone.
 - `pw notify` without `--send` previews; `--send` contacts Telegram. A timer that was explicitly enabled may send autonomously.
 - Missing credentials, invalid queue/state, wrong branch, dirty worktree, active journal, unresolved recovery incident, stale callback, or acceptance failure should block progress. Do not delete evidence files merely to clear a block.
-- `pw-test` is a disposable LXD environment, not the production host. Its runner is intentionally left offline between test sessions; do not run its workflows without authorization.
+- `disposable-test-container` is a disposable LXD environment, not the production host. Its runner is intentionally left offline between test sessions; do not run its workflows without authorization.
 
 ## 3. Install and inspect the preview
 

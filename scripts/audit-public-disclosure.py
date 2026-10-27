@@ -81,21 +81,25 @@ def request(url):
 def scan_run(item):
     run_id = item["id"]
     url = f"https://api.github.com/repos/{REPO}/actions/runs/{run_id}/logs"
-    try:
-        data = request(url)
-        with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            found = collections.defaultdict(set)
-            for name in archive.namelist():
-                if name.endswith("/") or archive.getinfo(name).file_size > MAX_SIZE:
-                    continue
-                for category in labels(archive.read(name)):
-                    found[name].add(category)
-        return (run_id, [{"location": f"run/{run_id}/{name}", "categories": sorted(categories)}
-                         for name, categories in found.items()], None)
-    except urllib.error.HTTPError as exc:
-        return (run_id, [], f"http_{exc.code}")
-    except Exception as exc:
-        return (run_id, [], type(exc).__name__)
+    for attempt in range(3):
+        try:
+            data = request(url)
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                found = collections.defaultdict(set)
+                for name in archive.namelist():
+                    if name.endswith("/") or archive.getinfo(name).file_size > MAX_SIZE:
+                        continue
+                    for category in labels(archive.read(name)):
+                        found[name].add(category)
+            return (run_id, [{"location": f"run/{run_id}/{name}", "categories": sorted(categories)}
+                             for name, categories in found.items()], None)
+        except urllib.error.HTTPError as exc:
+            if exc.code in (403, 404, 410, 429, 502, 503, 504) and attempt < 2:
+                time.sleep(1 + attempt)
+                continue
+            return (run_id, [], f"http_{exc.code}")
+        except Exception as exc:
+            return (run_id, [], type(exc).__name__)
 
 
 def scan_actions():
@@ -137,6 +141,8 @@ def main():
             print("  " + record["location"] + ": " + ",".join(record["categories"]))
     print("git objects scanned:", REPORT["git"]["objects_scanned"])
     print("actions logs scanned:", REPORT["actions"]["runs_checked"], "/", REPORT["actions"]["runs_total"])
+    print("unavailable log reasons:", dict(collections.Counter(item["reason"] for item in REPORT["actions"]["unavailable"])))
+    print("unavailable run IDs:", [item["run_id"] for item in REPORT["actions"]["unavailable"] if "run_id" in item])
     if REPORT["git"]["findings"] or REPORT["actions"]["findings"]:
         return 2
     if REPORT["git"]["skipped"] or REPORT["actions"]["unavailable"]:

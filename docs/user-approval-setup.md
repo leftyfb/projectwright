@@ -62,9 +62,9 @@ systemctl --user disable --now projectwright-approval-notify.timer
 **Limitations:** When `--enable-hermes-plugin` is selected, setup copies the shipped native
 `plugin.yaml` and `__init__.py` to the current user's
 `~/.hermes/plugins/projectwright-approvals/` (refusing to overwrite custom
-changes) before invoking `hermes plugins enable`. A gateway restart/reload is a separately reviewed action; isolated gateway callback loading and a real Approve callback were verified in `pw-test` on 2026-10-25. A plugin installation
+changes) before invoking `hermes plugins enable`. A gateway restart/reload is a separately reviewed action; isolated gateway callback loading and a real Approve callback were verified in `disposable-test-container` on 2026-10-25. A plugin installation
 mechanism, explicit target-user selection from Debian installation, migration
-of Hermes bot credentials to a generic Projectwright config, stable cross-source-version upgrades and general user cleanup are not complete. Regular hosted offline CI mocks Telegram, while separately authorized `pw-test` LXD workflows have verified real installation, user timer setup, plugin registration, gateway loading, Telegram delivery, callback acceptance and cleanup. These are **not** routine CI jobs.
+of Hermes bot credentials to a generic Projectwright config, stable cross-source-version upgrades and general user cleanup are not complete. Regular hosted offline CI mocks Telegram, while separately authorized `disposable-test-container` LXD workflows have verified real installation, user timer setup, plugin registration, gateway loading, Telegram delivery, callback acceptance and cleanup. These are **not** routine CI jobs.
 
 ## Debian preview integration files
 

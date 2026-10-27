@@ -1,44 +1,30 @@
-"""Keep public-branch CI on GitHub-hosted runners only."""
+"""Prevent accidental self-hosted runner use in the public repository."""
 from pathlib import Path
 import unittest
 
-
-REPO = Path(__file__).resolve().parents[1]
-WORKFLOWS = REPO / ".github" / "workflows"
-
-RETIRED_SELF_HOSTED = (
-    "pw-test-cli-smoke.yml",
-    "pw-test-deb-staging.yml",
-    "pw-test-install-purge.yml",
-    "pw-test-live-approval.yml",
-    "pw-test-live-cleanup.yml",
-    "pw-test-preflight.yml",
-    "pw-test-send-approval.yml",
-    "pw-test-source-upgrade.yml",
-    "pw-test-verify-approval.yml",
-    "tux-isolated.yml",
-)
+WORKFLOWS = Path(__file__).resolve().parents[1] / ".github" / "workflows"
 
 
-class TestWorkflowSideEffects(unittest.TestCase):
-    def test_legacy_self_hosted_workflows_are_not_active(self):
-        for name in RETIRED_SELF_HOSTED:
-            with self.subTest(workflow=name):
-                self.assertFalse((WORKFLOWS / name).exists())
+class PublicWorkflowSafetyTests(unittest.TestCase):
+    def test_active_workflows_are_hosted_only(self):
+        paths = tuple(WORKFLOWS.glob("*.yml"))
+        self.assertTrue(paths)
+        for path in paths:
+            with self.subTest(workflow=path.name):
+                lines = path.read_text().splitlines()
+                runner_lines = [line.strip() for line in lines
+                                if line.strip().startswith("runs-on:")]
+                self.assertTrue(runner_lines)
+                for runner in runner_lines:
+                    self.assertIn("ubuntu-", runner)
+                    self.assertNotIn("self-hosted", runner)
 
-    def test_active_workflows_use_only_hosted_runner_labels(self):
-        workflows = tuple(WORKFLOWS.glob("*.yml"))
-        self.assertTrue(workflows)
-        for path in workflows:
+    def test_no_live_test_triggers(self):
+        for path in WORKFLOWS.glob("*.yml"):
             with self.subTest(workflow=path.name):
                 text = path.read_text()
-                lines = (line.strip() for line in text.splitlines())
-                runners = [line for line in lines if line.startswith("runs-on:")]
-                self.assertTrue(runners)
-                for line in runners:
-                    self.assertNotIn("self-hosted", line)
-                    self.assertNotIn("pw-test", line)
-                    self.assertIn("ubuntu-", line)
+                self.assertNotIn("runs-on: [self-hosted", text)
+                self.assertNotIn("telegram/sendMessage", text)
 
 
 if __name__ == "__main__":
