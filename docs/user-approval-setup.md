@@ -8,11 +8,32 @@ account from an unattended installation. The release checklist requires a
 package-triggered, explicitly selected per-user onboarding mechanism before
 stable deployment.
 
-A preliminary explicit setup command is available:
+The standard first-run command is:
 
 ```bash
-pw-timer setup-user --enable-hermes-plugin
+pw setup
 ```
+
+Run it as the intended ordinary user, **not with sudo**. Hermes is required:
+the command checks that the `hermes` executable and the user's
+`~/.hermes/` configuration directory exist. When it detects both
+`TELEGRAM_BOT_TOKEN` and a valid numeric `TELEGRAM_ALLOWED_USERS` list
+in `~/.hermes/.env`, it explains the Hermes plugin and user timer changes,
+then prompts **Enable Projectwright Hermes/Telegram approvals now? [y/N]**.
+The default answer is No. Saying Yes installs the plugin and enables the
+notifier timer; it does not silently restart the gateway.
+
+If Telegram is not configured, `pw setup` reports how to configure it and
+leaves Telegram integration inactive. To deliberately skip Telegram, use
+`pw setup --no-telegram`. For explicitly approved noninteractive automation,
+`pw setup --yes` bypasses the confirmation prompt; ordinary noninteractive
+invocation with detected Telegram credentials refuses activation. `--minutes N`
+sets the notification scan interval, 5 through 1440 minutes.
+
+For older development installs, `pw-timer setup-user --enable-hermes-plugin`
+and `pw setup-user --enable-hermes-plugin` remain direct compatibility entrypoints;
+unlike `pw setup`, these advanced commands request activation without an
+interactive confirmation.
 
 Run it **as the intended ordinary user**, not with `sudo`. It verifies that
 `~/.hermes/.env` contains a Telegram bot token and a valid authorized-user
@@ -63,6 +84,6 @@ inside a Hermes virtual environment. These integration assets are still
 installed **inertly** by dpkg; the explicit non-root onboarding action is
 required for each account. Isolated Hermes discovery/registration and live Approve callback have been verified; production rollout, Reject and other security edges remain separate acceptance gates.
 
-**Unified alias:** the development branch now forwards `pw setup-user` correctly to the timer module. Previously built `.deb` artifacts may predate the fix, so `pw-timer setup-user` remains the documented stable invocation for those previews.
+**First-run interface:** new packages should use `pw setup`. Previously built preview artifacts may not include this command; `pw-timer setup-user` is the older direct onboarding route.
 
 See [full manual](manual.md) and [packaging operations](packaging-and-operations.md).
