@@ -24,7 +24,7 @@ This is the **current canonical source and repository map**, not the historical 
 | `pw_buttons.py` | Telegram callback data generation, message text and approve/reject routing; invokes bridge and guard after checks. |
 | `pw_notify.py` | `pw-notify`, `pw notify`: approval scan/deduplication and direct Bot API send only with `--send`; records delivery/rejection state. |
 | `pw_plugin.py` | Hermes gateway callback-handler factory; restricts callbacks to authorized users/private chat and loads Telegram handler registration. |
-| `pw_project_timer.py` | `pw-timer`, `pw timer`; per-project systemd user timer lifecycle and explicit per-user approval notifier/plugin onboarding. |
+| `pw_project_timer.py` | `pw-timer`, `pw timer`, and new `pw setup`; per-project systemd timer lifecycle, required Hermes first-run check, and consent-based optional Telegram plugin/notifier onboarding. |
 | `pw_notes_publisher.py` | Optional project progress-note publishing from worker journal/progress state. |
 | `pw_notes_sync.py` | Optional conflict-aware notes mirror initialization, status and publish; records hash/manifest evidence. |
 
