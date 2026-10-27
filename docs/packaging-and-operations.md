@@ -4,7 +4,7 @@ This page documents the **current preview**, not a production installation endor
 
 ## How the artifact is built
 
-`pyproject.toml` declares a setuptools wheel of flat modules. `scripts/build-deb.sh` installs the built wheel into a Debian staging tree, writes executable wrappers and a `DEBIAN/control` file, adds integration assets, then produces `projectwright_0.1.0~dev0-1_all.deb`. The package is `Architecture: all` and declares `python3 (>= 3.10)` and `git`; the project metadata currently lists **no** Python runtime dependencies. This declaration is incomplete for every optional live integration and supported platform combination.
+`pyproject.toml` declares a setuptools wheel of flat modules. `scripts/build-deb.sh` installs the built wheel into a Debian staging tree, writes executable wrappers and a `DEBIAN/control` file, adds integration assets, then produces `projectwright_0.1.0~dev0-1_all.deb`. The package is `Architecture: all` and declares `python3 (>= 3.10)` and `git`; the project metadata currently lists **no** Python runtime dependencies. Optional Hermes, Telegram and systemd integrations are deliberately configured outside the core package; their external environments and full production combinations are not covered by the Debian dependency declaration.
 
 | Installed location | Responsibility |
 |---|---|
@@ -23,7 +23,7 @@ A source import audit of all 21 canonical `pw_*.py` modules found that the **cor
 
 | Requirement | Debian packaging decision |
 |---|---|
-| Python 3.10+ | **Required:** declared as `python3 (>= 3.10)`; supported Ubuntu versions still need a distribution-level clean-install matrix |
+| Python 3.10+ | **Required:** declared as `python3 (>= 3.10)`; clean Debian install, CLI smoke and purge passed on Ubuntu 24.04/Python 3.12 and 26.04/Python 3.14 |
 | Git CLI | **Required** for normal worktree operations; declared as `git` |
 | Python third-party packages for core CLI | **None found in canonical runtime imports**; `dependencies = []` remains correct for the core wheel |
 | Hermes executable/model service | **Optional integration:** not a Debian dependency; required when `provider.type=hermes` is selected |
@@ -32,7 +32,7 @@ A source import audit of all 21 canonical `pw_*.py` modules found that the **cor
 | Home Assistant | **Optional external HTTP service:** quota code uses `urllib`; no HA client package is required |
 | Alternative command provider | **Optional local executable:** configured via absolute argv, not a Python package dependency |
 
-The audit is a **source/import contract**, not yet a verified clean install on every supported Ubuntu release. The earlier guarded LXD install/purge run proves the package works on that one Ubuntu container only. The release should declare the support matrix and verify optional Hermes/Telegram compatibility on the chosen target versions before a stable tag.
+The audit is a **source/import contract**. The hosted [Ubuntu LTS matrix 40428244006](https://github.com/leftyfb/projectwright/actions/runs/40428244006) separately verified clean installation, CLI smoke, and purge on both supported releases. The matrix does **not** exercise optional live Hermes/Telegram integrations on both releases; that remains a stable-release compatibility consideration.
 
 ## Build and inspect without installing
 
@@ -57,7 +57,7 @@ sha256sum /absolute/path/projectwright_0.1.0~dev0-1_all.deb
 
 ## Explicit isolated install lifecycle
 
-A package was installed, reinstalled and purged successfully in the dedicated `pw-test` LXD container (Actions run [40244321910](https://github.com/leftyfb/projectwright/actions/runs/40244321910)). A synthetic lower Debian revision was upgraded and purged ([40244873728](https://github.com/leftyfb/projectwright/actions/runs/40244873728)); **it was not built from genuinely older Projectwright source**. Per-user timer onboarding, Hermes native plugin registration, gateway plugin loading, a real outbound Telegram request and a real inbound Approve callback were subsequently verified in that disposable environment. The cleanup run [40258658872](https://github.com/leftyfb/projectwright/actions/runs/40258658872) removed the test assets and preserved Hermes credentials.
+A package was installed, reinstalled and purged successfully in the dedicated `pw-test` LXD container (Actions run [40244321910](https://github.com/leftyfb/projectwright/actions/runs/40244321910)). An earlier synthetic lower Debian revision was upgraded and purged ([40244873728](https://github.com/leftyfb/projectwright/actions/runs/40244873728)); more importantly, a [genuine distinct-source upgrade 40427522957](https://github.com/leftyfb/projectwright/actions/runs/40427522957) then preserved the content hashes and permission modes of 35 disposable user-owned files through upgrade and purge. This does not guarantee future schema migration or downgrade behavior. Per-user timer onboarding, Hermes native plugin registration, gateway plugin loading, a real outbound Telegram request and a real inbound Approve callback were subsequently verified in that disposable environment. The cleanup run [40258658872](https://github.com/leftyfb/projectwright/actions/runs/40258658872) removed the test assets and preserved Hermes credentials.
 
 The guarded `scripts/pw-test-deb-lifecycle.sh` intentionally demands root **inside the exact disposable LXD container**, refuses pre-existing Projectwright package/path state and obvious host mount hazards, and purges in an EXIT trap. **Do not run it on the `tux` host or an existing Hermes installation.** Its cleanup is designed for a temporary empty fixture; it is not a general-purpose production uninstaller.
 
@@ -84,20 +84,20 @@ Plugin disabling, gateway reload and removal of user-owned unit files require a 
 ## Upgrade, backup, removal and rollback principles
 
 1. **Before upgrade:** record package version and SHA-256, `pw --help`, user unit/plugin state, selected configuration root, Git branch/HEAD, queue, work log, journals, recovery incidents, receipts and any custom paths. Back up user project directories and existing Hermes plugin/unit configuration by an explicit, privacy-preserving method. Never include bot tokens in CI logs.
-2. **For an upgrade:** compare the two *real* package source versions and compatibility schemas, then perform a disposable account migration test. Synthetic Debian-revision reinstallation does not cover on-disk schema migration or preservation of old user state.
+2. **For an upgrade:** compare the two *real* package source versions and compatibility schemas, then perform a disposable account migration test. The tested historical-to-current source upgrade preserved 35 user-owned files, but future on-disk schema migrations and downgrade behavior still require version-specific validation.
 3. **After upgrade:** validate every CLI, effective config resolution, plugin import/discovery, systemd user status, and a disposable Git task/approval loop. Keep scheduled execution disabled until reviewed.
 4. **To stop:** disable per-user dispatch and notifier timers first, then stop/review any running job and gateway plugin configuration. Purging the Debian package removes package-owned files, **not** necessarily home-directory integration artifacts.
 5. **For rollback:** retain exact older artifact and backups; never roll back across unknown state-schema changes by force. Investigate journals and Git first.
 
 ## Known blockers before calling this a proper release
 
-- Complete dependency and supported distribution/Python matrix, including Telegram/Hermes bridge and optional Home Assistant.
+- Core dependency audit and Ubuntu 24.04/26.04 clean-install matrix **passed**; verify optional Hermes/Telegram and Home Assistant combinations before a stable production support claim.
 - Canonical `pw_*` import/entrypoint migration audit and consistent docs, scripts and systemd services.
-- All installed entrypoints tested in a clean environment without source checkout/legacy script path; verify `pw setup-user` forwarding.
+- Installed entrypoint and config-free CLI checks **passed** in both supported Ubuntu containers; extended per-user onboarding/`pw setup-user` remains a separate live integration check.
 - Deterministic per-user integration install/update/disable/uninstall workflow with existing-modification and symlink protection.
-- True cross-source-version upgrade, preserved user configuration/state, downgrade/rollback and purge policy.
+- True cross-source-version upgrade and 35-file preservation **passed** for the tested pair; document a downgrade/rollback policy and retest any future migrations.
 - XDG config/state/cache convergence, provider-neutral execution/notification contract, and live isolated EDIT/TEST/COMMIT workflow.
-- Rejection, revoked/unauthorized user, stale request and recovery cases under appropriately isolated live conditions, followed by security review.
+- Live Approve and Reject **passed** in isolation; complete security review and remaining revoked/unauthorized, stale-request and recovery edge cases as warranted for stable production support.
 - Install/backup/restore/failure-mode documentation validated against a clean disposable user account.
 
 The release checklist is the authority for marking gates complete, with dated test evidence. Historical setup/development-wheel pages may contain snapshots superseded by later runs.
