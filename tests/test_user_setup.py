@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "projectwright"))
 import pw_project_timer as timer
@@ -37,7 +37,7 @@ class ApprovalSetupTests(unittest.TestCase):
             with patch.object(Path, "home", return_value=home), \
                  patch.object(timer.os, "geteuid", return_value=1000), \
                  patch.object(timer.shutil, "which", return_value="/usr/bin/hermes"), \
-                 patch.object(timer.sys.stdin, "isatty", return_value=True), \
+                 patch.object(timer.sys, "stdin", Mock(isatty=lambda: True)), \
                  patch("pw_notify.config_values", return_value=values):
                 timer.setup_interactive(prompt=lambda _: "no", runner=lambda *a, **k: self.fail("called"))
             self.assertFalse((home / ".config/systemd").exists())
@@ -66,7 +66,7 @@ class ApprovalSetupTests(unittest.TestCase):
             with patch.object(Path, "home", return_value=home), \
                  patch.object(timer.os, "geteuid", return_value=1000), \
                  patch.object(timer.shutil, "which", return_value="/usr/bin/hermes"), \
-                 patch.object(timer.sys.stdin, "isatty", return_value=False), \
+                 patch.object(timer.sys, "stdin", Mock(isatty=lambda: False)), \
                  patch("pw_notify.config_values", return_value=values):
                 with self.assertRaisesRegex(ValueError, "Interactive confirmation required"):
                     timer.setup_interactive(runner=lambda *a, **k: self.fail("called"))
