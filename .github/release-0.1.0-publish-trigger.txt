@@ -1,0 +1,6 @@
+Projectwright 0.1.0 publication authorization
+Tag: 0.1.0
+Release source commit: a07c39a844439c8b20ef7aa58ee57d7e0aa3e0e0
+Successful Ubuntu LTS matrix: 40437443529
+Expected release package: projectwright_0.1.0-1_all.deb
+Must verify SHA256SUMS before creating the tag and GitHub Release.
