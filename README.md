@@ -2,7 +2,7 @@
 
 **Requirements-to-Git task orchestration with explicit safety gates and human milestone approval.**
 
-Projectwright turns `requirements.md` and an ordered `queue.md` into bounded planning and agent tasks, validates structured completion reports and Git evidence, and pauses at configured milestones for acceptance. Its default worker uses a locally configured Hermes CLI; a command-based adapter is experimental. Telegram approval, Home Assistant quota telemetry, notes mirroring and user-level systemd timers are optional integrations.
+Projectwright turns `requirements.md` and an ordered `queue.md` into bounded planning and agent tasks, validates structured completion reports and Git evidence, and pauses at configured milestones for acceptance. Hermes CLI and its per-user configuration are required for the supported 0.1.0 experience; a command-based adapter is experimental, not a supported replacement. Telegram approval is expected and offered during first-run setup when Hermes Telegram settings are detected, but enabling it is optional and requires confirmation. Home Assistant quota telemetry, notes mirroring and user-level project dispatch timers are optional integrations.
 
 > **Development release only.** This branch (`test/review-followups`) builds a working preview wheel and `.deb`, but it is not approved for production deployment. The [release checklist](docs/release-checklist.md) records verified isolated installs, Hermes/Telegram approval testing and remaining release gates. No install step should automatically alter a user's Hermes credentials, project files, plugin or timers.
 
@@ -48,7 +48,7 @@ python3 -B -m unittest discover -s tests -p 'test_*.py' -v
 python3 -B scripts/validate-baseline.py --mode development
 ```
 
-Read-only CLI exploration in an environment where Projectwright is installed:
+After installing the Debian package, run **`pw setup` as your ordinary Hermes user** to verify Hermes and optionally activate detected Telegram approval integration. The command explains changes and asks before enabling the plugin or approval notifier timer; use `pw setup --no-telegram` to defer Telegram. A gateway restart remains a separate manual step.\n\nRead-only CLI exploration in an environment where Projectwright is installed:
 
 ```sh
 pw --help
