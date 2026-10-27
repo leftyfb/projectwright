@@ -93,20 +93,46 @@ def setup_user_approvals(*, minutes=10, enable_plugin=False, runner=subprocess.r
 
 
 
+def find_hermes_cli() -> str | None:
+    """Find standard PATH or known user-local Hermes installations."""
+    home = Path.home()
+    candidates = [
+        shutil.which('hermes'),
+        home / '.local/bin/hermes',
+        home / '.hermes/venv/bin/hermes',
+        home / 'hermes-agent/venv/bin/hermes',
+        home / 'hermes-agent/.venv/bin/hermes',
+        home / '.venvs/hermes/bin/hermes',
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
 def setup_interactive(*, minutes=10, yes=False, no_telegram=False,
-                      runner=subprocess.run, prompt=input) -> None:
-    """First-run Hermes preflight and opt-in Telegram approvals onboarding."""
+                      runner=subprocess.run, probe=subprocess.run, prompt=input) -> None:
+    """Read-only Hermes CLI preflight, then optional confirmed Telegram setup."""
     if os.geteuid() == 0:
         raise ValueError('Run pw setup as the intended non-root user')
     if not 5 <= minutes <= 1440:
         raise ValueError('Invalid timer interval (5..1440 minutes)')
-    hermes = shutil.which('hermes')
+    hermes = find_hermes_cli()
     if not hermes:
         raise ValueError('Hermes is required. Install and configure Hermes, then rerun pw setup')
     hermes_home = Path.home() / '.hermes'
     if not hermes_home.is_dir() or hermes_home.is_symlink():
         raise ValueError('Hermes user configuration directory is missing or symlinked; configure Hermes first')
-    print(f'Hermes executable detected: {hermes}')
+    try:
+        result = probe([hermes, 'plugins', 'list', '--plain', '--no-bundled'],
+                       capture_output=True, text=True, timeout=20, check=False)
+    except subprocess.TimeoutExpired:
+        raise ValueError('Hermes CLI check timed out; check your Hermes installation') from None
+    except OSError:
+        raise ValueError('Hermes CLI could not start; check your Hermes installation') from None
+    if result.returncode != 0:
+        raise ValueError('Hermes plugin discovery check failed; inspect Hermes locally before setup')
+    print(f'Hermes CLI and plugin discovery verified: {hermes}')
     if no_telegram:
         print('Telegram integration skipped by request; Projectwright approval notifications remain disabled.')
         return
