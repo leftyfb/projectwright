@@ -2,9 +2,9 @@
 
 **Requirements-to-Git task orchestration with explicit safety gates and human milestone approval.**
 
-Projectwright turns `requirements.md` and an ordered `queue.md` into bounded planning and agent tasks, validates structured completion reports and Git evidence, and pauses at configured milestones for acceptance. Hermes CLI and its per-user configuration are required for the supported 0.1.0 experience; a command-based adapter is experimental, not a supported replacement. Telegram approval is expected and offered during first-run setup when Hermes Telegram settings are detected, but enabling it is optional and requires confirmation. Home Assistant quota telemetry, notes mirroring and user-level project dispatch timers are optional integrations.
+Projectwright turns `requirements.md` and an ordered `queue.md` into bounded planning and agent tasks, validates structured completion reports and Git evidence, and pauses at configured milestones for acceptance. Hermes CLI and its per-user configuration are required for the supported release; a command-based adapter is experimental, not a supported replacement. Telegram approval is expected and offered during first-run setup when Hermes Telegram settings are detected, but enabling it is optional and requires confirmation. Home Assistant quota telemetry, notes mirroring and user-level project dispatch timers are optional integrations.
 
-> **Release status:** `0.1.0` is published as a [GitHub Release](https://github.com/leftyfb/projectwright/releases/tag/0.1.0) with a tested Debian artifact for Ubuntu 24.04 and 26.04. It is an early release: install in a non-production environment first. A signed APT feed is **not yet available**; until then, installation and upgrades require the downloadable `.deb`. No install step automatically alters Hermes credentials, project files, plugins, or timers.
+> **Release status:** The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides a Debian artifact for Ubuntu 24.04 and 26.04. This is early-stage software: install in a non-production environment first. A signed APT feed is **not yet available**; until then, installations and upgrades require a downloaded `.deb`. Package installation does not automatically alter Hermes credentials, project files, plugins, or timers.
 
 ## Start here
 
@@ -39,13 +39,13 @@ requirements.md -> planner -> queue.md -> dispatcher/manager gates
 
 `pw status` inspects a project; `pw plan` can request new queue items; `pw tick` plans when allowed and executes at most one task; `pw worker` runs a single task; `pw notify` previews approval requests (only `--send` transmits). A configured agent can change the selected Git worktree; always test against disposable data first. For the exact safeguards and execution types, see the [manual](docs/manual.md).
 
-## Install the 0.1.0 Debian release
+## Install the latest Debian release
 
-Download `projectwright_0.1.0-1_all.deb` and `SHA256SUMS` from [the 0.1.0 release](https://github.com/leftyfb/projectwright/releases/tag/0.1.0) into the same directory. Verify the download, then install it:
+Download the `projectwright_*_all.deb` package and `SHA256SUMS` from the [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) into a clean directory containing only that release's downloads. Verify the checksums, then install the package:
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./projectwright_0.1.0-1_all.deb
+sudo apt install ./projectwright_*_all.deb
 pw setup
 ```
 
@@ -85,6 +85,6 @@ The older [component inventory](docs/component-inventory.md), [architecture snap
 
 ## Safety and current status
 
-The isolated `disposable-test-container` LXD environment verified Debian install/purge, user timer onboarding, Hermes plugin/gateway loading, Telegram delivery, real Approve and Reject callbacks, receipt verification and cleanup. Hosted tests also passed clean package installation/purge on Ubuntu 24.04 and 26.04, packaged fake-provider READ and EDIT/TEST/COMMIT execution, and a genuine two-source Debian upgrade preserving 35 user-owned files. These checks do **not** establish a stable package, all authorization/recovery edge cases, future schema migrations, a live-model EDIT/TEST/COMMIT run, or production installation. No self-hosted `disposable-test-container` workflow should be triggered while its runner/container is intentionally stopped.
+The isolated `disposable-test-container` LXD environment verified Debian install/purge, user timer onboarding, Hermes plugin/gateway loading, Telegram delivery, real Approve and Reject callbacks, receipt verification and cleanup. Hosted tests also passed clean package installation/purge on Ubuntu 24.04 and 26.04, packaged fake-provider READ and EDIT/TEST/COMMIT execution, and a genuine two-source Debian upgrade preserving 35 user-owned files. These checks do **not** establish a stable package, all authorization/recovery edge cases, future schema migrations, a live-model EDIT/TEST/COMMIT run, or production installation. The retired self-hosted runners and their machines have been removed; the historical test evidence is retained for reference.
 
 For public contributions, follow [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Before changing repository visibility, complete the [public-release readiness checklist](docs/public-release-readiness.md). The [release checklist](docs/release-checklist.md) preserves historical testing evidence; do not run against production Hermes without explicit authorization.
