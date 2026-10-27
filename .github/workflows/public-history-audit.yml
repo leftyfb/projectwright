@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -24,7 +24,7 @@ jobs:
           python3 -B scripts/audit-public-disclosure.py
       - name: Upload private summary without credential values
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: public-disclosure-audit
           path: public-disclosure-audit.json
