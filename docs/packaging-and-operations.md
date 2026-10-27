@@ -26,7 +26,7 @@ A source import audit of all 21 canonical `pw_*.py` modules found that the **cor
 | Python 3.10+ | **Required:** declared as `python3 (>= 3.10)`; clean Debian install, CLI smoke and purge passed on Ubuntu 24.04/Python 3.12 and 26.04/Python 3.14 |
 | Git CLI | **Required** for normal worktree operations; declared as `git` |
 | Python third-party packages for core CLI | **None found in canonical runtime imports**; `dependencies = []` remains correct for the core wheel |
-| Hermes executable/model service | **Optional integration:** not a Debian dependency; required when `provider.type=hermes` is selected |
+| Hermes executable and user configuration | **Required for supported 0.1.0 use:** separately installed, not declared as a Debian APT dependency; `pw setup` checks Hermes plugin discovery before onboarding |
 | `python-telegram-bot` (`telegram.ext`) | **Optional Hermes gateway plugin dependency:** must be supplied compatibly in the gateway environment, not blindly installed into system Python |
 | systemd user manager | **Optional scheduling/onboarding integration:** not required for manual CLI execution |
 | Home Assistant | **Optional external HTTP service:** quota code uses `urllib`; no HA client package is required |
@@ -71,7 +71,7 @@ The administrator installs a package for the OS; only the **intended ordinary us
 pw setup
 ```
 
-This checks for a Hermes executable and `~/.hermes/` configuration directory. It examines existing Telegram bot credentials and an authorized numeric user list without printing secrets. If both exist, it explains the plugin/timer changes and asks for confirmation (default No) before activating them. If Telegram is missing, setup explains how to configure it and leaves approvals disabled. `pw setup --no-telegram` deliberately defers integration; `pw setup --yes` is an explicit opt-in for unattended setup. The older `pw setup-user` and `pw-timer setup-user --enable-hermes-plugin` remain compatibility/advanced routes. Setup refuses root and conflicting or symlinked targets. A Hermes gateway restart/reload may separately be required for callback registration; setup does **not** do that automatically.
+This checks for a Hermes executable and `~/.hermes/` configuration directory, then runs a bounded read-only Hermes plugin-discovery command. It examines existing Telegram bot credentials and an authorized numeric user list without printing secrets. If both exist, it explains the plugin/timer changes and asks for confirmation (default No) before activating them. If Telegram is missing, setup explains how to configure it and leaves approvals disabled. `pw setup --no-telegram` deliberately defers integration; `pw setup --yes` is an explicit opt-in for unattended setup. The older `pw setup-user` and `pw-timer setup-user --enable-hermes-plugin` remain compatibility/advanced routes. Setup refuses root and conflicting or symlinked targets. A Hermes gateway restart/reload may separately be required for callback registration; setup does **not** do that automatically.
 
 To disable the approval timer:
 
