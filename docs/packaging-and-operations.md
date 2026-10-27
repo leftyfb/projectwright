@@ -1,10 +1,10 @@
-# Debian packaging, installation and operations (development)
+# Debian packaging, installation and operations (0.1.0 release candidate)
 
-This page documents the **current preview**, not a production installation endorsement. Branch: `test/review-followups`; Python project version `0.1.0.dev0`; generated Debian revision `0.1.0~dev0-1`. Review [release-checklist.md](release-checklist.md) for current evidence and blockers.
+This page documents the **0.1.0 release candidate**, not an already published release or a production deployment endorsement. Branch: `release/0.1.0`; Python project version `0.1.0`; Debian version `0.1.0-1`. Review [release-checklist.md](release-checklist.md) for current evidence and blockers.
 
 ## How the artifact is built
 
-`pyproject.toml` declares a setuptools wheel of flat modules. `scripts/build-deb.sh` installs the built wheel into a Debian staging tree, writes executable wrappers and a `DEBIAN/control` file, adds integration assets, then produces `projectwright_0.1.0~dev0-1_all.deb`. The package is `Architecture: all` and declares `python3 (>= 3.10)` and `git`; the project metadata currently lists **no** Python runtime dependencies. Optional Hermes, Telegram and systemd integrations are deliberately configured outside the core package; their external environments and full production combinations are not covered by the Debian dependency declaration.
+`pyproject.toml` declares a setuptools wheel of flat modules. `scripts/build-deb.sh` installs the built wheel into a Debian staging tree, writes executable wrappers and a `DEBIAN/control` file, adds integration assets, then produces `projectwright_0.1.0-1_all.deb`. The package is `Architecture: all` and declares `python3 (>= 3.10)` and `git`; the project metadata currently lists **no** Python runtime dependencies. Optional Hermes, Telegram and systemd integrations are deliberately configured outside the core package; their external environments and full production combinations are not covered by the Debian dependency declaration.
 
 | Installed location | Responsibility |
 |---|---|
@@ -17,7 +17,7 @@ The Debian package does **not** install per-user secrets, create a configured pr
 
 ## Dependency audit (2026-10-26)
 
-**Beta operating-system support policy:** Ubuntu **24.04 LTS** (distribution Python 3.12) and **26.04 LTS** (distribution Python 3.14) only. Ubuntu 22.04 is explicitly out of scope. This is an OS support promise to validate with clean installs, separate from the wheel's Python >=3.10 syntax/runtime floor. The Debian `Architecture: all` setting describes pure-Python package content; it does not imply testing every Ubuntu release or CPU platform.
+**Release operating-system support policy:** Ubuntu **24.04 LTS** (distribution Python 3.12) and **26.04 LTS** (distribution Python 3.14) only. Ubuntu 22.04 is explicitly out of scope. This is an OS support promise to validate with clean installs, separate from the wheel's Python >=3.10 syntax/runtime floor. The Debian `Architecture: all` setting describes pure-Python package content; it does not imply testing every Ubuntu release or CPU platform.
 
 A source import audit of all 21 canonical `pw_*.py` modules found that the **core CLI, manager, planner, worker, Git/approval guards, notifier HTTP sender, quota client and notes tools use the Python standard library and local Projectwright modules**. The optional `pw_plugin.py` imports `telegram.ext.CallbackQueryHandler` when registering a callback into the Hermes gateway. The native Hermes adapter bridges to Debian's module directory after preserving the Hermes virtualenv's import precedence.
 
@@ -42,17 +42,17 @@ From a disposable checkout with wheel/build tools already available:
 python3 -B -m unittest discover -s tests -p 'test_*.py' -v
 python3 -B scripts/validate-baseline.py --mode development
 python3 -m pip wheel --no-deps --wheel-dir dist .
-bash scripts/build-deb.sh dist/projectwright-0.1.0.dev0-py3-none-any.whl dist
+bash scripts/build-deb.sh dist/projectwright-0.1.0-py3-none-any.whl dist
 ```
 
-The wheel filename above follows the current setuptools version; inspect the actual `dist/` wheel name before running the script. The build script requires exactly a wheel path and output directory; inspect it and `dpkg-deb --info`, `dpkg-deb --contents` and the resulting SHA-256 before any privileged operation. Prefer the exact GitHub-hosted, tested artifact over rebuilding with an unknown environment. Never assume a `~dev0` package has a stable migration promise.
+The wheel filename above follows the current setuptools version; inspect the actual `dist/` wheel name before running the script. The build script requires exactly a wheel path and output directory; inspect it and `dpkg-deb --info`, `dpkg-deb --contents` and the resulting SHA-256 before any privileged operation. Prefer the exact GitHub-hosted, tested artifact over rebuilding with an unknown environment. Do not assume future versions provide automatic migration or rollback across unknown state-schema changes.
 
 A safe metadata-only inspection is:
 
 ```sh
-dpkg-deb --info /absolute/path/projectwright_0.1.0~dev0-1_all.deb
-dpkg-deb --contents /absolute/path/projectwright_0.1.0~dev0-1_all.deb
-sha256sum /absolute/path/projectwright_0.1.0~dev0-1_all.deb
+dpkg-deb --info /absolute/path/projectwright_0.1.0-1_all.deb
+dpkg-deb --contents /absolute/path/projectwright_0.1.0-1_all.deb
+sha256sum /absolute/path/projectwright_0.1.0-1_all.deb
 ```
 
 ## Explicit isolated install lifecycle
@@ -89,7 +89,7 @@ Plugin disabling, gateway reload and removal of user-owned unit files require a 
 4. **To stop:** disable per-user dispatch and notifier timers first, then stop/review any running job and gateway plugin configuration. Purging the Debian package removes package-owned files, **not** necessarily home-directory integration artifacts.
 5. **For rollback:** retain exact older artifact and backups; never roll back across unknown state-schema changes by force. Investigate journals and Git first.
 
-## Known blockers before calling this a proper release
+## Known limitations and later hardening work
 
 - Core dependency audit and Ubuntu 24.04/26.04 clean-install matrix **passed**; verify optional Hermes/Telegram and Home Assistant combinations before a stable production support claim.
 - Canonical `pw_*` import/entrypoint migration audit and consistent docs, scripts and systemd services.
