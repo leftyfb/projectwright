@@ -4,7 +4,7 @@
 
 ## 1. What Projectwright does
 
-Projectwright turns a project's requirements and Markdown task queue into bounded agent work, with policy checks before planning, before running a task, during Git changes, and at milestone acceptance. It is an orchestrator, **not** the model or coding agent itself. The default execution provider is the locally configured Hermes CLI; an experimental command adapter can replace it. Git is the authoritative evidence for worktree state and scoped commits. Optional Home Assistant telemetry can block work when a configured quota threshold is reached. Telegram and a Hermes gateway plugin provide optional human **milestone** approval; ordinary worker-progress messaging is a separate integration.
+Projectwright turns a project's requirements and Markdown task queue into bounded agent work, with policy checks before planning, before running a task, during Git changes, and at milestone acceptance. It is an orchestrator, **not** the model or coding agent itself. The supported 0.1.0 installation requires a locally configured Hermes CLI. An experimental command adapter exists but is not a supported replacement for Hermes in this release. Git is the authoritative evidence for worktree state and scoped commits. Optional Home Assistant telemetry can block work when a configured quota threshold is reached. Telegram and a Hermes gateway plugin provide optional human **milestone** approval; ordinary worker-progress messaging is a separate integration.
 
 The primary command is `pw`. The installed `pw-dispatch`, `pw-manager`, `pw-worker`, `pw-notify`, and `pw-timer` entrypoints remain available. Python source modules are currently flat `pw_*.py` modules; `project_*.py` imports are compatibility shims, not independent implementations.
 
@@ -37,7 +37,7 @@ pw status --project demo
 pw-timer --help
 ```
 
-Do not install the preview onto production Hermes just to follow this guide. Hermes, Telegram configuration, optional dependencies and provider credentials are not fully modeled as Debian dependencies.
+Do not install this development preview onto production Hermes just to follow this guide. Hermes is a hard requirement for the supported release, but is typically installed/configured independently of Debian; Telegram activation remains optional and explicitly confirmed during `pw setup`.
 
 ## 4. Project layout and configuration selection
 
@@ -147,7 +147,7 @@ The effective config also contains `base`, `queue`, `work_log`, `worktree`, `bra
 | Send pending approval | `pw notify --send` | **Network message and delivery marker** |
 | Per-project timer | `pw timer status demo` | Calls user systemd manager |
 
-`pw init` and `pw defaults` are also primary subcommands; `pw setup-user` is routed to the timer onboarding action. The directly verified packaged form is `pw-timer setup-user`. The unified `pw setup-user` launcher now forwards the required action in the development branch; prefer the direct form for previously built `.deb` artifacts that predate the fix. Consult each command's `--help` before applying flags, especially while the CLI is evolving. Exit codes and manager JSON decisions are documented in [baseline-validation.md](baseline-validation.md).
+`pw init` and `pw defaults` are also primary subcommands. **`pw setup` is the new first-run command:** it requires installed/configured Hermes, detects existing Hermes Telegram credentials and numeric authorized users, then explains and requests confirmation before enabling the approval plugin and user notifier. `pw setup --no-telegram` skips optional Telegram integration; `--yes` explicitly opts into activation without a prompt. `pw setup-user` and `pw-timer setup-user` remain older direct onboarding commands. Consult each command's `--help` before applying flags, especially while the CLI is evolving. Exit codes and manager JSON decisions are documented in [baseline-validation.md](baseline-validation.md).
 
 ## 7. Exact orchestration workflow
 
@@ -198,7 +198,7 @@ manual pw tick / user timer -> dispatcher -> manager policy/locks/queue/Git chec
 Per-project `pw timer check|install-disabled|enable|disable|status PROJECT` generates/manages user services for dispatch; installation is disabled by default. The separate approval notification timer uses:
 
 ```sh
-pw-timer setup-user --minutes 10 --enable-hermes-plugin
+pw setup
 ```
 
 Run that **as the intended unprivileged user**, after reviewing `~/.hermes/.env` (bot token and valid allowed-user IDs), plugin state and any existing unit files. It refuses root, symlinked or modified unit targets and does not silently overwrite an existing plugin. The action may enable a timer and plugin; it is not a read-only preview. The timer sends actual approval notifications. Stop it with:
