@@ -18,6 +18,7 @@ concurrency:
 
 jobs:
   install-and-purge:
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
     runs-on: [self-hosted, linux, projectwright-lxd-install]
     timeout-minutes: 15
     steps:
