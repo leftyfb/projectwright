@@ -112,6 +112,20 @@ jobs:
           PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" python3 -B -c "import project_quota as oldq, pw_quota as newq, project_worker_progress as oldp, pw_worker_progress as newp, project_milestone_sequence as oldm, pw_milestone_sequence as newm, project_acceptance_gate as olda, pw_acceptance_gate as newa; assert oldq.evaluate is newq.evaluate; assert oldp.record_completed is newp.record_completed; assert oldm.evaluate is newm.evaluate; assert olda.awaiting_acceptance is newa.awaiting_acceptance"
           echo "Debian canonical, legacy and integration asset checks OK"
 
+      - name: Exercise extracted Debian READ and Git cycle in disposable repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PROJECTWRIGHT_TEST_SCRIPTS="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages"
+          export PROJECTWRIGHT_TEST_DISPATCH="$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw-dispatch"
+          export PYTHONPATH="$PROJECTWRIGHT_TEST_SCRIPTS"
+          test -f "$PROJECTWRIGHT_TEST_SCRIPTS/pw_dispatch.py"
+          test -x "$PROJECTWRIGHT_TEST_DISPATCH"
+          python3 -B -m unittest -v \
+            tests.integration.test_subprocess_chain.RealSubprocessChain.test_real_subprocess_chain_finishes_read_and_is_idempotent \
+            tests.integration.test_subprocess_chain.RealSubprocessChain.test_real_edit_test_commit_cycle_preserves_git_scope \
+            2>&1 | tee "$RUNNER_TEMP/projectwright-test-logs/deb-installed-cycle.log"
+
       - name: Upload development Debian package
         if: success()
         uses: actions/upload-artifact@v4
