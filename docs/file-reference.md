@@ -52,7 +52,7 @@ Each `project_*.py` file below exists to preserve older import/script consumers 
 
 | File | Function |
 |---|---|
-| `pyproject.toml` | setuptools wheel metadata, flat module list and six installed console scripts. Empty Python dependency list is a **known incomplete runtime declaration**. |
+| `pyproject.toml` | setuptools wheel metadata, flat module list and six installed console scripts. Core Python imports require no third-party package; optional Hermes/Telegram integrations rely on their own environment. |
 | `scripts/build-deb.sh` | Builds staging tree and Debian preview package from a wheel; installs wrappers, systemd templates, Hermes plugin assets and control metadata. |
 | `packaging/hermes-plugin/projectwright-approvals/plugin.yaml` | Hermes native plugin declaration. |
 | `packaging/hermes-plugin/projectwright-approvals/__init__.py` | Native plugin bridge; makes installed Debian modules discoverable in Hermes's virtual environment without taking precedence over Hermes dependencies. |
@@ -78,6 +78,11 @@ Each `project_*.py` file below exists to preserve older import/script consumers 
 | `.github/workflows/pw-test-send-approval.yml` | Deliberate live actionable Telegram test-message send, not routine CI. |
 | `.github/workflows/pw-test-verify-approval.yml` | Read-only inspection of callback receipt or rejection evidence. |
 | `.github/workflows/pw-test-live-cleanup.yml` | Explicit cleanup of disposable Projectwright package, plugin, gateway override and Git fixture; credentials preserved. |
+| `.github/workflows/pw-test-install-purge.yml` | Guarded genuine `.deb` install, wrapper smoke and purge within the dedicated LXD test runner. |
+| `.github/workflows/pw-test-cli-smoke.yml` | Packaged CLI checks in a disposable, isolated environment. |
+| `.github/workflows/pw-test-source-upgrade.yml` | Real older-source-to-newer-source Debian upgrade with user-owned state preservation and purge checks. |
+| `.github/workflows/ubuntu-lts-compatibility.yml` | Hosted-only package build and independent clean `dpkg` install/smoke/purge in Ubuntu 24.04 and 26.04 containers; no live integrations. |
+| `.github/ubuntu-release-matrix-trigger.txt` | Branch-scoped trigger for the hosted Ubuntu compatibility matrix. |
 | `.github/pw-test-*-trigger.txt` | Branch-scoped, intentionally edited trigger files for workflows that cannot yet be manually dispatched from non-default branch. Editing one can trigger container work. |
 | `tests/unit/` | Deterministic policy, quota, sequencing and validator tests. |
 | `tests/integration/` | Mock/fake-provider dispatcher, manager, worker, delivery and Git lifecycle tests. |
