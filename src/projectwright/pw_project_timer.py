@@ -92,7 +92,62 @@ def setup_user_approvals(*, minutes=10, enable_plugin=False, runner=subprocess.r
             'projectwright-approval-notify.timer'], check=True)
 
 
+
+def setup_interactive(*, minutes=10, yes=False, no_telegram=False,
+                      runner=subprocess.run, prompt=input) -> None:
+    """First-run Hermes preflight and opt-in Telegram approvals onboarding."""
+    if os.geteuid() == 0:
+        raise ValueError('Run pw setup as the intended non-root user')
+    if not 5 <= minutes <= 1440:
+        raise ValueError('Invalid timer interval (5..1440 minutes)')
+    hermes = shutil.which('hermes')
+    if not hermes:
+        raise ValueError('Hermes is required. Install and configure Hermes, then rerun pw setup')
+    hermes_home = Path.home() / '.hermes'
+    if not hermes_home.is_dir() or hermes_home.is_symlink():
+        raise ValueError('Hermes user configuration directory is missing or symlinked; configure Hermes first')
+    print(f'Hermes executable detected: {hermes}')
+    if no_telegram:
+        print('Telegram integration skipped by request; Projectwright approval notifications remain disabled.')
+        return
+    from pw_notify import config_values, parse_allowed_users
+    credential_file = hermes_home / '.env'
+    if credential_file.is_symlink():
+        raise ValueError('Refusing symlinked Hermes credential file')
+    try:
+        values = config_values(credential_file)
+    except FileNotFoundError:
+        values = {}
+    if not values.get('TELEGRAM_BOT_TOKEN') or not parse_allowed_users(values.get('TELEGRAM_ALLOWED_USERS', '')):
+        print('Telegram is not configured with both a bot token and numeric authorized users.')
+        print('Configure those values in ~/.hermes/.env, then rerun pw setup to enable approvals.')
+        return
+    print('Telegram configuration detected. Projectwright can copy its Hermes approval')
+    print('plugin into ~/.hermes/plugins and enable a user systemd notifier timer.')
+    print('The notifier may send milestone approval requests to configured recipients.')
+    print('Hermes gateway reload/restart, if needed, remains a separate manual action.')
+    if not yes:
+        if not sys.stdin.isatty():
+            raise ValueError('Interactive confirmation required; rerun in a terminal or use --yes')
+        answer = prompt('Enable Projectwright Hermes/Telegram approvals now? [y/N] ').strip().lower()
+        if answer not in ('y', 'yes'):
+            print('Telegram integration left unchanged.')
+            return
+    setup_user_approvals(minutes=minutes, enable_plugin=True, runner=runner)
+    print('Hermes/Telegram plugin and approval notifier enabled for this user.')
+    print('Check Hermes gateway plugin loading before relying on callbacks.')
+
+
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == 'setup':
+        p = argparse.ArgumentParser(description='First-run Hermes and optional Telegram setup')
+        p.add_argument('action', choices=['setup'])
+        p.add_argument('--minutes', type=int, default=10)
+        p.add_argument('--yes', action='store_true', help='Explicitly approve detected Telegram integration without prompting')
+        p.add_argument('--no-telegram', action='store_true', help='Check Hermes but skip Telegram onboarding')
+        a = p.parse_args()
+        setup_interactive(minutes=a.minutes, yes=a.yes, no_telegram=a.no_telegram)
+        return 0
     if len(sys.argv) > 1 and sys.argv[1] == 'setup-user':
         p = argparse.ArgumentParser(description='Configure approvals for the current user')
         p.add_argument('action', choices=['setup-user'])
