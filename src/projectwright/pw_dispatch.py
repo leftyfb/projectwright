@@ -322,11 +322,12 @@ def cli():
         'worker': ('pw_task_worker', []),
         'notify': ('pw_notify', []),
         'timer': ('pw_project_timer', []),
+        'setup': ('pw_project_timer', ['setup']),
         'setup-user': ('pw_project_timer', ['setup-user']),
         'defaults': ('pw_defaults', []),
         'init': ('pw_init', []),
     }
-    usage = 'usage: pw {tick|status|plan|worker|notify|timer|setup-user|defaults|init} [options]'
+    usage = 'usage: pw {tick|status|plan|worker|notify|timer|setup|setup-user|defaults|init} [options]'
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
         print(usage)
         return 0 if len(sys.argv) > 1 else 2
