@@ -13,6 +13,7 @@ concurrency:
 jobs:
   offline-on-tux:
     # Register this label only on an isolated, non-privileged runner.
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
     runs-on: [self-hosted, linux, x64, projectwright-isolated]
     timeout-minutes: 20
     env:
