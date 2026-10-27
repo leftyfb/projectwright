@@ -8,6 +8,7 @@ permissions:
   contents: read
 jobs:
   cleanup:
+    if: ${{ github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/test/review-followups' }}
     runs-on: [self-hosted, linux, projectwright-lxd-install]
     timeout-minutes: 10
     steps:
