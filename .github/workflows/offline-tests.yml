@@ -23,10 +23,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.14'
 
@@ -128,7 +128,7 @@ jobs:
 
       - name: Upload development Debian package
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: projectwright-deb-${{ github.run_id }}
           path: ${{ runner.temp }}/projectwright-debs/*.deb
@@ -146,7 +146,7 @@ jobs:
 
       - name: Upload development wheel
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: projectwright-wheel-${{ github.run_id }}
           path: ${{ runner.temp }}/projectwright-wheels/*.whl
@@ -155,7 +155,7 @@ jobs:
 
       - name: Upload ephemeral test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: offline-test-logs-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/projectwright-test-logs/
