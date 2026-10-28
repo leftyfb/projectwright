@@ -132,26 +132,8 @@ jobs:
             git tag -a "$RELEASE_VERSION" "$SOURCE_SHA" -m "Projectwright $RELEASE_VERSION"
             git push origin "refs/tags/$RELEASE_VERSION"
           fi
-          # Release notes are concise and publication-safe; detailed manual is
-          # available at docs/release-notes.md in the tagged source.
-          {
-            echo "Projectwright $RELEASE_VERSION"
-            echo
-            echo 'First versioned Debian release of Hermes-based requirements-to-Git task orchestration.'
-            echo
-            echo '- Supported: Ubuntu 24.04 and 26.04 LTS; Hermes is required and installed separately.'
-            echo '- Telegram approval is detected during \`pw setup\` and enabled only after consent.'
-            echo '- Installs package-owned files only; no automatic Hermes restart or secret changes.'
-            echo '- The Debian package was verified by the hosted LTS matrix on this exact tagged source.'
-            echo
-            echo 'Install after downloading both attached files:'
-            echo
-            echo '    sha256sum -c SHA256SUMS'
-            echo "    sudo apt install ./projectwright_${RELEASE_VERSION}-1_all.deb"
-            echo '    pw setup'
-            echo
-            echo 'See docs/release-notes.md and docs/packaging-and-operations.md in the tagged source for prerequisites, upgrade, removal and known limitations.'
-          } > "$RUNNER_TEMP/release-body.md"
+          # Publish the reviewed notes from this exact tested source commit.
+          cp docs/release-notes.md "$RUNNER_TEMP/release-body.md"
           gh release create "$RELEASE_VERSION" \
             "$RUNNER_TEMP/release-assets/projectwright_${RELEASE_VERSION}-1_all.deb" \
             "$RUNNER_TEMP/release-assets/SHA256SUMS" \
