@@ -25,6 +25,26 @@ Release](https://github.com/leftyfb/projectwright/releases/latest).
 1. Create a dedicated **APT-only** GPG signing key on a trusted maintainer
    system. Keep a protected offline recovery copy. Do not reuse Git commit,
    Hermes, Telegram or personal email-signing credentials.
+   For example, on a trusted Linux machine with GnuPG installed:
+
+   ```sh
+   gpg --quick-generate-key 'Projectwright APT Archive' rsa4096 sign 2y
+   gpg --list-secret-keys --with-fingerprint
+   ```
+
+   Record the primary key's 40-character fingerprint. Substitute it for
+   `FINGERPRINT` below, and transfer the private export **only** to the Actions
+   secret through GitHub's protected Settings UI:
+
+   ```sh
+   umask 077
+   gpg --armor --export-secret-keys FINGERPRINT | base64 -w0 > projectwright-apt-key.b64
+   ```
+
+   This file contains sensitive private-key material. Never commit, email or
+   attach it to an issue, PR or chat. Remove the temporary export securely
+   after confirming the secret is configured; retain a separately protected
+   recovery backup. Store a passphrase in the separate Actions secret.
 2. In repository **Settings → Secrets and variables → Actions**, configure:
    - Secret `APT_SIGNING_KEY_B64`: base64-encoded exported **private** key.
    - Secret `APT_SIGNING_PASSPHRASE`: key passphrase, if one was set.
