@@ -6,6 +6,47 @@ reviewable. Never put a signing key, passphrase, GitHub token, or Hermes/Telegra
 credential in a release script, source commit, test, or workflow output.
 GitHub Actions stores the APT signing material as configured secrets.
 
+## One-command release from an existing release branch
+
+With a local clone of this public repository, Python 3, Git and an authenticated
+[GitHub CLI](https://cli.github.com/) (`gh auth login`), first create the
+`release/X.Y.Z` branch from the reviewed and CI-passing `main`, publish
+that branch to GitHub, and check it out locally. The branch must be clean and
+at the same commit as `origin/release/X.Y.Z`.
+
+Then run **one command** from the repository checkout:
+
+```sh
+python3 scripts/release.py X.Y.Z
+```
+
+The script:
+
+1. Verifies the correct repository, clean release branch and unused version.
+2. Updates `pyproject.toml` and Debian control/output versions, and generates
+   release notes from commit subjects. It prints the complete notes and asks
+   you to type `publish X.Y.Z` **before changing any source files**.
+3. Commits and pushes the release preparation to that branch.
+4. Dispatches and waits for the hosted Ubuntu 24.04/26.04 release matrix on
+   the exact pushed SHA. Failure stops the release.
+5. Dispatches the existing guarded release publisher from `main` with that
+   version, exact tested SHA, and matrix artifact run ID. GitHub Actions
+   creates the version-only tag and Release with verified `.deb` and checksums.
+6. After release publication, the signed APT workflow runs automatically.
+
+To provide carefully curated release notes rather than generated commit titles:
+
+```sh
+python3 scripts/release.py X.Y.Z --notes-file /path/to/reviewed-release-notes.md
+```
+
+Use `--yes` only in deliberate, supervised automation; otherwise the script
+requires interactive approval. If a build or publication fails, it stops and
+prints the Actions run link. **Do not reuse an already-published version.**
+This helper does not handle private signing keys or change subscriber machines.
+
+The full manual GitHub UI procedure remains below as a recovery and audit path.
+
 ## What happens automatically
 
 - **Development pull request into `main`:** required `offline` CI verifies
