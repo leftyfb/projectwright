@@ -13,6 +13,7 @@ Projectwright turns `requirements.md` and an ordered `queue.md` into bounded pla
 | Understand how it works and run a safe first project | **[Full user and operator manual](docs/manual.md)** |
 | See the role of **every source, packaging, workflow and test file** | **[Current file-by-file reference](docs/file-reference.md)** |
 | Install or inspect the Debian release, plan upgrades/uninstalls | **[Packaging and operations](docs/packaging-and-operations.md)** |
+| Follow the planned signed APT repository setup and trust model | [APT repository guide](docs/apt-repository.md) |
 | Follow requirements → planning → work → Git → human acceptance | [Workflow](docs/workflow.md) |
 | Find CLI commands and options | [CLI reference](docs/cli.md) |
 | Understand project roots, XDG paths, defaults and config-free mode | [Configuration guide](docs/configuration-home.md) |
