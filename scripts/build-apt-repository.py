@@ -13,7 +13,7 @@ import subprocess
 
 
 VERSION = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+\Z")
-CHECKSUM = re.compile(r"([0-9a-fA-F]{64})  (projectwright_[^/\s]+_all\.deb)\Z")
+CHECKSUM = re.compile(r"([0-9a-fA-F]{64})  (?:\./)?(projectwright_[^/\s]+_all\.deb)\Z")
 ARCHITECTURES = ("amd64", "arm64")
 
 
