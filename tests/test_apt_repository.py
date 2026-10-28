@@ -26,7 +26,7 @@ class AptRepositoryTests(unittest.TestCase):
         self.releases = self.root / "releases"
         self.releases.mkdir()
 
-    def make_release(self, version):
+    def make_release(self, version, relative_prefix=""):
         release = self.releases / version
         release.mkdir()
         stage = self.root / ("stage-" + version)
@@ -40,11 +40,11 @@ class AptRepositoryTests(unittest.TestCase):
         subprocess.run(["dpkg-deb", "--build", "--root-owner-group", str(stage), str(package)],
                        check=True, capture_output=True)
         digest = hashlib.sha256(package.read_bytes()).hexdigest()
-        (release / "SHA256SUMS").write_text(f"{digest}  {filename}\n")
+        (release / "SHA256SUMS").write_text(f"{digest}  {relative_prefix}{filename}\n")
         return package
 
     def test_verified_releases_make_installable_indexes(self):
-        self.make_release("0.1.0")
+        self.make_release("0.1.0", relative_prefix="./")
         self.make_release("0.1.1")
         output = self.root / "site"
         self.assertEqual(BUILDER.build(self.releases, output, "Projectwright", "stable"), 2)
