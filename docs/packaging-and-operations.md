@@ -1,6 +1,6 @@
 # Debian packaging, installation and operations
 
-The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides the downloadable Debian package and checksums. Older development snapshots and test artifacts are documented as historical evidence in [release-checklist.md](release-checklist.md). A signed APT feed is still pending; `apt update` will not find Projectwright until that repository is deployed. The [APT repository guide](apt-repository.md) describes the signed GitHub Pages publication process and planned subscriber setup.
+The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides the downloadable Debian package and checksums. Older development snapshots and test artifacts are documented as historical evidence in [release-checklist.md](release-checklist.md). A signed [GitHub Pages APT repository](apt-repository.md) is live; supported Ubuntu installations can use `sudo apt install projectwright` and receive upgrades via normal APT operations after configuring that source.
 
 ## How the artifact is built
 
@@ -44,7 +44,7 @@ sudo apt install ./projectwright_*_all.deb
 pw setup
 ```
 
-Run `pw setup` as the unprivileged user who owns the Hermes installation. Repository-backed `sudo apt install projectwright` and automatic upgrades are not supported until the signed public APT feed is published.
+Run `pw setup` as the unprivileged user who owns the Hermes installation. Alternatively, configure the [signed APT repository](apt-repository.md) and use `sudo apt install projectwright`. Once a newer release is indexed, `sudo apt update` and `sudo apt upgrade` install the update without changing the machine's source configuration.
 
 ## Build and inspect without installing
 
