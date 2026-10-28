@@ -1,0 +1,121 @@
+name: Publish signed Projectwright APT repository
+
+# Explicit maintainer operation only. No release, push or PR automatically
+# deploys to GitHub Pages. Private signing material is never in the repository.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type publish-apt to confirm repository replacement'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: projectwright-apt-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Require explicit authorization and signing configuration
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY_B64 }}
+          SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = publish-apt
+          test -n "$SIGNING_KEY"
+          [[ "$SIGNING_FINGERPRINT" =~ ^[0-9A-Fa-f]{40}$ ]]
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install APT indexing tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils dpkg-dev gnupg
+
+      - name: Download all published version-only release packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/projectwright-releases"
+          gh release list --limit 1000 --json tagName,isDraft,isPrerelease \
+            --jq '.[] | select(.isDraft == false and .isPrerelease == false) | .tagName' \
+            > "$RUNNER_TEMP/stable-release-tags"
+          test -s "$RUNNER_TEMP/stable-release-tags"
+          while IFS= read -r version; do
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+              echo "REFUSED: non-version release tag" >&2; exit 2;
+            }
+            directory="$RUNNER_TEMP/projectwright-releases/$version"
+            mkdir -p "$directory"
+            gh release download "$version" \
+              --pattern 'projectwright_*_all.deb' --pattern 'SHA256SUMS' \
+              --dir "$directory"
+          done < "$RUNNER_TEMP/stable-release-tags"
+
+      - name: Verify packages and generate unsigned indexes
+        run: |
+          python3 -B scripts/build-apt-repository.py \
+            --releases-dir "$RUNNER_TEMP/projectwright-releases" \
+            --output "$RUNNER_TEMP/projectwright-apt"
+
+      - name: Import dedicated signing key and sign repository
+        shell: bash
+        env:
+          APT_SIGNING_KEY_B64: ${{ secrets.APT_SIGNING_KEY_B64 }}
+          APT_SIGNING_PASSPHRASE: ${{ secrets.APT_SIGNING_PASSPHRASE }}
+          APT_SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$RUNNER_TEMP/projectwright-apt-gnupg"
+          mkdir -m 700 "$GNUPGHOME"
+          trap 'gpgconf --kill gpg-agent >/dev/null 2>&1 || true' EXIT
+          printf '%s' "$APT_SIGNING_KEY_B64" | base64 --decode | gpg --batch --import
+          actual="$(gpg --batch --with-colons --list-secret-keys \
+            | awk -F: '$1 == "fpr" { print toupper($10); exit }')"
+          test "$actual" = "${APT_SIGNING_FINGERPRINT^^}"
+          destination="$RUNNER_TEMP/projectwright-apt"
+          gpg --batch --yes --export "$actual" > "$destination/projectwright-archive-keyring.gpg"
+          gpg --batch --yes --armor --export "$actual" > "$destination/projectwright-archive-key.asc"
+          test -s "$destination/projectwright-archive-keyring.gpg"
+          release="$destination/dists/stable/Release"
+          printf '%s' "$APT_SIGNING_PASSPHRASE" | gpg --batch --yes \
+            --pinentry-mode loopback --passphrase-fd 0 --local-user "$actual" \
+            --clearsign --output "$destination/dists/stable/InRelease" "$release"
+          printf '%s' "$APT_SIGNING_PASSPHRASE" | gpg --batch --yes \
+            --pinentry-mode loopback --passphrase-fd 0 --local-user "$actual" \
+            --armor --detach-sign --output "$destination/dists/stable/Release.gpg" "$release"
+          gpg --batch --no-default-keyring \
+            --keyring "$destination/projectwright-archive-keyring.gpg" \
+            --verify "$destination/dists/stable/Release.gpg" "$release"
+
+      - name: Upload signed site for GitHub Pages
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/projectwright-apt
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy signed repository
+        id: deployment
+        uses: actions/deploy-pages@v5
