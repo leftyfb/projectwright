@@ -132,7 +132,9 @@ def setup_interactive(*, minutes=10, yes=False, no_telegram=False,
         raise ValueError('Hermes CLI could not start; check your Hermes installation') from None
     if result.returncode != 0:
         raise ValueError('Hermes plugin discovery check failed; inspect Hermes locally before setup')
-    print(f'Hermes CLI and plugin discovery verified: {hermes}')
+    print('Hermes is ready:')
+    print(f'  CLI: {hermes}')
+    print('  Plugin discovery: verified')
     if no_telegram:
         print('Telegram integration skipped by request; Projectwright approval notifications remain disabled.')
         return
@@ -148,10 +150,15 @@ def setup_interactive(*, minutes=10, yes=False, no_telegram=False,
         print('Telegram is not configured with both a bot token and numeric authorized users.')
         print('Configure those values in ~/.hermes/.env, then rerun pw setup to enable approvals.')
         return
-    print('Telegram configuration detected. Projectwright can copy its Hermes approval')
-    print('plugin into ~/.hermes/plugins and enable a user systemd notifier timer.')
-    print('The notifier may send milestone approval requests to configured recipients.')
-    print('Hermes gateway reload/restart, if needed, remains a separate manual action.')
+    print()
+    print('Telegram approvals (optional)')
+    print('  Telegram configuration detected.')
+    print('  If enabled, Projectwright will:')
+    print('    - Install its approval plugin in ~/.hermes/plugins.')
+    print('    - Enable a user systemd notifier timer; it may send milestone')
+    print('      approval requests to your configured recipients.')
+    print('  A Hermes gateway reload/restart, if needed, is a separate manual action.')
+    print()
     if not yes:
         if not sys.stdin.isatty():
             raise ValueError('Interactive confirmation required; rerun in a terminal or use --yes')

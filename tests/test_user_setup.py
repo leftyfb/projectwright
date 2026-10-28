@@ -49,8 +49,16 @@ class ApprovalSetupTests(unittest.TestCase):
                  patch.object(timer.os, "geteuid", return_value=1000), \
                  patch.object(timer, "find_hermes_cli", return_value="/usr/bin/hermes"), \
                  patch.object(timer.sys, "stdin", Mock(isatty=lambda: True)), \
-                 patch("pw_notify.config_values", return_value=values):
+                 patch("pw_notify.config_values", return_value=values), \
+                 patch("builtins.print") as printed:
                 timer.setup_interactive(prompt=lambda _: "no", probe=lambda *a, **k: Mock(returncode=0), runner=lambda *a, **k: self.fail("called"))
+            lines = [str(call.args[0]) if call.args else "" for call in printed.call_args_list]
+            self.assertIn("Hermes is ready:", lines)
+            self.assertIn("  CLI: /usr/bin/hermes", lines)
+            self.assertIn("Telegram approvals (optional)", lines)
+            self.assertIn("  If enabled, Projectwright will:", lines)
+            self.assertTrue(any("gateway reload/restart" in line for line in lines))
+            self.assertEqual(lines[-1], "Telegram integration left unchanged.")
             self.assertFalse((home / ".config/systemd").exists())
 
     def test_first_run_confirmation_enables_detected_integration(self):
