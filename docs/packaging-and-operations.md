@@ -1,6 +1,6 @@
 # Debian packaging, installation and operations
 
-The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides the downloadable Debian package and checksums. Older development snapshots and test artifacts are documented as historical evidence in [release-checklist.md](release-checklist.md). A signed APT feed is still pending; `apt update` will not find Projectwright until that repository is deployed.
+The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides the downloadable Debian package and checksums. Older development snapshots and test artifacts are documented as historical evidence in [release-checklist.md](release-checklist.md). A signed APT feed is still pending; `apt update` will not find Projectwright until that repository is deployed. The [APT repository guide](apt-repository.md) describes the signed GitHub Pages publication process and planned subscriber setup.
 
 ## How the artifact is built
 
