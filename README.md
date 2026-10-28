@@ -4,7 +4,7 @@
 
 Projectwright turns `requirements.md` and an ordered `queue.md` into bounded planning and agent tasks, validates structured completion reports and Git evidence, and pauses at configured milestones for acceptance. Hermes CLI and its per-user configuration are required for the supported release; a command-based adapter is experimental, not a supported replacement. Telegram approval is expected and offered during first-run setup when Hermes Telegram settings are detected, but enabling it is optional and requires confirmation. Home Assistant quota telemetry, notes mirroring and user-level project dispatch timers are optional integrations.
 
-> **Release status:** The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides a Debian artifact for Ubuntu 24.04 and 26.04. This is early-stage software: install in a non-production environment first. A signed APT feed is **not yet available**; until then, installations and upgrades require a downloaded `.deb`. Package installation does not automatically alter Hermes credentials, project files, plugins, or timers.
+> **Release status:** The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides a Debian artifact for Ubuntu 24.04 and 26.04. This is early-stage software: install in a non-production environment first. A [signed APT repository](docs/apt-repository.md) is live, so subscribed Ubuntu systems can install and upgrade through normal package management. Package installation does not automatically alter Hermes credentials, project files, plugins, or timers.
 
 ## Start here
 
@@ -13,13 +13,14 @@ Projectwright turns `requirements.md` and an ordered `queue.md` into bounded pla
 | Understand how it works and run a safe first project | **[Full user and operator manual](docs/manual.md)** |
 | See the role of **every source, packaging, workflow and test file** | **[Current file-by-file reference](docs/file-reference.md)** |
 | Install or inspect the Debian release, plan upgrades/uninstalls | **[Packaging and operations](docs/packaging-and-operations.md)** |
-| Follow the planned signed APT repository setup and trust model | [APT repository guide](docs/apt-repository.md) |
+| Configure the signed APT repository and verify its signing key | [APT repository guide](docs/apt-repository.md) |
 | Follow requirements → planning → work → Git → human acceptance | [Workflow](docs/workflow.md) |
 | Find CLI commands and options | [CLI reference](docs/cli.md) |
 | Understand project roots, XDG paths, defaults and config-free mode | [Configuration guide](docs/configuration-home.md) |
 | Configure Hermes or experimental non-Hermes execution | [Provider adapters](docs/provider-adapters.md) |
 | Set up per-user Telegram approval and systemd | [Approval setup](docs/user-approval-setup.md) |
-| See precisely what has passed or is still blocked | [Release acceptance checklist](docs/release-checklist.md) |
+| Follow the maintainer development-to-release process | [Release procedure](docs/release-process.md) |
+| See historical acceptance test evidence | [Release acceptance checklist](docs/release-checklist.md) |
 | Understand tests and what they do **not** prove | [Coverage matrix](docs/test-coverage-matrix.md) and [E2E gaps](docs/e2e-test-gaps.md) |
 
 ## In one minute
@@ -42,7 +43,19 @@ requirements.md -> planner -> queue.md -> dispatcher/manager gates
 
 ## Install the latest Debian release
 
-Download the `projectwright_*_all.deb` package and `SHA256SUMS` from the [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) into a clean directory containing only that release's downloads. Verify the checksums, then install the package:
+**Recommended:** configure the [signed Projectwright APT repository](docs/apt-repository.md)
+once, verifying its public signing-key fingerprint. Then install and receive normal
+Ubuntu updates without downloading new packages or changing APT sources:
+
+```sh
+sudo apt update
+sudo apt install projectwright
+pw setup
+```
+
+**Manual alternative:** download the `projectwright_*_all.deb` package and
+`SHA256SUMS` from the [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest)
+into a clean directory, then verify and install:
 
 ```sh
 sha256sum -c SHA256SUMS
@@ -50,7 +63,7 @@ sudo apt install ./projectwright_*_all.deb
 pw setup
 ```
 
-Run `pw setup` as your ordinary Hermes user (not via `sudo`). An APT repository for automatic updates is planned but **not yet deployed**. Hermes CLI and a configured Hermes account are required for supported use; Telegram setup is offered with confirmation when detected.
+Run `pw setup` as your ordinary Hermes user (not via `sudo`). Hermes CLI and a configured Hermes account are required for supported use; Telegram setup is offered with confirmation when detected.
 
 ## Inspect and test the development source
 
@@ -86,6 +99,6 @@ The older [component inventory](docs/component-inventory.md), [architecture snap
 
 ## Safety and current status
 
-The isolated `disposable-test-container` LXD environment verified Debian install/purge, user timer onboarding, Hermes plugin/gateway loading, Telegram delivery, real Approve and Reject callbacks, receipt verification and cleanup. Hosted tests also passed clean package installation/purge on Ubuntu 24.04 and 26.04, packaged fake-provider READ and EDIT/TEST/COMMIT execution, and a genuine two-source Debian upgrade preserving 35 user-owned files. These checks do **not** establish a stable package, all authorization/recovery edge cases, future schema migrations, a live-model EDIT/TEST/COMMIT run, or production installation. The retired self-hosted runners and their machines have been removed; the historical test evidence is retained for reference.
+The isolated `disposable-test-container` LXD environment verified Debian install/purge, user timer onboarding, Hermes plugin/gateway loading, Telegram delivery, real Approve and Reject callbacks, receipt verification and cleanup. Hosted tests also passed clean package installation/purge on Ubuntu 24.04 and 26.04, packaged fake-provider READ and EDIT/TEST/COMMIT execution, and a genuine two-source Debian upgrade preserving 35 user-owned files. These checks support the published early-stage Debian release but do **not** establish all authorization/recovery edge cases, future schema migrations, a live-model EDIT/TEST/COMMIT run, or production reliability. A signed APT install/upgrade has also been verified on Ubuntu 26.04; manual Ubuntu 24.04 APT testing remains deferred. The retired self-hosted runners and their machines have been removed; the historical test evidence is retained for reference.
 
-For public contributions, follow [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Before changing repository visibility, complete the [public-release readiness checklist](docs/public-release-readiness.md). The [release checklist](docs/release-checklist.md) preserves historical testing evidence; do not run against production Hermes without explicit authorization.
+For public contributions, follow [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). The repository is public; the [public-release readiness checklist](docs/public-release-readiness.md) retains its historical audit record. The [release checklist](docs/release-checklist.md) preserves historical testing evidence; do not run against production Hermes without explicit authorization.

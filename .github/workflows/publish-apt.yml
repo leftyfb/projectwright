@@ -1,8 +1,12 @@
 name: Publish signed Projectwright APT repository
 
-# Explicit maintainer operation only. No release, push or PR automatically
-# deploys to GitHub Pages. Private signing material is never in the repository.
+# A successful, manually authorized release publication automatically refreshes
+# the signed Pages APT index. Manual re-publication remains available for recovery.
+# Private signing material stays in GitHub Actions secrets.
 on:
+  workflow_run:
+    workflows: ['Publish Projectwright release']
+    types: [completed]
   workflow_dispatch:
     inputs:
       confirmation:
@@ -19,18 +23,30 @@ concurrency:
 
 jobs:
   build:
-    if: github.repository == 'leftyfb/projectwright' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'leftyfb/projectwright' &&
+      ((github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.event == 'workflow_dispatch') ||
+       (github.event_name == 'workflow_dispatch' &&
+        github.ref == 'refs/heads/main'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Require explicit authorization and signing configuration
+      - name: Verify release workflow success or explicit manual authorization
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
           SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY_B64 }}
           SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
         run: |
           set -euo pipefail
-          test "$CONFIRMATION" = publish-apt
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            test "$CONFIRMATION" = publish-apt
+          else
+            test "$GITHUB_EVENT_NAME" = workflow_run
+            echo 'Trusted release publication succeeded; refreshing signed APT index.'
+          fi
           test -n "$SIGNING_KEY"
           [[ "$SIGNING_FINGERPRINT" =~ ^[0-9A-Fa-f]{40}$ ]]
 

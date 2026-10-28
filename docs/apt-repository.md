@@ -1,9 +1,10 @@
 # Signed APT repository (maintainer setup and subscriber guide)
 
-**Not yet deployed.** These are preparation instructions for the GitHub Pages
-repository at `https://leftyfb.github.io/projectwright/`. Until the first signed
-deployment is verified, install the checked `.deb` from the [latest GitHub
-Release](https://github.com/leftyfb/projectwright/releases/latest).
+The signed repository is published at `https://leftyfb.github.io/projectwright/`.
+Projectwright can be installed and upgraded through ordinary Ubuntu APT once the
+subscriber has configured the source and verified its archive signing key.
+Initial deployment and key provisioning are complete; the maintainer setup below
+is retained for recovery and future key rotation.
 
 ## Repository format and trust boundary
 
@@ -20,7 +21,7 @@ Release](https://github.com/leftyfb/projectwright/releases/latest).
   indexing. The generator also validates the Debian package name, version and
   architecture and refuses changed/mismatched artifacts.
 
-## Maintainer: initial GitHub setup
+## Maintainer: initial setup (already completed)
 
 1. Create a dedicated **APT-only** GPG signing key on a trusted maintainer
    system. Keep a protected offline recovery copy. Do not reuse Git commit,
@@ -53,27 +54,36 @@ Release](https://github.com/leftyfb/projectwright/releases/latest).
 3. In **Settings → Pages**, set *Build and deployment → Source* to **GitHub
    Actions**. Confirm the `github-pages` environment allows the intended
    maintainer deployment workflow.
-4. From `main`, manually dispatch **Publish signed Projectwright APT
-   repository** and enter `publish-apt` as the confirmation. Never dispatch
-   this workflow from a pull request or unreviewed branch. It uses GitHub's
-   hosted runner and publishes the signed output through GitHub Pages.
+4. For initial deployment or a recovery republish, manually dispatch
+   **Publish signed Projectwright APT repository** from `main` and enter
+   `publish-apt` as the confirmation. Never dispatch it from a PR or
+   unreviewed branch. Normal release publication triggers this workflow
+   automatically after its guarded release-publishing workflow succeeds.
 5. Inspect the public key fingerprint, signatures, indexes and downloaded
-   package checksums from the deployed site. Then test APT installation on
-   disposable Ubuntu 24.04 and 26.04 environments before publishing user
-   installation instructions as generally available.
+   package checksums from the deployed site. The hosted Ubuntu 24.04/26.04
+   container matrix is part of each release gate; an APT install and upgrade
+   on Ubuntu 26.04 has also been verified. Manual Ubuntu 24.04 APT install
+   testing remains deferred.
 
-No workflow automatically republishes the APT site on a code push or release.
-For each new validated GitHub Release, a maintainer must explicitly dispatch
-the publishing workflow. It rebuilds indexes from **all** published stable
-version-only release assets; it never rebuilds or overwrites the GitHub Release
-packages. Release assets must provide the expected `.deb` and `SHA256SUMS`.
+A successful run of **Publish Projectwright release** triggers APT republishing
+through GitHub Actions `workflow_run`. A failed, cancelled or untrusted run
+cannot trigger signing; merging a PR to `main` alone does not publish a release
+or touch the signing key. Maintainers retain an explicit manual dispatch for
+recovery. The APT job rebuilds indexes from **all** published stable version-only
+release assets; it never rebuilds or overwrites the GitHub Release packages.
+Release assets must provide the expected `.deb` and `SHA256SUMS`.
 
-The workflow fails closed if the signing key, fingerprint, confirmation, release
-assets, or package verification are missing. It requires Pages deployment
+See [release procedure](release-process.md) for the supported development-to-release
+sequence and explicit release authorization controls.
+
+The workflow fails closed if the signing key, fingerprint, release assets, or
+package verification are missing. Manual recovery runs additionally require the
+exact confirmation text; automatic runs require a successful manually dispatched
+release-publishing workflow on `main`. It requires Pages deployment
 permissions only in the deployment job. The signing private key is restricted to
 the build job, and the public key is exported to the Pages output.
 
-## Subscriber: once publication has been validated
+## Subscriber: installation and updates
 
 Check the signing fingerprint against a maintainer-published value over an
 independent channel; **do not trust the downloaded key solely because the file
