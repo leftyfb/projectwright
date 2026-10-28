@@ -30,6 +30,12 @@ jobs:
         with:
           python-version: '3.14'
 
+      - name: Install APT index test dependency
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils
+
       - name: Run offline tests
         shell: bash
         run: |
