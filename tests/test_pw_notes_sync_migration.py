@@ -31,8 +31,8 @@ class NotesSyncMigrationTests(unittest.TestCase):
                                     text=True,capture_output=True)
                 self.assertNotEqual(proc.returncode,0)
                 messages.append(proc.stderr)
-            self.assertIn(str(Path(td)/"xdg/projectwright/projects/fixture/config.json"),messages[0])
-            self.assertIn(str(Path(td)/"xdg/projectwright/projects/fixture/config.json"),messages[1])
+            self.assertIn(str(Path(td)/"xdg/projects/fixture/config.json"),messages[0])
+            self.assertIn(str(Path(td)/"xdg/projects/fixture/config.json"),messages[1])
 
 if __name__=="__main__":
     unittest.main()
