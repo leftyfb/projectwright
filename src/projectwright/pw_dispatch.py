@@ -17,9 +17,15 @@ def default_project_root():
     if legacy_override:
         return Path(legacy_override).expanduser()
     xdg = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
-    root = xdg / 'projectwright' / 'projects'
+    root = xdg / 'projects'
+    previous = xdg / 'projectwright' / 'projects'
     legacy = Path.home() / '.hermes' / 'projects'
-    return legacy if legacy.is_dir() and not root.is_dir() else root
+    # Prefer the new location, but do not strand existing project state.
+    if root.is_dir():
+        return root
+    if previous.is_dir():
+        return previous
+    return legacy if legacy.is_dir() else root
 
 
 SAFE_IDLE = {'awaiting_acceptance', 'disabled', 'no_op'}

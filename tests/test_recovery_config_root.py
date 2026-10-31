@@ -17,7 +17,7 @@ class RecoveryConfigRootTests(unittest.TestCase):
             result = subprocess.run([sys.executable, "-B", str(SCRIPT), "--project", "fixture"],
                                     env=env, capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn(str(Path(td)/"xdg/projectwright/projects/fixture/config.json"), result.stderr)
+            self.assertIn(str(Path(td)/"xdg/projects/fixture/config.json"), result.stderr)
 
     def test_custom_config_dir(self):
         with tempfile.TemporaryDirectory() as td:

@@ -22,7 +22,7 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, proc.stderr)
             data = json.loads(proc.stdout)
             effective = data["effective_config"]
-            root = home/"xdg/projectwright/projects/demo"
+            root = home/"xdg/projects/demo"
             self.assertEqual(effective["queue"], str(root/"queue.md"))
             self.assertEqual(effective["result_dir"], str(root/"results"))
             self.assertEqual(effective["lock"], str(root/"worker.lock"))

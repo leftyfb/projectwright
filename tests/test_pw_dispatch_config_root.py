@@ -24,7 +24,7 @@ class ProjectRootSelectionTests(unittest.TestCase):
             xdg = Path(td) / "xdg"
             with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": str(xdg)}, clear=True):
                 with mock.patch.object(Path, "home", return_value=home):
-                    self.assertEqual(dispatch.default_project_root(), xdg / "projectwright" / "projects")
+                    self.assertEqual(dispatch.default_project_root(), xdg / "projects")
 
     def test_explicit_projectwright_home_beats_legacy(self):
         with tempfile.TemporaryDirectory() as td:

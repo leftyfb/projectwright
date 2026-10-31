@@ -26,7 +26,7 @@ class ConfigFreeDefaultsTests(unittest.TestCase):
             data=json.loads(p.stdout)
             self.assertFalse(data["configured"])
             self.assertEqual(data["missing_config_decision"],"disabled")
-            self.assertEqual(data["project_root"],str(home/"xdg/projectwright/projects"))
+            self.assertEqual(data["project_root"],str(home/"xdg/projects"))
             self.assertTrue(all(value is False for key,value in data["defaults"].items()
                                 if key.endswith("_enabled")))
             self.assertIsNone(data["defaults"]["provider"])

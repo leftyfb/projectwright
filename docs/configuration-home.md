@@ -1,9 +1,9 @@
 # Configuration home: initial XDG migration
 
-Projectwright currently has an **initial XDG project-root selector**, partially migrated configuration-free execution. New user configuration should live under
-`$XDG_CONFIG_HOME/projectwright` (default `~/.config/projectwright`).
-Project-specific state and config are currently discovered in its
-`projects/<project-id>/` subdirectory.
+Projectwright currently has an **initial XDG project-root selector**, partially migrated configuration-free execution. By default, project state lives under `$XDG_CONFIG_HOME/projects/<project-id>/`
+(or `~/.config/projects/<project-id>/` when `XDG_CONFIG_HOME` is unset).
+The project's Git worktree defaults to `worktree/` inside that project directory,
+but can point to a separate repository using configuration or `PROJECTWRIGHT_WORKTREE`.
 
 The CLI accepts an explicit Projectwright config home with:
 
@@ -22,14 +22,16 @@ Project directory resolution, when no explicit CLI root is supplied:
 
 1. `PROJECTWRIGHT_CONFIG_DIR/projects` if set.
 2. `HERMES_PROJECT_CONFIG_DIR` if set (backwards-compatible project-root override).
-3. `$XDG_CONFIG_HOME/projectwright/projects`, or
-   `~/.config/projectwright/projects` when `XDG_CONFIG_HOME` is unset.
-4. If the XDG project root does not exist and the legacy
-   `~/.hermes/projects` exists, use the legacy directory.
+3. `$XDG_CONFIG_HOME/projects` (normally `~/.config/projects`) if it exists.
+4. Existing `$XDG_CONFIG_HOME/projectwright/projects` if the new root does not exist.
+5. Existing `~/.hermes/projects` if neither XDG root exists.
+6. Otherwise, `$XDG_CONFIG_HOME/projects`.
 
-The selector never moves or rewrites an existing project. For the first
-transition, retaining legacy data takes priority over silently changing live
-behavior. Use an explicit `--config-dir` to select a new location.
+The selector never moves or rewrites an existing project. Existing directories
+remain discoverable until the new root is created. If project state exists in
+more than one root, an existing new root takes precedence; use an explicit
+`--config-dir` to select older state before migrating. The explicit override
+still treats its value as a configuration home and appends `projects/`.
 
 **Missing configuration behavior:** an ordinary unprepared project without `config.json` is disabled, and no provider, Git repository, queue or credentials are created. An **explicitly prepared** config-free project with a Git worktree, HEAD commit, branch match, queue and work log can be manually inspected and executed, as described later on this page. With `requirements.md` an explicit planning path is supported. Unattended scheduling and human approval are never inferred.
 
