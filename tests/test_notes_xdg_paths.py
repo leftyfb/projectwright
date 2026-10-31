@@ -17,7 +17,7 @@ class NotesRootTests(unittest.TestCase):
             env.pop("PROJECTWRIGHT_CONFIG_DIR",None)
             proc=subprocess.run([sys.executable,"-B",str(SOURCE/"project_notes_sync.py"),"--project","fixture","--status"],env=env,capture_output=True,text=True)
             self.assertNotEqual(proc.returncode,0)
-            self.assertIn(str(Path(td)/"xdg/projectwright/projects/fixture/config.json"),proc.stderr)
+            self.assertIn(str(Path(td)/"xdg/projects/fixture/config.json"),proc.stderr)
 
     def test_sync_explicit_config_dir(self):
         with tempfile.TemporaryDirectory() as td:
