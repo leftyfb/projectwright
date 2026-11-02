@@ -1,51 +1,22 @@
 # Projectwright
 
-**Requirements-to-Git task orchestration with explicit safety gates and human milestone approval.**
+Projectwright turns human-written requirements into a reviewed, ordered queue of bounded tasks, then coordinates Hermes to carry them out in a Git repository. It checks task reports and Git changes, records progress, and can pause at milestone boundaries for human approval.
 
-Projectwright turns `requirements.md` and an ordered `queue.md` into bounded planning and agent tasks, validates structured completion reports and Git evidence, and pauses at configured milestones for acceptance. Hermes CLI and its per-user configuration are required for the supported release; a command-based adapter is experimental, not a supported replacement. Telegram approval is expected and offered during first-run setup when Hermes Telegram settings are detected, but enabling it is optional and requires confirmation. Home Assistant quota telemetry, notes mirroring and user-level project dispatch timers are optional integrations.
-
-> **Release status:** The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides a Debian artifact for Ubuntu 24.04 and 26.04. This is early-stage software: install in a non-production environment first. A [signed APT repository](docs/apt-repository.md) is live, so subscribed Ubuntu systems can install and upgrade through normal package management. Package installation does not automatically alter Hermes credentials, project files, plugins, or timers.
-
-## Start here
-
-| If you want to… | Read |
-|---|---|
-| Understand how it works and run a safe first project | **[Full user and operator manual](docs/manual.md)** |
-| See the role of **every source, packaging, workflow and test file** | **[Current file-by-file reference](docs/file-reference.md)** |
-| Install or inspect the Debian release, plan upgrades/uninstalls | **[Packaging and operations](docs/packaging-and-operations.md)** |
-| Configure the signed APT repository and verify its signing key | [APT repository guide](docs/apt-repository.md) |
-| Follow requirements → planning → work → Git → human acceptance | [Workflow](docs/workflow.md) |
-| Find CLI commands and options | [CLI reference](docs/cli.md) |
-| Understand project roots, XDG paths, defaults and config-free mode | [Configuration guide](docs/configuration-home.md) |
-| Configure Hermes or experimental non-Hermes execution | [Provider adapters](docs/provider-adapters.md) |
-| Set up per-user Telegram approval and systemd | [Approval setup](docs/user-approval-setup.md) |
-| Follow the maintainer development-to-release process | [Release procedure](docs/release-process.md) |
-| See historical acceptance test evidence | [Release acceptance checklist](docs/release-checklist.md) |
-| Understand tests and what they do **not** prove | [Coverage matrix](docs/test-coverage-matrix.md) and [E2E gaps](docs/e2e-test-gaps.md) |
-
-## In one minute
+Hermes is the AI agent: it interprets prompts and performs planning or development using its configured model and tools. Projectwright is the workflow and safety layer: it stores requirements, plans, queue and progress; applies execution policy; validates results and Git evidence; and enforces milestone gates. Neither tool supplies the other's credentials or Git repository.
 
 ```text
-requirements.md -> planner -> queue.md -> dispatcher/manager gates
-                                          |
-                                    one worker task
-                                          |
-                              provider report + Git checks
-                                          |
-                          queue/progress or recovery hold
-                                          |
-                       milestone acceptance (optional Telegram)
-                                          |
-                             verified receipt -> next work
+requirements + milestones -> planning -> queue -> one worker task at a time
+                                                   -> report and Git validation
+                                                   -> progress or recovery hold
+                                                   -> milestone authorization
+                                                   -> completed-work acceptance
 ```
 
-`pw status` inspects a project; `pw plan` can request new queue items; `pw tick` plans when allowed and executes at most one task; `pw worker` runs a single task; `pw notify` previews approval requests (only `--send` transmits). A configured agent can change the selected Git worktree; always test against disposable data first. For the exact safeguards and execution types, see the [manual](docs/manual.md).
+Planning can propose queue entries; review the generated queue before enabling execution. A worker can change files and create commits in the selected repository. Projectwright does not automatically configure Hermes, create/select your Git repository, enable execution, authorize milestones, accept completed milestones, or enable recurring runs. Those actions require explicit configuration or confirmation. Telegram notifications and approval callbacks are optional and separately configured.
 
-## Install the latest Debian release
+## Install
 
-**Recommended:** configure the [signed Projectwright APT repository](docs/apt-repository.md)
-once, verifying its public signing-key fingerprint. Then install and receive normal
-Ubuntu updates without downloading new packages or changing APT sources:
+Configure the [signed Projectwright APT repository](docs/apt-repository.md), verifying its signing-key fingerprint as described there. Then:
 
 ```sh
 sudo apt update
@@ -53,52 +24,89 @@ sudo apt install projectwright
 pw setup
 ```
 
-**Manual alternative:** download the `projectwright_*_all.deb` package and
-`SHA256SUMS` from the [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest)
-into a clean directory, then verify and install:
+Run `pw setup` as your normal Hermes user, not with `sudo`. Hermes CLI must already be installed and configured. Telegram is optional; setup asks before enabling its integration. See the [APT guide](docs/apt-repository.md) for repository setup and trust verification.
+
+## First project
+
+Use a disposable Git repository for your first run. These steps create Projectwright state in the default location and connect it to a Git repository elsewhere. Replace the example repository path with the absolute path to your own existing repository.
+
+1. Create an inert project and inspect its selected paths:
 
 ```sh
-sha256sum -c SHA256SUMS
-sudo apt install ./projectwright_*_all.deb
-pw setup
-```
-
-Run `pw setup` as your ordinary Hermes user (not via `sudo`). Hermes CLI and a configured Hermes account are required for supported use; Telegram setup is offered with confirmation when detected.
-
-## Inspect and test the development source
-
-For source development, requires Python 3.10+ and Git. The **supported Debian installation targets are Ubuntu 24.04 LTS and 26.04 LTS only** (22.04 is not supported). From the repository root:
-
-```sh
-python3 -B -m unittest discover -s tests -p 'test_*.py' -v
-python3 -B scripts/validate-baseline.py --mode development
-```
-
-After installing the Debian package, run **`pw setup` as your ordinary Hermes user** to verify Hermes plugin discovery with a bounded read-only CLI command and optionally activate detected Telegram approval integration. The command explains changes and asks before enabling the plugin or approval notifier timer; use `pw setup --no-telegram` to defer Telegram. A gateway restart remains a separate manual step.
-
-Read-only CLI exploration in an environment where Projectwright is installed:
-
-```sh
-pw --help
+pw init --project demo
 pw defaults --project demo
+```
+
+By default, projects live under `$XDG_CONFIG_HOME/projectwright/projects` (normally `~/.config/projectwright/projects`). If that root does not exist but the legacy `~/.hermes/projects` does, Projectwright selects the legacy root. `--config-dir /absolute/config/home` selects a config home whose `projects/` child contains projects; pass it consistently to commands. See [configuration and path resolution](docs/configuration-home.md).
+
+2. Edit `<project-directory>/config.json` to connect an existing repository outside the Projectwright directory:
+
+```json
+"worktree": "/absolute/path/to/my-existing-repository",
+"branch": "main"
+```
+
+These are fields in the existing JSON object, not a replacement for it. Use a clean repository on its configured branch. Projectwright operates on one Git worktree per project. Coordinated work across multiple repositories is not supported as one task/project; use separate Projectwright projects and coordinate and accept them independently.
+
+3. Create `<project-directory>/requirements.md` with human-authored intent and explicitly named milestones. For example:
+
+```markdown
+# Demo
+
+## Requirement DEMO-1: Add a greeting
+
+The application prints a greeting when run.
+
+### DEMO-1-M1 — Greeting implementation
+Implement the greeting, add a focused test, and verify it.
+```
+
+4. Enable planning while keeping execution disabled. In `config.json`, set:
+
+```json
+"planning": {
+  "enabled": true,
+  "requirements_file": "/absolute/path/to/project-directory/requirements.md"
+},
+"execution": {"enabled": false}
+```
+
+Keep all other existing configuration fields. `pw plan --project demo` requests planning; it may invoke Hermes and append validated proposals to `queue.md`. Review the queue, then inspect status:
+
+```sh
+pw plan --project demo
 pw status --project demo
 ```
 
-To create an inert private project, `pw init --project demo` disables execution by default. To create only a queue/work-log skeleton without `config.json`, use `pw init --project demo --no-config`; then you must separately prepare a Git worktree and valid queue before manual execution. Projectwright does not provision a model, Git repository, Telegram bot or systemd schedule for you.
+`pw plan` does not execute tasks. A newly initialized project remains execution-disabled; `pw tick` will not execute its queued work just because tasks exist. To proceed, explicitly set `"execution": {"enabled": true}` after reviewing the repository, queue, provider and policy.
 
-## Repository orientation
+5. Preview the selected task, then run one dispatcher cycle. A tick plans when permitted and executes at most one task:
 
-- `src/projectwright/pw_*.py` — current runtime and integration implementations.
-- `src/projectwright/project_*.py` — retained legacy compatibility imports.
-- `packaging/`, `pyproject.toml`, `scripts/build-deb.sh` — build and inert installation assets.
-- `tests/` — offline unit, integration, acceptance, recovery and migration regressions.
-- `.github/workflows/` — hosted offline CI and guarded release publishing. Historical isolated LXD testing is archived in Git history; do not reconnect a self-hosted runner without a new security review.
-- `docs/` — operating manual, reference, acceptance evidence and historical audit records.
+```sh
+pw worker --project demo --dry-run
+pw tick --project demo
+```
 
-The older [component inventory](docs/component-inventory.md), [architecture snapshot](docs/architecture-current.md) and [runtime entrypoint snapshot](docs/runtime-entrypoints.md) describe the original 18-file audit; consult the **current file reference** for the newer canonical modules and branch behavior.
+Check `pw status --project demo`, the project's `queue.md`, `work_log.md`, `results/`, `worker_journal.json`, and Git status/diff to review progress and changes. Do not use a real project for this walkthrough.
 
-## Safety and current status
+6. Optional recurring execution and Telegram approvals:
 
-The isolated `disposable-test-container` LXD environment verified Debian install/purge, user timer onboarding, Hermes plugin/gateway loading, Telegram delivery, real Approve and Reject callbacks, receipt verification and cleanup. Hosted tests also passed clean package installation/purge on Ubuntu 24.04 and 26.04, packaged fake-provider READ and EDIT/TEST/COMMIT execution, and a genuine two-source Debian upgrade preserving 35 user-owned files. These checks support the published early-stage Debian release but do **not** establish all authorization/recovery edge cases, future schema migrations, a live-model EDIT/TEST/COMMIT run, or production reliability. A signed APT install/upgrade has also been verified on Ubuntu 26.04; manual Ubuntu 24.04 APT testing remains deferred. The retired self-hosted runners and their machines have been removed; the historical test evidence is retained for reference.
+- Project timers are opt-in. Inspect `pw timer --help`; install and enable a per-project timer only after verifying one-shot behavior and its target.
+- `pw setup` offers optional Telegram approval setup when Hermes Telegram credentials are detected. Notification and callback handling require separate explicit setup. See [approval setup](docs/user-approval-setup.md). `pw notify` previews by default; `pw notify --send` sends messages.
 
-For public contributions, follow [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). The repository is public; the [public-release readiness checklist](docs/public-release-readiness.md) retains its historical audit record. The [release checklist](docs/release-checklist.md) preserves historical testing evidence; do not run against production Hermes without explicit authorization.
+## Milestone authorization is not acceptance
+
+Authorizing work on a milestone permits its planned work to proceed; it does not certify the result. Acceptance occurs only after milestone tasks complete and configured acceptance checks pass against the expected requirements, queue and Git evidence. A checked queue item or successful worker report is not an acceptance receipt. Telegram approval is optional and does not replace acceptance checks.
+
+## More documentation
+
+- [User and operator manual](docs/manual.md) — workflow, safety, recovery, operations
+- [CLI reference](docs/cli.md) — commands and flags
+- [Workflow and milestone gates](docs/workflow.md)
+- [Configuration and default paths](docs/configuration-home.md)
+- [Provider adapters](docs/provider-adapters.md)
+- [Telegram approval setup](docs/user-approval-setup.md)
+- [Tests and coverage boundaries](docs/test-coverage-matrix.md)
+- [Security policy](SECURITY.md)
+
+For source development and maintainer guidance, see [CONTRIBUTING.md](CONTRIBUTING.md).

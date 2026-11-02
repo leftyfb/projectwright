@@ -78,7 +78,7 @@ class ProjectRootSelection(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with patch.dict(os.environ, {"HERMES_PROJECT_CONFIG_DIR": tmp + "/legacy"}, clear=True):
                 self.assertEqual(default_project_root(), Path(tmp) / "legacy")
-            with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/xdg"}, clear=True):
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/xdg", "HOME": tmp + "/home"}, clear=True):
                 self.assertEqual(default_project_root(), Path(tmp) / "xdg/projectwright/projects")
 
 
