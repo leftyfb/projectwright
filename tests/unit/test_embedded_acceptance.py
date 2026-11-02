@@ -124,6 +124,11 @@ class EmbeddedAcceptanceE2ETests(unittest.TestCase):
             found = approval.scan(root)
             self.assertEqual(len(found), 1)
             self.assertEqual(found[0]["milestone"], "DEMO-1-M1")
+            unapproved = guard.current_receipts(
+                {}, requirements.read_bytes(), queue.read_text(),
+                run("git", "rev-parse", "HEAD"), repo=repo, strict=True,
+                policy=policy_for_project(project), journal={})
+            self.assertNotIn("DEMO-1-M1", unapproved)
             approval.approve_single(root)
             state = json.loads((project / "planning_state.json").read_text())
             head = run("git", "rev-parse", "HEAD")
@@ -131,6 +136,16 @@ class EmbeddedAcceptanceE2ETests(unittest.TestCase):
                 state, requirements.read_bytes(), queue.read_text(), head,
                 repo=repo, strict=True, policy=policy_for_project(project), journal={})
             self.assertIn("DEMO-1-M1", receipts)
+
+            # Editing acceptance definitions invalidates the receipt bound to
+            # the original requirements and policy fingerprints.
+            changed_requirements = requirements.read_text().replace(
+                "print('accepted')", "print('changed')")
+            requirements.write_text(changed_requirements)
+            stale = guard.current_receipts(
+                state, requirements.read_bytes(), queue.read_text(), head,
+                repo=repo, strict=True, policy=policy_for_project(project), journal={})
+            self.assertNotIn("DEMO-1-M1", stale)
 
 
 if __name__ == "__main__":
