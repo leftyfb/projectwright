@@ -1,22 +1,12 @@
 # Projectwright
 
-Projectwright turns human-written requirements into a reviewed, ordered queue of bounded tasks, then coordinates Hermes to carry them out in a Git repository. It checks task reports and Git changes, records progress, and can pause at milestone boundaries for human approval.
+Projectwright turns your requirements into a reviewable queue of small development tasks, then coordinates Hermes to work through that queue in a Git repository. It tracks progress and Git changes, checks worker reports, and can pause for human milestone approval.
 
-Hermes is the AI agent: it interprets prompts and performs planning or development using its configured model and tools. Projectwright is the workflow and safety layer: it stores requirements, plans, queue and progress; applies execution policy; validates results and Git evidence; and enforces milestone gates. Neither tool supplies the other's credentials or Git repository.
+Hermes is the AI developer: it plans and edits using your configured model and tools. Projectwright manages the requirements, queue, safety checks, progress and approval gates. Planning proposes work; it does not authorize execution. Execution is a separate, explicit action.
 
-```text
-requirements + milestones -> planning -> queue -> one worker task at a time
-                                                   -> report and Git validation
-                                                   -> progress or recovery hold
-                                                   -> milestone authorization
-                                                   -> completed-work acceptance
-```
+## Install and set up
 
-Planning can propose queue entries; review the generated queue before enabling execution. A worker can change files and create commits in the selected repository. Projectwright does not automatically configure Hermes, create/select your Git repository, enable execution, authorize milestones, accept completed milestones, or enable recurring runs. Those actions require explicit configuration or confirmation. Telegram notifications and approval callbacks are optional and separately configured.
-
-## Install
-
-Configure the [signed Projectwright APT repository](docs/apt-repository.md), verifying its signing-key fingerprint as described there. Then:
+Configure the [signed APT repository](docs/apt-repository.md), including verifying its signing-key fingerprint, then run as your normal user:
 
 ```sh
 sudo apt update
@@ -24,89 +14,48 @@ sudo apt install projectwright
 pw setup
 ```
 
-Run `pw setup` as your normal Hermes user, not with `sudo`. Hermes CLI must already be installed and configured. Telegram is optional; setup asks before enabling its integration. See the [APT guide](docs/apt-repository.md) for repository setup and trust verification.
+Do not run `pw setup` with sudo. Hermes CLI must already be installed and configured. Telegram setup is optional.
 
-## First project
+## Quick start
 
-Use a disposable Git repository for your first run. These steps create Projectwright state in the default location and connect it to a Git repository elsewhere. Replace the example repository path with the absolute path to your own existing repository.
-
-1. Create an inert project and inspect its selected paths:
+Use a disposable, initialized Git repository for a first run. Projectwright creates its own state directory and connects to the repository; it does not clone, initialize, or duplicate it. Replace the example path with the path to your existing repository.
 
 ```sh
-pw init --project demo
-pw defaults --project demo
+pw init --project myproject --repo ~/repos/myproject
+pw requirements --project myproject --edit
+pw plan --project myproject
+pw status --project myproject
 ```
 
-By default, projects live under `$XDG_CONFIG_HOME/projectwright/projects` (normally `~/.config/projectwright/projects`). If that root does not exist but the legacy `~/.hermes/projects` does, Projectwright selects the legacy root. `--config-dir /absolute/config/home` selects a config home whose `projects/` child contains projects; pass it consistently to commands. See [configuration and path resolution](docs/configuration-home.md).
+Write the requirements as goals and explicitly named milestones. Save and close the editor. `pw plan` is your explicit authorization to plan: it enables planning and asks Hermes to prepare or review the queue. Execution remains disabled. Review `queue.md` and the proposed tasks before proceeding. Planning requires a working Hermes CLI/provider and requirements with named milestones.
 
-2. Edit `<project-directory>/config.json` to connect an existing repository outside the Projectwright directory:
-
-```json
-"worktree": "/absolute/path/to/my-existing-repository",
-"branch": "main"
-```
-
-These are fields in the existing JSON object, not a replacement for it. Use a clean repository on its configured branch. Projectwright operates on one Git worktree per project. Coordinated work across multiple repositories is not supported as one task/project; use separate Projectwright projects and coordinate and accept them independently.
-
-3. Create `<project-directory>/requirements.md` with human-authored intent and explicitly named milestones. For example:
-
-```markdown
-# Demo
-
-## Requirement DEMO-1: Add a greeting
-
-The application prints a greeting when run.
-
-### DEMO-1-M1 — Greeting implementation
-Implement the greeting, add a focused test, and verify it.
-```
-
-4. Enable planning while keeping execution disabled. In `config.json`, set:
-
-```json
-"planning": {
-  "enabled": true,
-  "requirements_file": "/absolute/path/to/project-directory/requirements.md"
-},
-"execution": {"enabled": false}
-```
-
-Keep all other existing configuration fields. `pw plan --project demo` requests planning; it may invoke Hermes and append validated proposals to `queue.md`. Review the queue, then inspect status:
+When you are ready for a real code change, start a manually confirmed worker run:
 
 ```sh
-pw plan --project demo
-pw status --project demo
+pw start --project myproject
 ```
 
-`pw plan` does not execute tasks. A newly initialized project remains execution-disabled; `pw tick` will not execute its queued work just because tasks exist. To proceed, explicitly set `"execution": {"enabled": true}` after reviewing the repository, queue, provider and policy.
+Confirm at the prompt. `pw start` persistently enables execution in this project's config, then runs one worker task once. The command does not install or enable a timer; an already-enabled timer may use the stored authorization, so disable recurring automation separately if you do not want it. The authorization remains enabled even if that worker run fails. The worker still applies Projectwright's Git-scope, journal, recovery and task-sequencing checks. Run `pw status --project myproject` to check progress, then review the work log, results, and `git diff` in your repository. Run `pw start` again to manually process another task. To decline the confirmation, answer no; execution remains disabled.
 
-5. Preview the selected task, then run one dispatcher cycle. A tick plans when permitted and executes at most one task:
+Projects normally live at `$XDG_CONFIG_HOME/projects/myproject` (usually `~/.config/projects/myproject`). An existing repository can be elsewhere, such as `~/repos/myproject`. To use another Projectwright config home, pass `--config-dir /absolute/config/home` to each command; its projects are stored below `projects/`. The default selector retains compatibility with older `~/.config/projectwright/projects` and `~/.hermes/projects` locations without moving or deleting them. See [configuration paths](docs/configuration-home.md).
 
-```sh
-pw worker --project demo --dry-run
-pw tick --project demo
-```
+`pw status` summarizes planning and execution state, queue progress, current decision, blockers and the next action. Use `pw status --project myproject --json` for machine-readable output.
 
-Check `pw status --project demo`, the project's `queue.md`, `work_log.md`, `results/`, `worker_journal.json`, and Git status/diff to review progress and changes. Do not use a real project for this walkthrough.
+## Reviewing work and approvals
 
-6. Optional recurring execution and Telegram approvals:
+A successful test, completed queue checkbox, worker report or Git commit is not milestone acceptance. Projectwright never infers acceptance from those signals. Milestone approval/acceptance gates remain separate; the existing Telegram approval integration is optional and documented in [Telegram approval setup](docs/user-approval-setup.md).
 
-- Project timers are opt-in. Inspect `pw timer --help`; install and enable a per-project timer only after verifying one-shot behavior and its target.
-- `pw setup` offers optional Telegram approval setup when Hermes Telegram credentials are detected. Notification and callback handling require separate explicit setup. See [approval setup](docs/user-approval-setup.md). `pw notify` previews by default; `pw notify --send` sends messages.
+Recurring automation is also optional and is not enabled by these steps. See `pw timer --help` and the [operator manual](docs/manual.md) before separately configuring a project timer.
 
-## Milestone authorization is not acceptance
+## Limits and advanced documentation
 
-Authorizing work on a milestone permits its planned work to proceed; it does not certify the result. Acceptance occurs only after milestone tasks complete and configured acceptance checks pass against the expected requirements, queue and Git evidence. A checked queue item or successful worker report is not an acceptance receipt. Telegram approval is optional and does not replace acceptance checks.
+A Projectwright project controls one Git worktree. An application repository may be located outside the Projectwright state directory, but coordinated execution that modifies multiple repositories as one task is not supported. Use separate Projectwright projects and review them independently; do not weaken repository scope checks.
 
-## More documentation
-
-- [User and operator manual](docs/manual.md) — workflow, safety, recovery, operations
-- [CLI reference](docs/cli.md) — commands and flags
+- [CLI reference](docs/cli.md)
 - [Workflow and milestone gates](docs/workflow.md)
 - [Configuration and default paths](docs/configuration-home.md)
+- [User and operator manual](docs/manual.md) — safety, recovery and operations
 - [Provider adapters](docs/provider-adapters.md)
 - [Telegram approval setup](docs/user-approval-setup.md)
-- [Tests and coverage boundaries](docs/test-coverage-matrix.md)
-- [Security policy](SECURITY.md)
-
-For source development and maintainer guidance, see [CONTRIBUTING.md](CONTRIBUTING.md).
+- [Coverage boundaries](docs/test-coverage-matrix.md)
+- [APT installation](docs/apt-repository.md)

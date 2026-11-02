@@ -69,22 +69,22 @@ def provider_argv(cfg: dict, phase: str, *, prompt: str | None = None) -> tuple[
 
 
 def default_project_root() -> Path:
-    """Resolve project storage without changing existing Hermes installations.
+    """Resolve the shared Projectwright project root.
 
-    Explicit PROJECTWRIGHT_CONFIG_DIR denotes an XDG-style configuration home,
-    with project directories beneath its projects/ child. The legacy environment
-    variable remains an explicit direct project-root override.
+    PROJECTWRIGHT_CONFIG_DIR is a config home containing projects/. The
+    older HERMES_PROJECT_CONFIG_DIR remains a direct-root override. Prefer the
+    new XDG projects/ root, then discover existing pre-onboarding locations
+    without moving or deleting them.
     """
-    direct = os.environ.get('HERMES_PROJECT_CONFIG_DIR')
     selected = os.environ.get('PROJECTWRIGHT_CONFIG_DIR')
+    direct = os.environ.get('HERMES_PROJECT_CONFIG_DIR')
     if selected:
         return Path(selected).expanduser() / 'projects'
     if direct:
         return Path(direct).expanduser()
     xdg = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
-    target = xdg / 'projectwright' / 'projects'
-    legacy = Path.home() / '.hermes' / 'projects'
-    return legacy if legacy.is_dir() and not target.is_dir() else target
+    candidates = (xdg / 'projects', xdg / 'projectwright' / 'projects', Path.home() / '.hermes' / 'projects')
+    return next((path for path in candidates if path.is_dir()), candidates[0])
 
 
 def project_config(project: str, root: Path) -> tuple[Path, dict]:
@@ -307,9 +307,7 @@ def main() -> int:
         manual_config_free = (args.once and config_missing and
                               req_file.is_file() and not req_file.is_symlink() and
                               ready_for_config_free_worker(cfg))
-        if (config_missing and not manual_config_free) or (
-            cfg.get('projectwright_initialized') == 1 and cfg['execution']['enabled'] is False
-        ):
+        if config_missing and not manual_config_free:
             print(json.dumps({'project': args.project, 'decision': 'disabled'}))
             return once_exit_code('disabled') if args.once else 0
         mode = 'once' if args.once else 'status'

@@ -1,9 +1,9 @@
 # Configuration home and project paths
 
-By default, project state lives under `$XDG_CONFIG_HOME/projectwright/projects/<project-id>/`
-(or `~/.config/projectwright/projects/<project-id>/` when `XDG_CONFIG_HOME` is unset).
+By default, project state lives under `$XDG_CONFIG_HOME/projects/<project-id>/`
+(or `~/.config/projects/<project-id>/` when `XDG_CONFIG_HOME` is unset).
 The project's Git worktree defaults to `worktree/` inside that project directory,
-but can point to a separate repository using configuration or `PROJECTWRIGHT_WORKTREE`.
+but can point to a separate repository using `pw init --repo PATH`, configuration or `PROJECTWRIGHT_WORKTREE`.
 
 The CLI accepts an explicit Projectwright config home with:
 
@@ -22,14 +22,10 @@ Project directory resolution, when no explicit CLI root is supplied:
 
 1. `PROJECTWRIGHT_CONFIG_DIR/projects` if set.
 2. `HERMES_PROJECT_CONFIG_DIR` if set (backwards-compatible direct project-root override).
-3. `$XDG_CONFIG_HOME/projectwright/projects` (normally `~/.config/projectwright/projects`).
-4. If that root does not exist and `~/.hermes/projects` exists, use the legacy root.
+3. `$XDG_CONFIG_HOME/projects` (normally `~/.config/projects`).
+4. If that directory does not exist, reuse existing `$XDG_CONFIG_HOME/projectwright/projects`, then `~/.hermes/projects`.
 
-The selector never moves or rewrites an existing project. Existing directories
-remain discoverable until the new root is created. If project state exists in
-more than one root, an existing new root takes precedence; use an explicit
-`--config-dir` to select older state before migrating. The explicit override
-still treats its value as a configuration home and appends `projects/`.
+The selector never moves or rewrites an existing project. Existing roots remain discoverable when the new root is absent. If multiple roots exist, the first existing location in this order wins; use an explicit `--config-dir` to select another root. The explicit override still treats its value as a configuration home and appends `projects/`.
 
 **Missing configuration behavior:** an ordinary unprepared project without `config.json` is disabled, and no provider, Git repository, queue or credentials are created. An **explicitly prepared** config-free project with a Git worktree, HEAD commit, branch match, queue and work log can be manually inspected and executed, as described later on this page. With `requirements.md` an explicit planning path is supported. Unattended scheduling and human approval are never inferred.
 

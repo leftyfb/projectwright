@@ -41,6 +41,7 @@ py-modules = [
     "pw_defaults",
     "pw_config",
     "pw_init",
+    "pw_onboarding",
     "pw_notify",
     "pw_plugin",
     "pw_worker_progress",

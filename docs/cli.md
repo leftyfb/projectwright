@@ -1,40 +1,43 @@
-# Preliminary `pw` command interface
+# `pw` command-line reference
 
-The current development wheel and Debian preview include `pw` as a
-single command that routes to the existing, separately-tested flat-script
-entrypoints. It is **not yet** the final CLI or a proof of standalone
-harness independence.
+The `pw` launcher preserves the existing service commands and adds a small onboarding path. Each command supports `--help`.
 
-| Command | Delegates to | Purpose |
-|---|---|---|
-| `pw tick --project NAME` | `pw_dispatch` | One planning/worker dispatch tick |
-| `pw status --project NAME` | `project_queue_manager --status` | Inspect project decision and blockers |
-| `pw plan --project NAME` | `project_queue_manager --once` | One planning decision |
-| `pw worker --project NAME --once` | `project_task_worker` | Run at most one worker task |
-| `pw notify` | `pw_notify` | Preview approval notifications; send only if explicitly requested |
-| `pw timer ACTION PROJECT` | `pw_project_timer` | Inspect, install, enable or disable user timers |
-| `pw init --project NAME [--no-config]` | `pw_init` | Create inert configured project or config-free queue/work-log skeleton |
-| `pw defaults --project NAME` | `pw_defaults` | Read-only selected root and effective defaults |
-| `pw setup` | `pw_project_timer setup` | First-run Hermes requirement check; optionally enable detected Telegram approval plugin/timer after confirmation (`--yes` is explicit unattended opt-in, `--no-telegram` skips). |
-| `pw setup-user` | `pw_project_timer setup-user` | Explicit non-root approval timer/plugin onboarding; also available as `pw-timer setup-user` |
+## First project
 
-Each command has its own `--help`, which `pw` forwards. `pw --help`
-displays the routing summary without performing any action. The legacy
-`pw-dispatch`, `pw-manager`, `pw-worker`, `pw-notify`, and
-`pw-timer` entrypoints remain available during migration.
+```sh
+pw init --project NAME --repo /path/to/existing/git-worktree
+pw requirements --project NAME --edit
+pw plan --project NAME
+pw status --project NAME
+pw start --project NAME
+```
 
-An explicit configuration home can be provided to `pw tick`,
-`pw status`, `pw plan`, and `pw worker` through `--config-dir`.
-See [configuration home](configuration-home.md). The full set of
-subcommands still needs a shared configuration parser before 1.0.
+`pw init --repo` verifies that PATH is the root of an initialized Git worktree with a HEAD commit and a named current branch, then stores that path and branch in a new Projectwright config. It does not initialize, clone, checkout, clean, or otherwise modify the repository. Initialization refuses an existing Projectwright project directory. The new project has planning and execution disabled.
 
-The `pw` command merely delegates; it does not bypass the worker journal,
-Git cycle validation, quota gate, acceptance guard or existing authorization
-rules. A missing project configuration yields a disabled manager decision,
-not permission to begin work.
+`pw requirements --edit` opens the configured requirements file, using `$VISUAL`, then `$EDITOR`, then an available `nano`, `vi`, `vim` or `editor`. Requirements are stored in the Projectwright project directory. Set `VISUAL` or `EDITOR` if no suitable editor is detected.
 
-## Additional operator commands
+Invoking `pw plan` explicitly authorizes planning: it enables `planning.enabled` and runs one planning decision. It does not enable execution or run a worker. Review the queue before authorizing execution. Planning requires valid requirements, a usable Git worktree on the configured branch, named milestones where needed, and an available configured Hermes provider.
 
-`pw worker --project NAME --dry-run` previews selection; `--journal-status` inspects durable task state; `--quota-check` evaluates optional quota; `--authorize-retry TASK_ID` is an explicit reviewed recovery action. `pw tick --no-telegram` suppresses legacy worker progress messages, not milestone acceptance. `pw notify` is a preview unless `--send` is supplied, which sends an actual Telegram approval request.
+`pw start` asks for confirmation before persistently setting `execution.enabled` and launching one worker task with `--once`. In non-interactive scripts, `pw start --project NAME --yes` is the explicit confirmation. A declined prompt leaves execution disabled. Start itself is a manual one-task run and never enables timers; an already-enabled timer may use the stored authorization. The authorization remains enabled if the worker fails. The worker's Git scope checks, journals, recovery rules, task sequencing and milestone gates remain in effect.
 
-Run `pw setup` as the intended non-root Hermes user after installation. It finds Hermes on PATH or common per-user install paths, checks its configuration and runs a bounded read-only plugin discovery command, then detects Telegram bot token and authorized-user configuration, explains plugin/timer changes and requires confirmation before enabling them. `pw setup --no-telegram` skips optional Telegram onboarding; `pw setup --yes` is an explicit noninteractive authorization. `pw-timer setup-user --minutes 10 --enable-hermes-plugin` remains a compatibility/advanced direct command. It is separate from `pw timer check|install-disabled|enable|disable|status PROJECT`, which manages project dispatch timers. See [manual](manual.md) and [packaging operations](packaging-and-operations.md).
+`pw status` prints a human-readable summary. Add `--json` for machine-readable JSON. Status includes planning/execution configuration, queue counts, manager decision, blockers and a suggested next action.
+
+## Project paths
+
+The default project root is `$XDG_CONFIG_HOME/projects` (normally `~/.config/projects`). The selector recognizes older `$XDG_CONFIG_HOME/projectwright/projects` and `~/.hermes/projects` roots without moving, overwriting or deleting their projects. Existing roots are preferred when the new root has not yet been created. Use `--config-dir /absolute/config/home` consistently to select a config home; the project directory is `config-home/projects/NAME`. `PROJECTWRIGHT_CONFIG_DIR` has the same config-home meaning. The legacy `HERMES_PROJECT_CONFIG_DIR` remains a direct project-root override.
+
+## Existing commands
+
+| Command | Purpose |
+|---|---|
+| `pw tick --project NAME` | One dispatcher cycle: planning when permitted and at most one worker task |
+| `pw worker --project NAME --once` | Run at most one worker task |
+| `pw defaults --project NAME` | Read-only selected paths and defaults |
+| `pw notify` | Preview approval notifications; `--send` explicitly sends |
+| `pw timer ACTION NAME` | Inspect or explicitly manage a project timer |
+| `pw setup` | Check Hermes and optionally configure Telegram onboarding |
+| `pw setup-user` | Explicit non-root Telegram approval integration onboarding |
+
+Legacy `pw-dispatch`, `pw-manager`, `pw-worker`, `pw-notify`, and `pw-timer` entrypoints remain available. `pw init --project NAME --no-config` retains its config-free skeleton behavior; it cannot be combined with `--repo`.
+
+A Projectwright project controls one worktree. A repository can be outside its state directory, but coordinated execution across multiple repositories as one task is not supported. Preserve the worker's existing repository-scope safeguards. See [workflow](workflow.md), [configuration paths](configuration-home.md), and the [operator manual](manual.md) for advanced behavior, recovery and approvals.
