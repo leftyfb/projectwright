@@ -116,7 +116,7 @@ jobs:
           test ! -e "$HOME/.config/projectwright/projects/demo/config.json"
           pw defaults --project demo --config-dir "$HOME/.config/projectwright" >"$work/defaults.json"
           python3 -B -c 'import json,sys; assert json.load(open(sys.argv[1]))["configured"] is False' "$work/defaults.json"
-          pw status --project demo --config-dir "$HOME/.config/projectwright" --json >"$work/status.json"
+          pw status --project demo --config-dir "$HOME/.config/projectwright" --json --json >"$work/status.json"
           python3 -B -c 'import json,sys; assert json.load(open(sys.argv[1]))["decision"] == "disabled"' "$work/status.json"
           if pw setup-user --minutes 10 >"$work/setup.out" 2>"$work/setup.err"; then
             echo 'ERROR: root unexpectedly enabled per-user setup' >&2
