@@ -8,6 +8,8 @@ import re
 import subprocess
 import sys
 
+from pw_one_shot_auth import HANDOFF_ENV, create as create_handoff, sha256_bytes
+
 def default_project_root():
     """Select project-root path without loading potentially injected modules."""
     custom = os.environ.get('PROJECTWRIGHT_CONFIG_DIR')
@@ -253,7 +255,8 @@ def parse_manual_status(stdout, project, returncode):
     except (json.JSONDecodeError, TypeError) as exc:
         raise ValueError(f'manager status is not JSON: {exc}') from exc
     required = {'project', 'decision', 'pending', 'completed', 'queue_blocked',
-                'invalid_lines', 'blockers', 'planning_enabled', 'branch', 'head'}
+                'invalid_lines', 'blockers', 'planning_enabled', 'branch', 'head',
+                'queue_sha256', 'requirements_sha256', 'pending_tasks'}
     if not isinstance(report, dict) or not required <= set(report):
         raise ValueError('manager status is missing required safety fields')
     if report['project'] != project:
@@ -263,6 +266,12 @@ def parse_manual_status(stdout, project, returncode):
     for field in ('pending', 'completed', 'queue_blocked'):
         if type(report[field]) is not int or report[field] < 0:
             raise ValueError(f'manager status has invalid {field} count')
+    if (not isinstance(report['queue_sha256'], str) or not re.fullmatch(r'[0-9a-f]{64}', report['queue_sha256'])
+            or not isinstance(report['requirements_sha256'], str)
+            or (report['requirements_sha256'] is not None and not re.fullmatch(r'[0-9a-f]{64}', report['requirements_sha256']))
+            or not isinstance(report['pending_tasks'], list)
+            or len(report['pending_tasks']) != report['pending']):
+        raise ValueError('manager status has invalid authorization snapshot')
     if type(report['planning_enabled']) is not bool:
         raise ValueError('manager status has invalid planning state')
     if not isinstance(report['blockers'], list) or report['blockers']:
@@ -272,6 +281,48 @@ def parse_manual_status(stdout, project, returncode):
     if not isinstance(report['branch'], str) or not report['branch'] or not isinstance(report['head'], str) or not report['head']:
         raise ValueError('manager status has invalid Git identity')
     return report
+
+
+def _manual_handoff(project, report):
+    """Mint a capability from the exact live state checked by manager status."""
+    root = default_project_root()
+    from pw_config import load as load_config
+    config_path, config = load_config(project, root)
+    config_path = config_path.resolve()
+    if config.get('id') != project:
+        raise ValueError('project configuration identity mismatch')
+    queue_path = Path(config['queue']).expanduser().resolve()
+    queue_bytes = queue_path.read_bytes()
+    if sha256_bytes(queue_bytes) != report['queue_sha256']:
+        raise ValueError('queue changed after manager authorization snapshot')
+    pending = report['pending_tasks']
+    if (not pending or not isinstance(pending[0], dict)
+            or not isinstance(pending[0].get('id'), str)):
+        raise ValueError('manager status has no valid selected task')
+    requirements_setting = config.get('planning', {}).get('requirements_file')
+    requirements_bytes = Path(requirements_setting).expanduser().resolve().read_bytes() if requirements_setting else b''
+    if sha256_bytes(requirements_bytes) != (report['requirements_sha256'] or sha256_bytes(b'')):
+        raise ValueError('requirements changed after manager authorization snapshot')
+    worktree = Path(config['worktree']).expanduser().resolve()
+    branch = subprocess.check_output(
+        ['git', '-C', str(worktree), 'branch', '--show-current'], text=True
+    ).strip()
+    head = subprocess.check_output(
+        ['git', '-C', str(worktree), 'rev-parse', 'HEAD'], text=True
+    ).strip()
+    if report.get('branch') != branch or report.get('head') != head:
+        raise ValueError('manager Git identity changed before handoff')
+    claims = {
+        'project': project,
+        'config': str(config_path),
+        'task_id': pending[0]['id'],
+        'queue_sha256': sha256_bytes(queue_bytes),
+        'requirements_sha256': sha256_bytes(requirements_bytes),
+        'configured_branch': config.get('branch'),
+        'git_branch': branch,
+        'head': head,
+    }
+    return create_handoff(root / project, claims)
 
 
 def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False, one_shot=False):
@@ -324,9 +375,13 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False, one_
     worker = [sys.executable, '-B', str(scripts/'pw_task_worker.py'), '--project', project, '--once']
     if no_telegram or not (default_project_root() / project / 'config.json').is_file():
         worker.append('--no-telegram')
-    worker_env = {**os.environ, 'PYTHONDONTWRITEBYTECODE':'1', 'PROJECTWRIGHT_DISPATCHED':'1'}
+    worker_env = {**os.environ, 'PYTHONDONTWRITEBYTECODE':'1'}
     if one_shot:
-        worker_env['PROJECTWRIGHT_ONE_SHOT_AUTH'] = '1'
+        try:
+            worker_env[HANDOFF_ENV] = _manual_handoff(project, report)
+        except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError) as exc:
+            print(f'FAIL one-shot handoff: {exc}', file=sys.stderr)
+            return 21
     try:
         w = runner(worker, capture_output=True, text=True, env=worker_env, timeout=2700)
     except subprocess.TimeoutExpired:

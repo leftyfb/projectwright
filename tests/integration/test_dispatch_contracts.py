@@ -331,13 +331,14 @@ class TestTick(DispatchFixture):
                     "completed": 0, "queue_blocked": 0, "invalid_lines": [],
                     "blockers": [], "planning_enabled": False,
                     "branch": "main", "head": "deadbeef",
+                    "queue_sha256": "0" * 64, "requirements_sha256": "0" * 64,
+                    "pending_tasks": [{"id": "P101", "kind": "READ"}],
                 }
-                return subprocess.CompletedProcess(
-                    command, 0, json.dumps(report), ""
-                )
+                return subprocess.CompletedProcess(command, 0, json.dumps(report), "")
             return subprocess.CompletedProcess(command, 0, "", "")
 
-        with patch.dict(os.environ, {"HERMES_PROJECT_CONFIG_DIR": str(self.root / "projects")}):
+        with patch.dict(os.environ, {"HERMES_PROJECT_CONFIG_DIR": str(self.root / "projects")}), \
+             patch.object(dispatch, "_manual_handoff", return_value="opaque-single-use-token"):
             result = dispatch.run_tick(
                 self.project, self.scripts, runner=runner, one_shot=True
             )
@@ -347,9 +348,10 @@ class TestTick(DispatchFixture):
         worker_command, worker_kwargs = calls[1]
         self.assertIn("--once", worker_command)
         worker_env = worker_kwargs["env"]
-        self.assertEqual(worker_env["PROJECTWRIGHT_DISPATCHED"], "1")
-        self.assertEqual(worker_env["PROJECTWRIGHT_ONE_SHOT_AUTH"], "1")
-        self.assertNotIn("PROJECTWRIGHT_ONE_SHOT_AUTH", calls[0][1]["env"])
+        self.assertEqual(worker_env["PROJECTWRIGHT_ONE_SHOT_HANDOFF"], "opaque-single-use-token")
+        self.assertNotIn("PROJECTWRIGHT_DISPATCHED", worker_env)
+        self.assertNotIn("PROJECTWRIGHT_ONE_SHOT_AUTH", worker_env)
+        self.assertNotIn("PROJECTWRIGHT_ONE_SHOT_HANDOFF", calls[0][1]["env"])
 
     def test_manual_dispatch_refuses_configured_active_worker_journal(self):
         repo = self.root / "worktree"
@@ -412,16 +414,19 @@ class TestTick(DispatchFixture):
                     "completed": 0, "queue_blocked": 0, "invalid_lines": [],
                     "blockers": [], "planning_enabled": False,
                     "branch": "main", "head": "deadbeef",
+                    "queue_sha256": "0" * 64, "requirements_sha256": "0" * 64,
+                    "pending_tasks": [{"id": "P101", "kind": "READ"}],
                 }
                 return subprocess.CompletedProcess(command, 0, json.dumps(report), "")
             raise subprocess.TimeoutExpired(command, 2700)
 
-        with contextlib.redirect_stderr(io.StringIO()) as err:
+        with patch.object(dispatch, "_manual_handoff", return_value="timeout-handoff"), \
+             contextlib.redirect_stderr(io.StringIO()) as err:
             result = dispatch.run_tick(self.project, self.scripts, runner=runner, one_shot=True)
         self.assertEqual(result, 23)
         self.assertEqual(len(calls), 2)
         self.assertIn("recovery state", err.getvalue())
-        self.assertEqual(calls[1][1]["env"]["PROJECTWRIGHT_ONE_SHOT_AUTH"], "1")
+        self.assertEqual(calls[1][1]["env"]["PROJECTWRIGHT_ONE_SHOT_HANDOFF"], "timeout-handoff")
 
     def test_unsafe_manager_decisions_never_authorize_worker(self):
         unsafe = (

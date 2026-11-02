@@ -31,6 +31,7 @@ py-modules = [
     "pw_recovery",
     "project_task_worker",
     "pw_task_worker",
+    "pw_one_shot_auth",
     "project_telegram_approval",
     "pw_telegram_approval",
     "project_worker_journal",

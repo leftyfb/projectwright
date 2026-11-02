@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from pw_one_shot_auth import HANDOFF_ENV, consume as consume_handoff, is_present as handoff_present, sha256_bytes
+
 HOME = Path.home()
 HERMES_HOME = HOME / '.hermes'
 BASE = QUEUE = WORK_LOG = LOCK = RUN_LOG = RESULT_DIR = CYCLE_FILE = WORKTREE = None
@@ -588,6 +590,24 @@ def notification_footer() -> str:
         f'Tasks remaining in queue: {count}'
     )
 
+def consume_one_shot_handoff(task: Task, queue_bytes: bytes) -> None:
+    """Validate and consume the dispatch capability while PROJECT lock is held."""
+    requirements_setting = PROJECT.get('planning', {}).get('requirements_file')
+    requirements_bytes = Path(requirements_setting).expanduser().read_bytes() if requirements_setting else b''
+    claims = {
+        'project': PROJECT_ID,
+        'config': str(Path(PROJECT_CONFIG).resolve()),
+        'task_id': task.task_id,
+        'queue_sha256': sha256_bytes(queue_bytes),
+        'requirements_sha256': sha256_bytes(requirements_bytes),
+        'configured_branch': PROJECT.get('branch'),
+        'git_branch': git('branch', '--show-current'),
+        'head': git('rev-parse', 'HEAD'),
+    }
+    consume_handoff(Path(PROJECT_CONFIG).parent, os.environ.get(HANDOFF_ENV), claims)
+    os.environ.pop(HANDOFF_ENV, None)
+
+
 def process_once(*, dry_run=False, no_telegram=False) -> int:
     global CURRENT_TASK_KIND, LOCK_CONTENDED
     LOCK_CONTENDED = False
@@ -673,6 +693,12 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
         if dry_run:
             print(f'{task.task_id} — {task.kind}: {task.description}')
             return 0
+        if os.environ.get(HANDOFF_ENV):
+            try:
+                consume_one_shot_handoff(task, original_bytes)
+            except Exception as exc:
+                print(f'ONE-SHOT AUTHORIZATION BLOCKED: {exc}', file=sys.stderr)
+                return 5
         from pw_quota import evaluate
         quota = evaluate(PROJECT.get('quota', {}))
         if not quota['allowed']:
@@ -874,11 +900,8 @@ def main() -> int:
             print(json.dumps({'project': args.project, 'decision': 'disabled',
                               'reason': 'project config missing'}))
             return 3
-    one_shot_authorized = (
-        args.once
-        and os.environ.get('PROJECTWRIGHT_DISPATCHED') == '1'
-        and os.environ.get('PROJECTWRIGHT_ONE_SHOT_AUTH') == '1'
-    )
+    token = os.environ.get(HANDOFF_ENV)
+    one_shot_authorized = args.once and handoff_present(Path(config_file).parent, token or '')
     if (effective.get('projectwright_initialized') == 1
             and effective['execution']['enabled'] is False
             and not one_shot_authorized):
@@ -918,7 +941,7 @@ def main() -> int:
         # progress while another process holds the project lock.
         if LOCK_CONTENDED:
             return rc
-        if rc == 0 and not config_free and os.environ.get('PROJECTWRIGHT_DISPATCHED') != '1':
+        if rc == 0 and not config_free and not args.once:
             # process_once has released its project lock before returning.
             # Never plan inside an active EDIT/TEST/COMMIT Git cycle.
             if CYCLE_FILE.exists():

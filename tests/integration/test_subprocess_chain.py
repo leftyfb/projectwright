@@ -224,6 +224,33 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertFalse((self.project / "worker_journal.json").exists())
         self.assertFalse((self.project / "results").exists())
 
+    def test_worker_rejects_branch_changed_after_manager_preflight(self):
+        self.strict_active_task()
+
+        def change_branch():
+            git(self.repo, "checkout", "-b", "preflight-race-branch")
+
+        result = self.one_shot_with_preflight_hook(change_branch)
+        self.assertNotEqual(result, 0)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertFalse((self.project / "worker_journal.json").exists())
+        self.assertFalse((self.project / "results").exists())
+
+    def test_worker_rejects_head_changed_after_manager_preflight(self):
+        self.strict_active_task()
+
+        def change_head():
+            marker = self.repo / "preflight-race.txt"
+            marker.write_text("changed after authorization\\n")
+            git(self.repo, "add", marker.name)
+            git(self.repo, "commit", "-m", "change HEAD after authorization")
+
+        result = self.one_shot_with_preflight_hook(change_head)
+        self.assertNotEqual(result, 0)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertFalse((self.project / "worker_journal.json").exists())
+        self.assertFalse((self.project / "results").exists())
+
     def test_worker_rejects_future_milestone_queued_after_manager_preflight(self):
         self.strict_active_task()
         requirements_path = Path(self.config["planning"]["requirements_file"])

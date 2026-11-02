@@ -184,7 +184,8 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
         except BlockingIOError:
             return {'project': project, 'decision': 'busy', 'reason': 'Project lock held; skip planning'}
         queue_path = Path(cfg['queue']).expanduser()
-        summary = queue_summary(queue_path.read_text(encoding='utf-8'))
+        queue_bytes = queue_path.read_bytes()
+        summary = queue_summary(queue_bytes.decode('utf-8'))
         journal = read_json_optional(worker_journal_path(cfg, directory / 'config.json'))
         state = read_json_optional(directory / 'worker_state.json')
         incidents = read_json_optional(directory / 'recovery_incidents.json')
@@ -252,6 +253,8 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
                   'queue_blocked': summary['blocked_count'], 'invalid_lines': summary['invalid_lines'],
                   'completed_since_strategic_review': since, 'branch': branch,
                   'head': head, 'requirements_sha256': req_hash,
+                  'queue_sha256': hashlib.sha256(queue_bytes).hexdigest(),
+                  'pending_tasks': summary['pending'],
                   'max_add_now': max(0, min(policy['batch'], policy['target']-summary['pending_count'], policy['cap']-summary['pending_count'])),
                   'blockers': blockers, 'planning_enabled': policy['enabled']}
         # Strict milestone sequencing is opt-in and checked before quota / AI.
