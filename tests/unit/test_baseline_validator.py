@@ -65,6 +65,16 @@ class BaselineValidatorTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             return validator.inspect_source(mode, self.records)
 
+    def test_new_one_shot_auth_module_is_permitted_only_as_development_source(self):
+        path = self.source / "pw_one_shot_auth.py"
+        path.write_text("# isolated new module\\n", encoding="utf-8")
+        development = self.inspect("development")
+        baseline = self.inspect("baseline")
+        self.assertTrue(development[0], "development source set should allow the added module")
+        self.assertFalse(development[2], "new source must still be reported as baseline drift")
+        self.assertFalse(baseline[0], "baseline mode must reject unrecorded source files")
+        self.assertEqual(self.manifest.read_bytes(), self.original_manifest)
+
     def test_original_snapshot_passes_and_development_reports_drift_without_manifest_write(self):
         self.assertEqual(self.inspect("baseline"), (True, True, True, True))
         changed = self.source / sorted(validator.EXPECTED_SOURCE_FILES)[0]
