@@ -295,8 +295,9 @@ a disposable account before a stable tag or deployment.
 ## 3. XDG-compatible local configuration and defaults
 
 - [x] **Initial project-root resolver:** defaults to
-  `$XDG_CONFIG_HOME/projectwright/projects` or `~/.config/projectwright/projects`,
-  with a legacy-root fallback. Remaining components still require migration.
+  `$XDG_CONFIG_HOME/projects` (normally `~/.config/projects`), reusing older
+  roots only when the intended root is absent; never migrates or deletes state.
+  Dispatcher and queue manager share this precedence.
 - [ ] Expand explicit `--config-dir` support beyond dispatcher; current
   dispatcher supports it and `PROJECTWRIGHT_CONFIG_DIR` is recognized by its
   manager and worker subprocesses. Precedence: dispatcher CLI argument >

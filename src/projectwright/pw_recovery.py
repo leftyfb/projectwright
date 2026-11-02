@@ -46,7 +46,8 @@ def git(repo: Path, *args: str) -> str:
 
 
 def evidence(directory: Path, cfg: dict) -> dict:
-    journal_path = directory / 'worker_journal.json'
+    from pw_worker_journal import journal_path as worker_journal_path
+    journal_path = worker_journal_path(cfg, directory / 'config.json')
     journal = json.loads(journal_path.read_text()) if journal_path.exists() else {'current_task': None}
     task = journal.get('current_task')
     if not task:

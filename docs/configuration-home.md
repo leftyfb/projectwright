@@ -1,9 +1,9 @@
-# Configuration home: initial XDG migration
+# Configuration home and project paths
 
-Projectwright currently has an **initial XDG project-root selector**, partially migrated configuration-free execution. By default, project state lives under `$XDG_CONFIG_HOME/projects/<project-id>/`
+By default, project state lives under `$XDG_CONFIG_HOME/projects/<project-id>/`
 (or `~/.config/projects/<project-id>/` when `XDG_CONFIG_HOME` is unset).
 The project's Git worktree defaults to `worktree/` inside that project directory,
-but can point to a separate repository using configuration or `PROJECTWRIGHT_WORKTREE`.
+but can point to a separate repository using `pw init --repo PATH`, configuration or `PROJECTWRIGHT_WORKTREE`.
 
 The CLI accepts an explicit Projectwright config home with:
 
@@ -21,24 +21,18 @@ supported.
 Project directory resolution, when no explicit CLI root is supplied:
 
 1. `PROJECTWRIGHT_CONFIG_DIR/projects` if set.
-2. `HERMES_PROJECT_CONFIG_DIR` if set (backwards-compatible project-root override).
-3. `$XDG_CONFIG_HOME/projects` (normally `~/.config/projects`) if it exists.
-4. Existing `$XDG_CONFIG_HOME/projectwright/projects` if the new root does not exist.
-5. Existing `~/.hermes/projects` if neither XDG root exists.
-6. Otherwise, `$XDG_CONFIG_HOME/projects`.
+2. `HERMES_PROJECT_CONFIG_DIR` if set (backwards-compatible direct project-root override).
+3. `$XDG_CONFIG_HOME/projects` (normally `~/.config/projects`).
+4. If that directory does not exist, reuse existing `$XDG_CONFIG_HOME/projectwright/projects`, then `~/.hermes/projects`.
 
-The selector never moves or rewrites an existing project. Existing directories
-remain discoverable until the new root is created. If project state exists in
-more than one root, an existing new root takes precedence; use an explicit
-`--config-dir` to select older state before migrating. The explicit override
-still treats its value as a configuration home and appends `projects/`.
+The selector never moves or rewrites an existing project. Existing roots remain discoverable when the new root is absent. If multiple roots exist, the first existing location in this order wins; use an explicit `--config-dir` to select another root. The explicit override still treats its value as a configuration home and appends `projects/`.
 
 **Missing configuration behavior:** an ordinary unprepared project without `config.json` is disabled, and no provider, Git repository, queue or credentials are created. An **explicitly prepared** config-free project with a Git worktree, HEAD commit, branch match, queue and work log can be manually inspected and executed, as described later on this page. With `requirements.md` an explicit planning path is supported. Unattended scheduling and human approval are never inferred.
 
-Current migration gaps: individual utilities (notifier, approval helpers,
-notes sync, timer setup) still have legacy `~/.hermes` assumptions. The release
-checklist tracks consolidating these behind one shared configuration API,
-separating XDG data/state/cache directories, and adding first-run setup.
+The explicit `--config-dir` option takes a configuration home and appends
+`projects/`; it is not itself the project directory. The legacy
+`HERMES_PROJECT_CONFIG_DIR` environment variable remains a direct project-root
+override for compatibility.
 
 ## Inspect defaults without initializing a project
 
@@ -85,12 +79,9 @@ execution checks before acting. The basic filesystem defaults are local to
 `worker_journal.json`. Runtime timeout defaults to 900 seconds and the
 Hermes executable name defaults to `hermes`, which uses its own selected model.
 
-**Current integration:** the manager's project-config loader and worker's
-load_project now consume the shared hardcoded defaults and optional overrides.
-**Still pending:** remove the CLI-level absent-file execution guard only after
-selecting and validating a Git worktree and the execution authorization policy,
-and distinguish ordinary task execution from approval-sensitive operations.
-The worker permits the prepared-worktree manual path after Git and queue preflight; it continues to refuse unprepared projects.
+The manager and worker consume shared defaults and optional overrides. A
+prepared config-free worktree can be invoked manually after Git and queue
+preflight; an unprepared project remains disabled.
 
 ## Manually running a prepared project without config.json
 

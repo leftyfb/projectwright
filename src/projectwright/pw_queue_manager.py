@@ -19,6 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from pw_worker_journal import journal_path as worker_journal_path
+
 ROW = re.compile(r'^\s*- \[(?P<state>[ x!])\]\s+\*\*(?P<id>[A-Z]+\d+)\s+[—-]\s+(?P<kind>[A-Z]+)\*\*\s*(?P<description>.*)$')
 VALID_KINDS = {'READ', 'EDIT', 'TEST', 'COMMIT', 'VERIFY', 'DECIDE'}
 DEFAULT_TRIGGER = {'pending_below': 3, 'review_every_completed_tasks': 6, 'replan_on_blocker': True}
@@ -69,22 +71,22 @@ def provider_argv(cfg: dict, phase: str, *, prompt: str | None = None) -> tuple[
 
 
 def default_project_root() -> Path:
-    """Resolve project storage without changing existing Hermes installations.
+    """Resolve the shared Projectwright project root.
 
-    Explicit PROJECTWRIGHT_CONFIG_DIR denotes an XDG-style configuration home,
-    with project directories beneath its projects/ child. The legacy environment
-    variable remains an explicit direct project-root override.
+    PROJECTWRIGHT_CONFIG_DIR is a config home containing projects/. The
+    older HERMES_PROJECT_CONFIG_DIR remains a direct-root override. Prefer the
+    new XDG projects/ root, then discover existing pre-onboarding locations
+    without moving or deleting them.
     """
-    direct = os.environ.get('HERMES_PROJECT_CONFIG_DIR')
     selected = os.environ.get('PROJECTWRIGHT_CONFIG_DIR')
+    direct = os.environ.get('HERMES_PROJECT_CONFIG_DIR')
     if selected:
         return Path(selected).expanduser() / 'projects'
     if direct:
         return Path(direct).expanduser()
     xdg = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
-    target = xdg / 'projectwright' / 'projects'
-    legacy = Path.home() / '.hermes' / 'projects'
-    return legacy if legacy.is_dir() and not target.is_dir() else target
+    candidates = (xdg / 'projects', xdg / 'projectwright' / 'projects', Path.home() / '.hermes' / 'projects')
+    return next((path for path in candidates if path.is_dir()), candidates[0])
 
 
 def project_config(project: str, root: Path) -> tuple[Path, dict]:
@@ -182,8 +184,9 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
         except BlockingIOError:
             return {'project': project, 'decision': 'busy', 'reason': 'Project lock held; skip planning'}
         queue_path = Path(cfg['queue']).expanduser()
-        summary = queue_summary(queue_path.read_text(encoding='utf-8'))
-        journal = read_json_optional(directory / 'worker_journal.json')
+        queue_bytes = queue_path.read_bytes()
+        summary = queue_summary(queue_bytes.decode('utf-8'))
+        journal = read_json_optional(worker_journal_path(cfg, directory / 'config.json'))
         state = read_json_optional(directory / 'worker_state.json')
         incidents = read_json_optional(directory / 'recovery_incidents.json')
         repo = Path(cfg['worktree']).expanduser()
@@ -250,6 +253,8 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
                   'queue_blocked': summary['blocked_count'], 'invalid_lines': summary['invalid_lines'],
                   'completed_since_strategic_review': since, 'branch': branch,
                   'head': head, 'requirements_sha256': req_hash,
+                  'queue_sha256': hashlib.sha256(queue_bytes).hexdigest(),
+                  'pending_tasks': summary['pending'],
                   'max_add_now': max(0, min(policy['batch'], policy['target']-summary['pending_count'], policy['cap']-summary['pending_count'])),
                   'blockers': blockers, 'planning_enabled': policy['enabled']}
         # Strict milestone sequencing is opt-in and checked before quota / AI.
@@ -307,9 +312,7 @@ def main() -> int:
         manual_config_free = (args.once and config_missing and
                               req_file.is_file() and not req_file.is_symlink() and
                               ready_for_config_free_worker(cfg))
-        if (config_missing and not manual_config_free) or (
-            cfg.get('projectwright_initialized') == 1 and cfg['execution']['enabled'] is False
-        ):
+        if config_missing and not manual_config_free:
             print(json.dumps({'project': args.project, 'decision': 'disabled'}))
             return once_exit_code('disabled') if args.once else 0
         mode = 'once' if args.once else 'status'

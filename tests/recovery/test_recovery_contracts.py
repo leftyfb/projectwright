@@ -95,6 +95,23 @@ class RecoveryContracts(unittest.TestCase):
         result = recovery.evidence(self.project, self.config)
         self.assertEqual(result["status"], "clear")
 
+    def test_configured_external_journal_is_not_reported_clear(self):
+        journal_path = self.root / "custom-worker-journal.json"
+        self.config["worker_journal_file"] = str(journal_path)
+        (self.project / "config.json").write_text(json.dumps(self.config))
+        journal_path.write_text(json.dumps({
+            "schema_version": 1,
+            "current_task": {
+                "id": "P201",
+                "phase": "running",
+                "git_head_before": self.head,
+                "queue_sha256_before": hashlib.sha256(self.queue.read_bytes()).hexdigest(),
+            },
+        }))
+        result = recovery.evidence(self.project, self.config)
+        self.assertEqual(result["status"], "needs_review")
+        self.assertEqual(result["task_id"], "P201")
+
     def test_interrupted_edit_requires_review_without_mutation(self):
         self.write_recovery_journal(phase="running")
         before = {

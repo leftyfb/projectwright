@@ -17,6 +17,50 @@ class SafeInitTests(unittest.TestCase):
         return subprocess.run([sys.executable, "-B", "-m", module, *args], env=env,
                               capture_output=True, text=True)
 
+    def test_init_connects_existing_git_repository_without_modifying_it(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            repo = home / "source"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-b", "main", str(repo)], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.invalid"], check=True)
+            (repo / "README.md").write_text("sample\n")
+            subprocess.run(["git", "-C", str(repo), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(repo), "commit", "-m", "initial"], check=True, capture_output=True)
+            before = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True)
+            result = self.invoke("pw_init", home, "--project", "demo", "--config-dir", str(home / "cfg"), "--repo", str(repo))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            config = json.loads((home / "cfg/projects/demo/config.json").read_text())
+            self.assertEqual(config["worktree"], str(repo.resolve()))
+            self.assertEqual(config["branch"], "main")
+            self.assertFalse(config["execution"]["enabled"])
+            self.assertEqual(before, subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True))
+
+    def test_init_rejects_detached_head_as_unsupported_worktree_state(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td); repo = home / "source"; repo.mkdir()
+            subprocess.run(["git", "init", "-b", "main", str(repo)], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.invalid"], check=True)
+            (repo / "README.md").write_text("sample\\n")
+            subprocess.run(["git", "-C", str(repo), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(repo), "commit", "-m", "initial"], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(repo), "checkout", "--detach"], check=True, capture_output=True)
+            result = self.invoke("pw_init", home, "--project", "demo", "--config-dir", str(home / "cfg"), "--repo", str(repo))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("branch", result.stderr.lower())
+            self.assertFalse((home / "cfg/projects/demo").exists())
+
+    def test_init_rejects_non_repository_without_creating_state(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            repo = home / "plain"
+            repo.mkdir()
+            result = self.invoke("pw_init", home, "--project", "demo", "--config-dir", str(home / "cfg"), "--repo", str(repo))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse((home / "cfg/projects/demo").exists())
+
     def test_init_is_inert_and_preserves_existing_config(self):
         with tempfile.TemporaryDirectory() as td:
             home=Path(td)

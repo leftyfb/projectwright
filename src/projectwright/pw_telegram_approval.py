@@ -16,6 +16,8 @@ import subprocess
 import sys
 import tempfile
 
+from pw_worker_journal import journal_path as worker_journal_path
+
 PROJECT_RE = re.compile(r'[a-z][a-z0-9_-]{0,63}\Z')
 
 def digest(path):
@@ -67,7 +69,7 @@ def evidence(directory, cfg, milestone, spec):
         return None
     if Path(cfg['cycle_file']).expanduser().exists():
         return None
-    journal = directory / 'worker_journal.json'
+    journal = worker_journal_path(cfg, directory / 'config.json')
     if journal.exists() and json.loads(journal.read_text()).get('current_task') is not None:
         return None
     if git(repo, 'branch','--show-current') != cfg['branch'] or git(repo,'status','--porcelain'):
@@ -124,7 +126,9 @@ def scan(root):
                 statepath = directory / 'planning_state.json'
                 state = json.loads(statepath.read_text()) if statepath.exists() else {}
                 head = git(repo, 'rev-parse', 'HEAD')
-                receipts = current_receipts(state, reqdata, queuedata, head, repo=repo, strict=True, policy=policy, journal=json.loads((directory / 'worker_journal.json').read_text()) if (directory / 'worker_journal.json').exists() else {})
+                journal_file = worker_journal_path(cfg, directory / 'config.json')
+                journal = json.loads(journal_file.read_text()) if journal_file.exists() else {}
+                receipts = current_receipts(state, reqdata, queuedata, head, repo=repo, strict=True, policy=policy, journal=journal)
                 selection = evaluate(reqdata.decode('utf-8'), queuedata, receipts, policy)
                 if selection['decision'] != 'awaiting_acceptance':
                     continue
