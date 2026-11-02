@@ -180,8 +180,12 @@ Hermes project roots when no XDG project tree exists.
 
 The dispatcher, manager, and worker expose an explicit `--config-dir`
 configuration-home option. Missing manager project config is reported as
-`disabled` without creating project data or invoking providers; a runnable
-configuration-free worker remains a future release task.
+`disabled` without creating project data or invoking providers. This audit's
+statement that a runnable configuration-free worker remained future work is
+outdated: an explicitly prepared config-free Git worktree can be manually
+preflighted and executed. Unattended config-free scheduling and approval are
+not inferred. See [configuration-home.md](configuration-home.md#missing-configuration-behavior)
+for the current boundary.
 
 The preliminary unified `pw` launcher routes existing CLI entrypoints.
 A validated `command` provider can invoke another local executable for
