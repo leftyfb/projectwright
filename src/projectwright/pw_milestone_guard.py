@@ -11,6 +11,7 @@ import fcntl
 import hashlib
 import json
 import re
+import shlex
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -53,7 +54,7 @@ def _git_scoped_evidence_current(repo: Path, receipt: dict, head: str) -> bool:
                                   capture_output=True, check=False)
         if ancestor.returncode != 0:
             return False
-        diff = subprocess.run(['git', '-C', str(repo), 'diff', '--quiet', old, head, '--', *paths],
+        diff = subprocess.run(['git', '--literal-pathspecs', '-C', str(repo), 'diff', '--quiet', old, head, '--', *paths],
                               capture_output=True, check=False)
         return diff.returncode == 0
     except (OSError, ValueError):
@@ -106,7 +107,8 @@ def _scoped_successor(repo: Path, before: str, after: str, milestone: str,
 
 
 def _valid_scope_path(path: object) -> bool:
-    if not isinstance(path, str) or not path or path.startswith(('/', '-')) or '\\' in path:
+    if (not isinstance(path, str) or not path or path.startswith(('/', '-', ':'))
+            or '\\' in path):
         return False
     parts = path.split('/')
     return all(p not in ('', '.', '..') for p in parts) and not any(c in path for c in '*?[]\x00\n\r')
@@ -150,8 +152,119 @@ def acceptance_policy_fingerprint(spec: dict) -> str | None:
     return sha(json.dumps(spec, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8'))
 
 
+def _milestone_sections(requirements: str) -> list[tuple[str, int, int]]:
+    """Return explicit milestone sections and reject duplicate headings."""
+    lines = requirements.splitlines(keepends=True)
+    found = []
+    for index, line in enumerate(lines):
+        match = HEADER.match(line)
+        if match and re.search(r'-M\d+(?:-|$)', match.group(1)):
+            found.append((match.group(1), index, len(line) - len(line.lstrip('#'))))
+    if len({item[0] for item in found}) != len(found):
+        raise ValueError('Duplicate milestone headings; correct requirements before scheduling')
+    sections = []
+    for position, (milestone, start, depth) in enumerate(found):
+        end = len(lines)
+        for index in range(start + 1, len(lines)):
+            if re.match(r'^#{1,' + str(depth) + r'}\s+', lines[index]):
+                end = index
+                break
+        sections.append((milestone, start, end))
+    return sections
+
+
+def embedded_acceptance_policy(requirements: str) -> dict | None:
+    """Parse the documented, executable acceptance block in requirements.md.
+
+    The only accepted source syntax is a ``#### Acceptance`` subsection beneath
+    each milestone, containing exactly one ``Command`` code span and one or
+    more ``Scope`` code spans. Commands become argv with ``shlex``; they are
+    never passed to a shell.
+    """
+    sections = _milestone_sections(requirements)
+    if not sections:
+        return None
+    milestones = {}
+    present = 0
+    for milestone, start, end in sections:
+        lines = requirements.splitlines()[start:end]
+        acceptance = [i for i, line in enumerate(lines)
+                      if re.match(r'^#{4,6}\s+Acceptance\s*$', line)]
+        if not acceptance:
+            continue
+        present += 1
+        if len(acceptance) != 1:
+            raise ValueError(f'Duplicate Acceptance sections for {milestone}')
+        acceptance_start = acceptance[0]
+        acceptance_depth = len(lines[acceptance_start]) - len(lines[acceptance_start].lstrip('#'))
+        acceptance_end = len(lines)
+        for index in range(acceptance_start + 1, len(lines)):
+            if re.match(r'^#{1,' + str(acceptance_depth) + r'}\s+', lines[index]):
+                acceptance_end = index
+                break
+        body = lines[acceptance_start + 1:acceptance_end]
+        commands = []
+        scopes = []
+        for line in body:
+            if not line.strip():
+                continue
+            command_match = re.fullmatch(r'\s*-\s+\*\*Command:\*\*\s+`([^`]+)`\s*', line)
+            scope_match = re.fullmatch(r'\s*-\s+\*\*Scope:\*\*\s+`([^`]+)`\s*', line)
+            if command_match:
+                commands.append(command_match.group(1))
+            elif scope_match:
+                scopes.append(scope_match.group(1))
+            else:
+                raise ValueError(f'Invalid Acceptance entry for {milestone}')
+        if len(commands) != 1 or not scopes:
+            raise ValueError(f'{milestone} Acceptance requires one Command and one or more Scope entries')
+        try:
+            command = shlex.split(commands[0], posix=True)
+        except ValueError as exc:
+            raise ValueError(f'Invalid acceptance command for {milestone}') from exc
+        if (not command or any(not isinstance(part, str) or not part for part in command)
+                or any(token in commands[0] for token in ('&&', '||', ';', '|', '>', '<', '$('))):
+            raise ValueError(f'Acceptance Command must be a literal executable argv for {milestone}')
+        spec = {'requirement': milestone.rsplit('-M', 1)[0],
+                'command': command, 'scope_paths': scopes}
+        if acceptance_policy_fingerprint(spec) is None:
+            raise ValueError(f'Invalid acceptance policy for {milestone}')
+        milestones[milestone] = spec
+    if present and present != len(sections):
+        missing = [milestone for milestone, _, _ in sections if milestone not in milestones]
+        raise ValueError('Missing Acceptance section for milestone(s): ' + ', '.join(missing))
+    return {'version': 1, 'milestones': milestones} if present else None
+
+
 def policy_for_project(project_dir: Path) -> dict | None:
-    path = Path(project_dir) / 'telegram_acceptance.json'
+    project_dir = Path(project_dir)
+    config_path = project_dir / 'config.json'
+    embedded = None
+    configured_requirements = False
+    if config_path.is_file():
+        try:
+            config = json.loads(config_path.read_text())
+            requirements_path = config.get('planning', {}).get('requirements_file')
+            if isinstance(requirements_path, str) and requirements_path:
+                requirements_path = Path(requirements_path).expanduser()
+                if not requirements_path.is_absolute():
+                    requirements_path = project_dir / requirements_path
+                if requirements_path.is_file():
+                    embedded = embedded_acceptance_policy(requirements_path.read_text(encoding='utf-8'))
+                configured_requirements = True
+            else:
+                configured_requirements = False
+        except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
+            raise ValueError('Invalid embedded milestone acceptance definitions')
+    if embedded is None and not configured_requirements:
+        fallback = project_dir / 'requirements.md'
+        if fallback.is_file():
+            embedded = embedded_acceptance_policy(fallback.read_text(encoding='utf-8'))
+    path = project_dir / 'telegram_acceptance.json'
+    if embedded is not None and path.is_file():
+        raise ValueError('Duplicate acceptance policy sources; remove telegram_acceptance.json')
+    if embedded is not None:
+        return embedded
     if not path.is_file():
         return None
     try:
@@ -315,8 +428,7 @@ def approve(cfg: dict, project_dir: Path, requirement: str, milestone: str, test
                 raise ValueError('Milestone approval was explicitly rejected')
             if expected != pinned:
                 raise ValueError('stale approval request: evidence changed; no receipt recorded')
-            policy_path = project_dir / 'telegram_acceptance.json'
-            policy = json.loads(policy_path.read_text()) if policy_path.exists() else None
+            policy = policy_for_project(project_dir)
             if (not isinstance(policy, dict) or policy.get('version') != 1
                     or not isinstance(policy.get('milestones'), dict)
                     or policy['milestones'].get(milestone) != {
@@ -332,7 +444,9 @@ def approve(cfg: dict, project_dir: Path, requirement: str, milestone: str, test
             for path in scope_paths:
                 # Each path must match tracked files at approval, rather than silently
                 # accepting an unrelated or nonexistent scope.
-                tracked = git('ls-files', '--', path)
+                tracked = subprocess.check_output(
+                    ['git', '--literal-pathspecs', '-C', str(repo), 'ls-files', '--', path],
+                    text=True).strip()
                 if not tracked:
                     raise ValueError(f'Acceptance scope path is not tracked: {path}')
         # No shell: arguments remain explicit; prevent unintended external execution.

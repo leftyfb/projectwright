@@ -67,6 +67,28 @@ pinned requirement/queue/HEAD evidence, validated path scope and a clean
 Git worktree under the project lock. A failing command, stale evidence,
 rejected request or concurrent state change prevents a receipt.
 
+In strict sequencing, acceptance criteria live in `requirements.md`, so there is
+one reviewable source of truth. Each milestone may contain exactly this block:
+
+```markdown
+#### Acceptance
+- **Command:** `python -m pytest tests/unit/test_feature.py`
+- **Scope:** `src/projectwright/feature.py`
+- **Scope:** `tests/unit/test_feature.py`
+```
+
+`Command` is parsed into an explicit executable argv and is run without a
+shell. The block contains only exact `Command` and `Scope` list entries; it
+ends at the next heading of the same or higher level. `Scope` entries are
+relative literal Git paths (not Git pathspec magic); they must be unique and
+tracked at approval time. Every milestone in a strict requirements document
+must define one command and at least one scope. If `config.json` sets
+`planning.requirements_file`, that file is the only embedded-policy source
+(expanded with `~`); the project-root `requirements.md` is used only when the
+setting is absent. `telegram_acceptance.json` is a legacy compatibility source
+only when no embedded blocks exist; keeping both sources is rejected. The human
+approval boundary and receipt freshness checks remain unchanged.
+
 For Telegram approvals, the notifier scans pending requests and posts
 inline **Approve** and **Reject** buttons to authorized recipients. Callback
 data identifies the project and pinned evidence. The Hermes gateway plugin

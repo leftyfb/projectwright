@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Conservative local approval bridge. Does not contact Telegram itself.
 
-Policy is administrator-defined in <project>/telegram_acceptance.json.
+Policy is embedded in requirements.md when present, with
+<project>/telegram_acceptance.json retained as a legacy fallback.
 Only previously scanned and pinned, clean milestones can be approved.
 """
 from __future__ import annotations
@@ -40,13 +41,9 @@ def project_data(directory):
     cfg = json.loads((directory / 'config.json').read_text())
     if cfg.get('id') != directory.name or not PROJECT_RE.fullmatch(directory.name):
         raise ValueError('Project ID mismatch')
-    policy_path = directory / 'telegram_acceptance.json'
-    if not policy_path.exists():
-        return cfg, None
-    policy = json.loads(policy_path.read_text())
-    if not isinstance(policy, dict) or policy.get('version') != 1 or not isinstance(policy.get('milestones'), dict):
-        raise ValueError('Invalid telegram_acceptance.json')
-    return cfg, policy
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from project_milestone_guard import policy_for_project
+    return cfg, policy_for_project(directory)
 
 def evidence(directory, cfg, milestone, spec):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
