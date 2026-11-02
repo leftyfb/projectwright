@@ -22,7 +22,7 @@ from pathlib import Path
 
 from pw_queue_manager import (project_config, planning_policy,
                                    queue_summary, read_json_optional, ROW,
-                                   VALID_KINDS)
+                                   VALID_KINDS, worker_journal_path)
 
 VALID_CYCLE = {'EDIT', 'TEST', 'COMMIT'}
 ID_PATTERN = re.compile(r'^[A-Z]+[0-9]+$')
@@ -169,7 +169,8 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
         # Every decision after queue validation carries its trustworthy pending count.
         # In particular, a completed-project no_op must not look like an ambiguous idle.
         out['pending'] = summary['pending_count']
-        journal = read_json_optional(directory / 'worker_journal.json')
+        journal_path = worker_journal_path(cfg, directory / 'config.json')
+        journal = read_json_optional(journal_path)
         state = read_json_optional(directory / 'worker_state.json')
         incidents = read_json_optional(directory / 'recovery_incidents.json')
         repo = Path(cfg['worktree']).expanduser()

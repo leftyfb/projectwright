@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import fcntl
+import importlib.util
 import os
 from pathlib import Path
 import re
@@ -15,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SRC = Path(__file__).resolve().parents[2] / "src" / "projectwright"
 
@@ -157,6 +159,97 @@ class RealSubprocessChain(unittest.TestCase):
         return subprocess.run([*launcher, "--project", "fixture",
                                "--scripts", str(self.scripts), *extra],
                               env=self.env, capture_output=True, text=True, timeout=35)
+
+    def strict_active_task(self):
+        self.queue.write_text(
+            "- [ ] **P101 — READ** DEMO-1 / DEMO-1-M1: inspect the isolated fixture\n"
+        )
+        self.config["planning"]["milestone_sequence"] = "strict"
+        self.save_config()
+        (self.project / "telegram_acceptance.json").write_text(json.dumps({
+            "version": 1,
+            "milestones": {"DEMO-1-M1": {
+                "requirement": "DEMO-1", "command": ["/bin/true"],
+                "scope_paths": ["probe.txt"],
+            }},
+        }))
+
+    def one_shot_with_preflight_hook(self, hook):
+        spec = importlib.util.spec_from_file_location(
+            "pw_dispatch_race_test", self.scripts / "pw_dispatch.py"
+        )
+        if spec is None or spec.loader is None:
+            raise RuntimeError("could not load dispatcher test module")
+        dispatcher = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(dispatcher)
+        manager_seen = False
+
+        def runner(command, **kwargs):
+            nonlocal manager_seen
+            result = subprocess.run(command, **kwargs)
+            if Path(command[2]).name == "pw_queue_manager.py" and "--status" in command:
+                manager_seen = True
+                hook()
+            return result
+
+        with patch.dict(os.environ, self.env, clear=True):
+            outcome = dispatcher.run_tick(
+                "fixture", self.scripts, runner=runner, no_telegram=True,
+                one_shot=True,
+            )
+        self.assertTrue(manager_seen, "manager preflight did not run")
+        return outcome
+
+    def test_strict_active_milestone_executes_authorized_task(self):
+        self.strict_active_task()
+        result = self.dispatch("--one-shot", "--no-telegram")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=0", result.stdout)
+        self.assertIn("[x] **P101", self.queue.read_text())
+        journal = json.loads((self.project / "worker_journal.json").read_text())
+        self.assertEqual(journal["last_completed_task"]["id"], "P101")
+
+    def test_worker_rejects_acceptance_policy_changed_after_manager_preflight(self):
+        self.strict_active_task()
+        policy_path = self.project / "telegram_acceptance.json"
+
+        def revoke_acceptance():
+            policy = json.loads(policy_path.read_text())
+            policy["milestones"]["DEMO-1-M1"]["scope_paths"] = []
+            policy_path.write_text(json.dumps(policy))
+
+        result = self.one_shot_with_preflight_hook(revoke_acceptance)
+        self.assertNotEqual(result, 0)
+        self.assertIn("[ ] **P101", self.queue.read_text())
+        self.assertFalse((self.project / "worker_journal.json").exists())
+        self.assertFalse((self.project / "results").exists())
+
+    def test_worker_rejects_future_milestone_queued_after_manager_preflight(self):
+        self.strict_active_task()
+        requirements_path = Path(self.config["planning"]["requirements_file"])
+        policy_path = self.project / "telegram_acceptance.json"
+
+        def queue_future_milestone():
+            requirements_path.write_text(
+                "## DEMO-1 — Disposable requirement\n\n"
+                "### DEMO-1-M1 — Read fixture\n\n"
+                "### DEMO-1-M2 — Follow-up fixture\n"
+            )
+            policy = json.loads(policy_path.read_text())
+            policy["milestones"]["DEMO-1-M2"] = {
+                "requirement": "DEMO-1", "command": ["/bin/true"],
+                "scope_paths": ["probe.txt"],
+            }
+            policy_path.write_text(json.dumps(policy))
+            self.queue.write_text(
+                "- [ ] **P102 — READ** DEMO-1 / DEMO-1-M2: inspect the follow-up fixture\n"
+            )
+
+        result = self.one_shot_with_preflight_hook(queue_future_milestone)
+        self.assertNotEqual(result, 0)
+        self.assertIn("[ ] **P102", self.queue.read_text())
+        self.assertFalse((self.project / "worker_journal.json").exists())
+        self.assertFalse((self.project / "results").exists())
 
     def test_real_subprocess_chain_finishes_read_and_is_idempotent(self):
         first = self.dispatch()
@@ -465,11 +558,26 @@ class RealSubprocessChain(unittest.TestCase):
     def test_real_manager_blocker_prevents_worker_subprocess(self):
         self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
         self.save_config()
+        after_save = (self.project / "config.json").read_bytes()
         result = self.dispatch()
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn("WORKER rc=", result.stdout)
+        self.assertEqual((self.project / "config.json").read_bytes(), after_save)
         self.assertFalse((self.project / "worker_journal.json").exists())
         self.assertIn("[ ] **P101", self.queue.read_text())
+
+    def test_one_shot_manager_refusal_does_not_persist_execution_authorization(self):
+        before = (self.project / "config.json").read_bytes()
+        self.config["planning"]["requirements_file"] = str(self.project / "missing.md")
+        self.save_config()
+        after_save = (self.project / "config.json").read_bytes()
+        result = self.dispatch("--one-shot")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("WORKER rc=", result.stdout)
+        self.assertEqual((self.project / "config.json").read_bytes(), after_save)
+        self.assertEqual(json.loads(after_save)["execution"] if "execution" in json.loads(after_save) else {}, {})
+        self.assertNotEqual(before, after_save)
+        self.assertFalse((self.project / "worker_journal.json").exists())
 
 
 if __name__ == "__main__":

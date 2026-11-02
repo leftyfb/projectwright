@@ -320,8 +320,122 @@ class TestTick(DispatchFixture):
         self.assertNotEqual(result, 0)
         self.assertEqual(len(calls), 2)
 
+    def test_worker_receives_ephemeral_dispatch_marker(self):
+        calls = []
 
-class DispatcherHardening(DispatchFixture):
+        def runner(command, **kwargs):
+            calls.append((command, kwargs))
+            if len(calls) == 1:
+                report = {
+                    "project": self.project, "decision": "replenish", "pending": 1,
+                    "completed": 0, "queue_blocked": 0, "invalid_lines": [],
+                    "blockers": [], "planning_enabled": False,
+                    "branch": "main", "head": "deadbeef",
+                }
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(report), ""
+                )
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        with patch.dict(os.environ, {"HERMES_PROJECT_CONFIG_DIR": str(self.root / "projects")}):
+            result = dispatch.run_tick(
+                self.project, self.scripts, runner=runner, one_shot=True
+            )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(len(calls), 2)
+        worker_command, worker_kwargs = calls[1]
+        self.assertIn("--once", worker_command)
+        worker_env = worker_kwargs["env"]
+        self.assertEqual(worker_env["PROJECTWRIGHT_DISPATCHED"], "1")
+        self.assertEqual(worker_env["PROJECTWRIGHT_ONE_SHOT_AUTH"], "1")
+        self.assertNotIn("PROJECTWRIGHT_ONE_SHOT_AUTH", calls[0][1]["env"])
+
+    def test_manual_dispatch_refuses_configured_active_worker_journal(self):
+        repo = self.root / "worktree"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True)
+        subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.invalid"], check=True)
+        subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+        (repo / "README.md").write_text("fixture\n")
+        subprocess.run(["git", "-C", str(repo), "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-qm", "fixture"], check=True)
+        custom_journal = self.root / "custom-worker-journal.json"
+        custom_journal.write_text(json.dumps({"schema_version": 1, "current_task": {"id": "P101"}}))
+        self.config(
+            queue_text="- [ ] **P101 — READ** inspect custom journal\n",
+            worktree=repo,
+            worker_journal_file=str(custom_journal),
+        )
+        report = manager.inspect(self.project, self.root / "projects", mode="status")
+        calls = []
+
+        def runner(args, **kwargs):
+            calls.append(args)
+            return subprocess.CompletedProcess(args, 0, json.dumps(report), "")
+
+        with contextlib.redirect_stderr(io.StringIO()):
+            result = dispatch.run_tick(self.project, self.scripts, runner=runner, one_shot=True)
+        self.assertIn("unresolved_task_journal", report["blockers"])
+        self.assertNotEqual(result, 0)
+        self.assertEqual(len(calls), 1, "worker must not launch with an active configured journal")
+
+    def test_one_shot_manager_status_rejects_invalid_counts(self):
+        for field, value in (("completed", "0"), ("queue_blocked", -1)):
+            with self.subTest(field=field):
+                report = {
+                    "project": self.project, "decision": "replenish", "pending": 1,
+                    "completed": 0, "queue_blocked": 0, "invalid_lines": [],
+                    "blockers": [], "planning_enabled": False,
+                    "branch": "main", "head": "deadbeef",
+                }
+                report[field] = value
+                calls = []
+
+                def runner(command, **kwargs):
+                    calls.append(command)
+                    return subprocess.CompletedProcess(command, 0, json.dumps(report), "")
+
+                with contextlib.redirect_stderr(io.StringIO()):
+                    result = dispatch.run_tick(self.project, self.scripts, runner=runner, one_shot=True)
+                self.assertNotEqual(result, 0)
+                self.assertEqual(len(calls), 1)
+                self.assertNotIn("pw_task_worker.py", calls[0])
+
+    def test_one_shot_worker_timeout_returns_recovery_error(self):
+        calls = []
+        def runner(command, **kwargs):
+            calls.append((command, kwargs))
+            if "pw_queue_manager.py" in command[2]:
+                report = {
+                    "project": self.project, "decision": "replenish", "pending": 1,
+                    "completed": 0, "queue_blocked": 0, "invalid_lines": [],
+                    "blockers": [], "planning_enabled": False,
+                    "branch": "main", "head": "deadbeef",
+                }
+                return subprocess.CompletedProcess(command, 0, json.dumps(report), "")
+            raise subprocess.TimeoutExpired(command, 2700)
+
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            result = dispatch.run_tick(self.project, self.scripts, runner=runner, one_shot=True)
+        self.assertEqual(result, 23)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("recovery state", err.getvalue())
+        self.assertEqual(calls[1][1]["env"]["PROJECTWRIGHT_ONE_SHOT_AUTH"], "1")
+
+    def test_unsafe_manager_decisions_never_authorize_worker(self):
+        unsafe = (
+            {"decision": "blocked", "reason": "Requirements file missing"},
+            {"decision": "quota_blocked", "pending": 1, "quota": {"allowed": False}},
+            {"decision": "planner_failed", "pending": 1, "reason": "planner unavailable"},
+        )
+        for report in unsafe:
+            with self.subTest(decision=report["decision"]):
+                result, calls = self.run_tick(report)
+                self.assertNotEqual(result, 0)
+                self.assertEqual(len(calls), 1)
+                self.assertNotIn("pw_task_worker.py", calls[0])
+
     def test_busy_is_deferred_without_worker(self):
         report = {"project": self.project, "decision": "busy",
                   "reason": "Project lock held; skip planning"}

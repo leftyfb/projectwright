@@ -15,6 +15,8 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from pw_worker_journal import journal_path as worker_journal_path
+
 ROW = re.compile(r'^\s*- \[([ x!])\] \*\*([A-Z]+\d+)\s+[—-]\s+([A-Z]+)\*\*\s*(.*)$')
 HEADER = re.compile(r'^\s*#{2,6}\s+([A-Z][A-Z0-9]*-\d+(?:-[A-Z0-9]+)*)\s+[—-]\s+(.+)$', re.M)
 
@@ -271,7 +273,7 @@ def approve(cfg: dict, project_dir: Path, requirement: str, milestone: str, test
         cycle = Path(cfg['cycle_file']).expanduser()
         if cycle.exists():
             raise ValueError('Active Git cycle')
-        journal_path = project_dir / 'worker_journal.json'
+        journal_path = worker_journal_path(cfg, project_dir / 'config.json')
         if journal_path.exists() and json.loads(journal_path.read_text()).get('current_task') is not None:
             raise ValueError('Unresolved worker journal')
         repo = Path(cfg['worktree']).expanduser()

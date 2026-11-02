@@ -102,20 +102,53 @@ def authorize_planning(project: str) -> int:
 
 
 def start(project: str, confirmed: bool) -> int:
-    path, config = _config(project)
+    _path, config = _config(project)
     if not confirmed:
         if not sys.stdin.isatty():
-            print("Execution authorization required. Review the queue, then rerun: pw start --project " + project + " --yes", file=sys.stderr)
+            print("One-task execution requires confirmation. Review the queue, then rerun: pw start --project " + project + " --yes", file=sys.stderr)
             return 2
-        answer = input(f"Persistently enable execution for {project!r} and run one manual worker task? Existing timers may use this authorization. [y/N] ").strip().lower()
+        answer = input(f"Authorize one manual task for {project!r}? Persistent execution settings will not be changed. [y/N] ").strip().lower()
         if answer not in ("y", "yes"):
-            print("Execution remains disabled.")
+            print("No task was authorized; project settings are unchanged.")
             return 1
-    execution = config.setdefault("execution", {})
-    execution["enabled"] = True
+    # run_tick is the supported manager/dispatcher path; it authorizes at most
+    # one worker task and preserves locks, quota, sequencing, and recovery gates.
+    scripts = Path(__file__).resolve().parent / "pw_dispatch.py"
+    cmd = [sys.executable, "-B", str(scripts), "--project", project, "--one-shot"]
+    return subprocess.run(cmd, check=False).returncode
+
+
+def authorize_persistent_execution(project: str, confirmed: bool) -> int:
+    path, config = _config(project)
+    if not confirmed:
+        print("Persistent execution requires explicit confirmation; rerun with --yes", file=sys.stderr)
+        return 2
+    config.setdefault("execution", {})["enabled"] = True
     _write(path, config)
-    cmd = [sys.executable, "-B", "-m", "pw_task_worker", "--project", project, "--once"]
-    return subprocess.run(cmd, check=False, env={**os.environ, "PROJECTWRIGHT_DISPATCHED": "1"}).returncode
+    print(f"Persistent execution enabled for {project}; configure recurring runs separately with pw timer.")
+    return 0
+
+
+def _recurring_state(project: str) -> tuple[bool | None, bool | None]:
+    unit = f"projectwright-worker-{project}.timer"
+    unit_path = Path.home() / ".config/systemd/user" / unit
+    if unit_path.is_symlink():
+        return None, None
+    if not unit_path.is_file():
+        return False, False
+    try:
+        result = subprocess.run(
+            ["systemctl", "--user", "is-enabled", unit],
+            capture_output=True, text=True, check=False, timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return True, None
+    state = (result.stdout or "").strip()
+    if result.returncode == 0:
+        return True, True
+    if state == "disabled":
+        return True, False
+    return True, None
 
 
 def status(project: str, as_json: bool) -> int:
@@ -124,49 +157,119 @@ def status(project: str, as_json: bool) -> int:
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.stderr:
         print(result.stderr, file=sys.stderr, end="")
+    manager_error = (result.stderr or result.stdout or "").strip()
     try:
         report = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        print(result.stdout, end="")
-        return result.returncode
-    if as_json:
-        print(json.dumps(report, indent=2, sort_keys=True))
-        return result.returncode
+    except (json.JSONDecodeError, TypeError):
+        report = {}
+        manager_status_unavailable = True
+    else:
+        manager_status_unavailable = not isinstance(report, dict) or not report
+    if not isinstance(report, dict):
+        report = {}
+    if not report:
+        report = {
+            "project": project,
+            "decision": "unknown",
+            "reason": "Manager status unavailable",
+            "pending": None,
+            "completed": None,
+            "queue_blocked": None,
+            "blockers": [manager_error] if manager_error else ["Manager status unavailable"],
+        }
+    else:
+        report.setdefault("project", project)
+        report.setdefault("decision", "unknown")
+        if not isinstance(report.get("decision"), str) or not report["decision"]:
+            report["decision"] = "unknown"
+        report.setdefault("reason", "unknown")
+        if report["project"] != project:
+            report.update(project=project, decision="unknown", reason="Manager project identity mismatch",
+                          pending=None, completed=None, queue_blocked=None,
+                          blockers=["Manager project identity mismatch"])
+        if not isinstance(report.get("reason"), str):
+            report["reason"] = "unknown"
+        for key in ("pending", "completed", "queue_blocked"):
+            value = report.get(key)
+            if type(value) is not int or value < 0:
+                report[key] = None
+        if not isinstance(report.get("blockers"), list) or any(not isinstance(item, str) for item in report["blockers"]):
+            report["blockers"] = ["Manager returned invalid blocker data"]
+    if project_dir.is_symlink():
+        raise ValueError("Refusing symlink project state")
     config_path = project_dir / "config.json"
-    if project_dir.is_symlink() or config_path.is_symlink():
+    if config_path.is_symlink():
         raise ValueError("Refusing symlink project state")
     if config_path.exists() and not config_path.is_file():
         raise ValueError(f"Malformed project configuration: {config_path}")
     initialized = config_path.is_file()
     cfg = _config(project)[1] if initialized else {}
+    planning_enabled = cfg.get("planning", {}).get("enabled") if initialized else False
+    execution_enabled = cfg.get("execution", {}).get("enabled") if initialized else False
+    recurring_configured, recurring_enabled = _recurring_state(project)
+    report.update({
+        "initialized": initialized,
+        "worktree": cfg.get("worktree") if initialized else None,
+        "planning_enabled": planning_enabled if isinstance(planning_enabled, bool) else None,
+        "execution_enabled": execution_enabled if isinstance(execution_enabled, bool) else None,
+        "recurring_execution_configured": recurring_configured,
+        "recurring_execution_enabled": recurring_enabled,
+        "recurring_execution": (
+            "enabled" if recurring_enabled is True else
+            "disabled" if recurring_configured is True and recurring_enabled is False else
+            "not_configured" if recurring_configured is False else "unknown"
+        ),
+    })
+    try:
+        journal_file = Path(cfg.get("worker_journal_file") or project_dir / "worker_journal.json").expanduser()
+        journal = json.loads(journal_file.read_text(encoding="utf-8"))
+        current_task = journal.get("current_task")
+        report["current_task"] = current_task if isinstance(current_task, dict) else None
+    except (OSError, json.JSONDecodeError, AttributeError):
+        report["current_task"] = None
+    if not initialized:
+        next_action = f"Initialize a managed project: pw init --project {project} --repo /path/to/repository"
+    elif report.get("decision") == "unknown" and report.get("reason") == "Manager project identity mismatch":
+        next_action = "Verify the selected project configuration and manager identity, then rerun pw status"
+    elif report.get("decision") in {"unknown", None}:
+        next_action = "Verify the configured worktree exists and is a Git repository, then rerun pw status"
+    elif report.get("decision") in {"blocked", "busy", "awaiting_acceptance", "quota_blocked"}:
+        next_action = "Resolve the reported blocker or approval gate, then rerun pw status"
+    elif type(report.get("pending")) is not int:
+        next_action = "Queue counts are unknown; inspect the project queue and manager blockers, then rerun pw status"
+    elif report.get("pending") == 0:
+        next_action = f"Review requirements and queue planning with: pw plan --project {project}"
+    else:
+        next_action = f"Review the queued task, then run one manually with: pw start --project {project}"
+    report["next_action"] = next_action
+    status_returncode = result.returncode or int(manager_status_unavailable)
+    if as_json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return status_returncode
     print(f"Project: {project}")
-    print(f"Planning: {'enabled' if cfg.get('planning', {}).get('enabled') else 'disabled'}")
-    print(f"Execution: {'enabled' if cfg.get('execution', {}).get('enabled') else 'disabled'}")
+    print(f"Worktree: {report.get('worktree') or 'unknown'}")
+    print(f"Planning: {'enabled' if planning_enabled else 'disabled' if planning_enabled is not None else 'unknown'}")
+    print(f"Execution: {'enabled' if execution_enabled else 'disabled' if execution_enabled is not None else 'unknown'}")
     for key, label in (("pending", "Queue pending"), ("completed", "Queue completed"), ("queue_blocked", "Queue blocked")):
         if key in report:
-            print(f"{label}: {report[key]}")
-    print(f"Current activity: {report.get('decision', 'unknown')} — {report.get('reason', 'no further detail')}")
-    blockers = report.get("blockers", [])
-    print("Blockers: " + (", ".join(blockers) if blockers else "none reported"))
-    if not initialized:
-        next_action = f"Initialize managed onboarding against an existing Git repository: pw init --project {project} --repo /path/to/repository"
-    elif not cfg.get("planning", {}).get("enabled"):
-        next_action = f"Review requirements, then authorize planning with: pw plan --project {project}"
-    elif not cfg.get("execution", {}).get("enabled"):
-        next_action = f"Review the approved queue, then authorize a manual worker run with: pw start --project {project}"
-    else:
-        next_action = f"Review results and Git changes; run another manual step with: pw start --project {project}"
+            value = report[key]
+            print(f"{label}: {value if isinstance(value, int) else 'unknown'}")
+    print(f"Current activity: {report.get('decision', 'unknown')} — {report.get('reason', 'unknown')}")
+    print(f"Current task: {report.get('current_task') or 'none reported'}")
+    blockers = report.get("blockers")
+    print("Blockers: " + (", ".join(blockers) if isinstance(blockers, list) and blockers else "none reported"))
+    print("Recurring execution: " + report["recurring_execution"])
     print("Next action: " + next_action)
-    return result.returncode
+    return status_returncode
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("plan", "requirements", "start", "status"))
+    parser.add_argument("action", choices=("plan", "requirements", "start", "authorize-execution", "status"))
     parser.add_argument("--project", required=True)
     parser.add_argument("--config-dir", type=Path, help="Configuration home (contains projects/)")
     parser.add_argument("--edit", action="store_true", help="Open requirements in an editor")
-    parser.add_argument("--yes", action="store_true", help="Explicitly confirm execution authorization and one manual task")
+    parser.add_argument("--yes", action="store_true", help="Confirm one manual task, or explicitly authorize persistent execution")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON status")
     args = parser.parse_args()
     if args.config_dir:
@@ -182,6 +285,8 @@ def main() -> int:
             return requirements(args.project)
         if args.action == "start":
             return start(args.project, args.yes)
+        if args.action == "authorize-execution":
+            return authorize_persistent_execution(args.project, args.yes)
         return status(args.project, args.json)
     except (ValueError, OSError) as exc:
         print(f"pw {args.action}: {exc}", file=sys.stderr)

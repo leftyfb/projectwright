@@ -18,9 +18,19 @@ pw start --project NAME
 
 Invoking `pw plan` explicitly authorizes planning: it enables `planning.enabled` and runs one planning decision. It does not enable execution or run a worker. Review the queue before authorizing execution. Planning requires valid requirements, a usable Git worktree on the configured branch, named milestones where needed, and an available configured Hermes provider.
 
-`pw start` asks for confirmation before persistently setting `execution.enabled` and launching one worker task with `--once`. In non-interactive scripts, `pw start --project NAME --yes` is the explicit confirmation. A declined prompt leaves execution disabled. Start itself is a manual one-task run and never enables timers; an already-enabled timer may use the stored authorization. The authorization remains enabled if the worker fails. The worker's Git scope checks, journals, recovery rules, task sequencing and milestone gates remain in effect.
+`pw start` asks for confirmation before launching one manual dispatcher run. It does not modify `execution.enabled`, install a timer, or enable recurring execution. In non-interactive scripts, `pw start --project NAME --yes` is the explicit confirmation. A declined prompt leaves the project unchanged. The worker's Git scope checks, journals, recovery rules, task sequencing and milestone gates remain in effect.
 
-`pw status` prints a human-readable summary. Add `--json` for machine-readable JSON. Status includes planning/execution configuration, queue counts, manager decision, blockers and a suggested next action.
+Persistent execution is separately authorized with `pw authorize-execution --project NAME --yes`; this only changes the persistent project setting. To run unattended, install a disabled timer, then enable it:
+
+```sh
+pw authorize-execution --project NAME --yes
+pw timer install-disabled NAME
+pw timer enable NAME
+```
+
+Use `pw timer disable NAME` to stop recurring runs and `pw timer status NAME` to inspect the timer. `pw start` never authorizes persistent execution, installs a timer, or enables recurring execution.
+
+`pw status` prints a human-readable summary. Add `--json` for machine-readable JSON. Both formats include the manager decision and reason, queue counts, blockers, project settings, and next action. JSON adds `recurring_execution_configured` and `recurring_execution_enabled`; these are `unknown` when the user timer cannot be inspected reliably, and `recurring_execution` summarizes the result as `enabled`, `disabled`, `not_configured`, or `unknown`.
 
 ## Project paths
 

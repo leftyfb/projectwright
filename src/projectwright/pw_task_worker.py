@@ -107,6 +107,92 @@ def git(*args: str) -> str:
     return subprocess.check_output(['git', '-C', str(WORKTREE), *args], text=True).rstrip('\n')
 
 
+def revalidate_milestone_authorization(
+    task: Task, queue_bytes: bytes, journal_file: Path
+) -> None:
+    """Recheck milestone gates against live project state under the worker lock."""
+    if (
+        not isinstance(PROJECT_ID, str)
+        or not PROJECT_CONFIG
+        or not isinstance(PROJECT, dict)
+        or not isinstance(QUEUE, Path)
+    ):
+        raise ValueError('Project configuration unavailable')
+    config_path = Path(PROJECT_CONFIG)
+    from pw_config import load as load_config
+    current_path, current_config = load_config(PROJECT_ID, config_path.parent.parent)
+    if current_path != config_path:
+        raise ValueError('Project configuration path changed')
+    planning = current_config.get('planning', {})
+    if not isinstance(planning, dict) or planning != PROJECT.get('planning', {}):
+        raise ValueError('Planning configuration changed while worker was starting')
+    strict = planning.get('milestone_sequence') == 'strict'
+    requirements_setting = planning.get('requirements_file')
+    if not requirements_setting:
+        if strict or planning.get('enabled'):
+            raise ValueError('Milestone sequencing requires a requirements file')
+        return
+
+    requirements_path = Path(requirements_setting).expanduser()
+    try:
+        requirements_bytes = requirements_path.read_bytes()
+    except FileNotFoundError:
+        if strict or planning.get('enabled'):
+            raise
+        return
+    requirements = requirements_bytes.decode('utf-8')
+    queue = QUEUE.read_bytes().decode('utf-8')
+    if queue.encode('utf-8') != queue_bytes:
+        raise ValueError('Queue changed before milestone authorization')
+
+    journal = {}
+    if journal_file.exists():
+        journal = json.loads(journal_file.read_text(encoding='utf-8'))
+    if not isinstance(journal, dict) or journal.get('current_task') is not None:
+        raise ValueError('Worker journal is invalid or has an active task')
+
+    state_path = config_path.parent / 'planning_state.json'
+    planning_state = {}
+    if state_path.exists():
+        planning_state = json.loads(state_path.read_text(encoding='utf-8'))
+    if not isinstance(planning_state, dict):
+        raise ValueError('Invalid planning state')
+
+    from pw_milestone_guard import (current_receipts, milestone_ids,
+                                    policy_for_project, scoped_tasks)
+    from pw_acceptance_gate import awaiting_acceptance
+    policy = policy_for_project(config_path.parent)
+    milestones = milestone_ids(requirements)
+    if not milestones and not strict:
+        return
+    head = git('rev-parse', 'HEAD')
+    receipts = current_receipts(
+        planning_state, requirements_bytes, queue, head, repo=WORKTREE,
+        strict=strict, policy=policy, journal=journal,
+    )
+    waiting = awaiting_acceptance(queue, requirements, receipts)
+    task_milestones = []
+    for milestone in milestones:
+        match = re.match(r'^(.*)-M\d+(?:-|$)', milestone)
+        if not match:
+            raise ValueError(f'Invalid milestone identifier: {milestone}')
+        scoped = scoped_tasks(queue, match.group(1), milestone)
+        if any(item['id'] == task.task_id for item in scoped):
+            task_milestones.append(milestone)
+    if len(task_milestones) > 1:
+        raise ValueError('Selected task belongs to multiple milestones')
+
+    if strict:
+        from pw_milestone_sequence import evaluate
+        decision = evaluate(requirements, queue, receipts, policy)
+        if decision.get('decision') != 'active':
+            raise ValueError(decision.get('reason', 'Milestone sequence is not active'))
+        if len(task_milestones) != 1 or task_milestones[0] != decision.get('milestone'):
+            raise ValueError('Selected task is not in the authorized active milestone')
+    elif task_milestones and task_milestones[0] in waiting:
+        raise ValueError('Selected task milestone awaits acceptance')
+
+
 def tracked_state() -> dict[str, str]:
     """Content-and-index-sensitive snapshot, including untracked (not ignored) files."""
     status = git('status', '--porcelain=v1', '--untracked-files=all')
@@ -524,10 +610,9 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
         # Hand recovery its own project lock before selecting any new task.
         # Avoid a subprocess/AI call on the normal (journal-clear) path.
         if not dry_run:
-            journal_path = PROJECT_CONFIG.parent / 'worker_journal.json'
-            if journal_path.exists():
+            if journal_file.exists():
                 try:
-                    journal_doc = json.loads(journal_path.read_text(encoding='utf-8'))
+                    journal_doc = json.loads(journal_file.read_text(encoding='utf-8'))
                 except (OSError, ValueError) as exc:
                     print(f'RECOVERY BLOCKED: unreadable journal: {exc}', file=sys.stderr)
                     return 2
@@ -558,7 +643,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
                         return 2
                     # Current recovery implementation inspects and records; it does NOT repair.
                     # Continue only when the journal was actually cleared and recovery said clear.
-                    refreshed = json.loads(journal_path.read_text(encoding='utf-8'))
+                    refreshed = json.loads(journal_file.read_text(encoding='utf-8'))
                     if (recovery_result.returncode != 0 or
                             recovery_report.get('status') != 'clear' or
                             refreshed.get('current_task') is not None):
@@ -594,6 +679,11 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
             print('Quota gate BLOCKED: ' + json.dumps(quota, sort_keys=True), file=log, flush=True)
             print('Quota gate BLOCKED: ' + json.dumps(quota, sort_keys=True), file=sys.stderr)
             return 3
+        try:
+            revalidate_milestone_authorization(task, original_bytes, journal_file)
+        except Exception as exc:
+            print(f'MILESTONE AUTHORIZATION BLOCKED: {exc}', file=sys.stderr)
+            return 5
         cycle_begin(task)
         if task.kind == 'COMMIT':
             cycle_commit_precheck()
@@ -784,7 +874,14 @@ def main() -> int:
             print(json.dumps({'project': args.project, 'decision': 'disabled',
                               'reason': 'project config missing'}))
             return 3
-    if effective.get('projectwright_initialized') == 1 and effective['execution']['enabled'] is False:
+    one_shot_authorized = (
+        args.once
+        and os.environ.get('PROJECTWRIGHT_DISPATCHED') == '1'
+        and os.environ.get('PROJECTWRIGHT_ONE_SHOT_AUTH') == '1'
+    )
+    if (effective.get('projectwright_initialized') == 1
+            and effective['execution']['enabled'] is False
+            and not one_shot_authorized):
         print(json.dumps({'project': args.project, 'decision': 'disabled',
                           'reason': 'project not configured for execution'}))
         return 3

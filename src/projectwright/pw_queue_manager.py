@@ -19,6 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from pw_worker_journal import journal_path as worker_journal_path
+
 ROW = re.compile(r'^\s*- \[(?P<state>[ x!])\]\s+\*\*(?P<id>[A-Z]+\d+)\s+[—-]\s+(?P<kind>[A-Z]+)\*\*\s*(?P<description>.*)$')
 VALID_KINDS = {'READ', 'EDIT', 'TEST', 'COMMIT', 'VERIFY', 'DECIDE'}
 DEFAULT_TRIGGER = {'pending_below': 3, 'review_every_completed_tasks': 6, 'replan_on_blocker': True}
@@ -183,7 +185,7 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
             return {'project': project, 'decision': 'busy', 'reason': 'Project lock held; skip planning'}
         queue_path = Path(cfg['queue']).expanduser()
         summary = queue_summary(queue_path.read_text(encoding='utf-8'))
-        journal = read_json_optional(directory / 'worker_journal.json')
+        journal = read_json_optional(worker_journal_path(cfg, directory / 'config.json'))
         state = read_json_optional(directory / 'worker_state.json')
         incidents = read_json_optional(directory / 'recovery_incidents.json')
         repo = Path(cfg['worktree']).expanduser()

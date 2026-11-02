@@ -80,10 +80,13 @@ jobs:
             "$RUNNER_TEMP/projectwright-install/bin/pw" init --project scaffold \
             --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" \
             > "$RUNNER_TEMP/projectwright-test-logs/init.json"
-          HOME="$RUNNER_TEMP/pw-empty-home" PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
+          if HOME="$RUNNER_TEMP/pw-empty-home" PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
             "$RUNNER_TEMP/projectwright-install/bin/pw" status --project scaffold \
-            --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" \
-            | python3 -B -c "import json,sys; assert json.load(sys.stdin)['decision']=='disabled'"
+            --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" --json \
+            > "$RUNNER_TEMP/projectwright-test-logs/status.json"; then status_rc=0; else status_rc=$?; fi
+          test "$status_rc" -ne 0
+          python3 -B -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['decision']=='unknown' and d['planning_enabled'] is False and d['execution_enabled'] is False and d['pending'] is None" \
+            "$RUNNER_TEMP/projectwright-test-logs/status.json"
           HOME="$RUNNER_TEMP/pw-empty-home" PYTHONPATH="$RUNNER_TEMP/projectwright-install" \
             "$RUNNER_TEMP/projectwright-install/bin/pw" init --project configless \
             --config-dir "$RUNNER_TEMP/pw-empty-home/.config/projectwright" --no-config \

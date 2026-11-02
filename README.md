@@ -35,7 +35,17 @@ When you are ready for a real code change, start a manually confirmed worker run
 pw start --project myproject
 ```
 
-Confirm at the prompt. `pw start` persistently enables execution in this project's config, then runs one worker task once. The command does not install or enable a timer; an already-enabled timer may use the stored authorization, so disable recurring automation separately if you do not want it. The authorization remains enabled even if that worker run fails. The worker still applies Projectwright's Git-scope, journal, recovery and task-sequencing checks. Run `pw status --project myproject` to check progress, then review the work log, results, and `git diff` in your repository. Run `pw start` again to manually process another task. To decline the confirmation, answer no; execution remains disabled.
+Confirm at the prompt. `pw start` authorizes one manual dispatcher run; it does not change the project's persistent execution setting, install a timer, or enable recurring automation. The worker still applies Projectwright's Git-scope, journal, recovery and task-sequencing checks. Run `pw status --project myproject` to check progress, then review the work log, results, and `git diff` in your repository. Run `pw start` again to manually process another task. To decline the confirmation, answer no; no task is launched and project settings remain unchanged.
+
+Persistent execution is a separate, explicit setting used by recurring dispatch. First authorize that setting, then install and enable a timer only if you intend the project to run unattended:
+
+```sh
+pw authorize-execution --project myproject --yes
+pw timer install-disabled myproject
+pw timer enable myproject
+```
+
+`pw authorize-execution` does not install or start a timer. `install-disabled` writes the user timer units without enabling them; `enable` starts the installed timer. Use `pw timer disable myproject` to stop recurring runs and `pw timer status myproject` to inspect the timer. These timer commands are separate from the one-task `pw start` path.
 
 Projects normally live at `$XDG_CONFIG_HOME/projects/myproject` (usually `~/.config/projects/myproject`). An existing repository can be elsewhere, such as `~/repos/myproject`. To use another Projectwright config home, pass `--config-dir /absolute/config/home` to each command; its projects are stored below `projects/`. The default selector retains compatibility with older `~/.config/projectwright/projects` and `~/.hermes/projects` locations without moving or deleting them. See [configuration paths](docs/configuration-home.md).
 
@@ -43,7 +53,7 @@ Projects normally live at `$XDG_CONFIG_HOME/projects/myproject` (usually `~/.con
 
 ## Reviewing work and approvals
 
-A successful test, completed queue checkbox, worker report or Git commit is not milestone acceptance. Projectwright never infers acceptance from those signals. Milestone approval/acceptance gates remain separate; the existing Telegram approval integration is optional and documented in [Telegram approval setup](docs/user-approval-setup.md).
+A successful test, completed queue checkbox, worker report or Git commit is not milestone acceptance. Projectwright never infers acceptance from those signals. When Telegram approvals are configured, inspect the proposed work and use the notification's Approve or Reject button; the manager keeps later work behind the milestone gate until that decision. Without the optional approval integration, the gate remains blocked for a human decision. See [Telegram approval setup](docs/user-approval-setup.md).
 
 Recurring automation is also optional and is not enabled by these steps. See `pw timer --help` and the [operator manual](docs/manual.md) before separately configuring a project timer.
 
