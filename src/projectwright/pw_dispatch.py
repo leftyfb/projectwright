@@ -323,8 +323,8 @@ def cli():
     """Preliminary unified command launcher; each service retains its own parser."""
     commands = {
         'tick': ('pw_dispatch', []),
-        'status': ('pw_queue_manager', ['--status']),
-        'plan': ('pw_queue_manager', ['--once']),
+        'status': ('pw_onboarding', ['status']),
+        'plan': ('pw_onboarding', ['plan']),
         'worker': ('pw_task_worker', []),
         'notify': ('pw_notify', []),
         'timer': ('pw_project_timer', []),
@@ -332,8 +332,10 @@ def cli():
         'setup-user': ('pw_project_timer', ['setup-user']),
         'defaults': ('pw_defaults', []),
         'init': ('pw_init', []),
+        'requirements': ('pw_onboarding', ['requirements']),
+        'start': ('pw_onboarding', ['start']),
     }
-    usage = 'usage: pw {tick|status|plan|worker|notify|timer|setup|setup-user|defaults|init} [options]'
+    usage = 'usage: pw {tick|status|plan|start|requirements|worker|notify|timer|setup|setup-user|defaults|init} [options]'
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
         print(usage)
         return 0 if len(sys.argv) > 1 else 2
@@ -342,6 +344,19 @@ def cli():
         print(f'Unknown Projectwright command: {command}\\n{usage}', file=sys.stderr)
         return 2
     module, fixed = commands[command]
+    # Shared onboarding commands accept --config-dir in the same sense as
+    # the existing commands: a configuration home containing projects/.
+    config_dir = None
+    if '--config-dir' in sys.argv[2:]:
+        i = sys.argv.index('--config-dir', 2)
+        if i + 1 < len(sys.argv):
+            candidate = Path(sys.argv[i + 1]).expanduser()
+            if not candidate.is_absolute():
+                print('--config-dir must be absolute', file=sys.stderr)
+                return 2
+            config_dir = str(candidate)
+    if config_dir:
+        os.environ['PROJECTWRIGHT_CONFIG_DIR'] = config_dir
     return subprocess.run([sys.executable, '-B', '-m', module, *fixed, *sys.argv[2:]],
                           check=False).returncode
 

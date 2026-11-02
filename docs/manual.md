@@ -41,7 +41,7 @@ Do not install Projectwright onto production Hermes just to follow this guide. H
 
 ## 4. Project layout and configuration selection
 
-With no explicit override, the selected projects directory is `$XDG_CONFIG_HOME/projectwright/projects` (normally `~/.config/projectwright/projects`). If that XDG tree does not exist but `~/.hermes/projects` does, the legacy directory may be used. Selection precedence is:
+With no explicit override, the intended projects directory is `$XDG_CONFIG_HOME/projects` (normally `~/.config/projects`). If it does not exist, the resolver reuses an existing `$XDG_CONFIG_HOME/projectwright/projects`, then `~/.hermes/projects`, without moving or rewriting existing state. Selection precedence is:
 
 1. `--config-dir /absolute/path` where supported; its `projects/` child is used.
 2. `PROJECTWRIGHT_CONFIG_DIR` (configuration home; append `projects/`).

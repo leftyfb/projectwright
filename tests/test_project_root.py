@@ -21,11 +21,14 @@ class ProjectRootSelection(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             with patch.object(Path, "home", return_value=home), patch.dict(os.environ, {}, clear=True):
-                self.assertEqual(default_project_root(), home / ".config/projectwright/projects")
+                self.assertEqual(default_project_root(), home / ".config/projects")
                 old = home / ".hermes/projects"
                 old.mkdir(parents=True)
                 self.assertEqual(default_project_root(), old)
-                new = home / ".config/projectwright/projects"
+                previous = home / ".config/projectwright/projects"
+                previous.mkdir(parents=True)
+                self.assertEqual(default_project_root(), previous)
+                new = home / ".config/projects"
                 new.mkdir(parents=True)
                 self.assertEqual(default_project_root(), new)
 
@@ -78,8 +81,8 @@ class ProjectRootSelection(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with patch.dict(os.environ, {"HERMES_PROJECT_CONFIG_DIR": tmp + "/legacy"}, clear=True):
                 self.assertEqual(default_project_root(), Path(tmp) / "legacy")
-            with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/xdg"}, clear=True):
-                self.assertEqual(default_project_root(), Path(tmp) / "xdg/projectwright/projects")
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/xdg", "HOME": tmp + "/home"}, clear=True):
+                self.assertEqual(default_project_root(), Path(tmp) / "xdg/projects")
 
 
 if __name__ == "__main__":
