@@ -8,7 +8,7 @@ the tasks when you explicitly authorize them. Results depend on the live
 provider; no expected model response or Git commit is fabricated.
 
 For a guided tutorial on defining a *new* project, use
-[Getting started](../../docs/getting-started.md).
+[Getting started](https://github.com/leftyfb/projectwright/blob/main/docs/getting-started.md).
 
 ## Prerequisites and safety
 
@@ -68,7 +68,7 @@ pw status --project demo-counter
 cat "$PROJECTWRIGHT_CONFIG_DIR/projects/demo-counter/requirements.md"
 cat "$PROJECTWRIGHT_CONFIG_DIR/projects/demo-counter/queue.md"
 git -C "$HOME/projectwright-demo/repo" status --short
-python3 -B -m unittest discover -s "$HOME/projectwright-demo/repo/tests" -p test_counter.py
+(cd "$HOME/projectwright-demo/repo" && python3 -B -m unittest discover -s tests -p test_counter.py)
 ```
 
 Expected: four unchecked queue tasks (P100–P103), clean Git working tree,
