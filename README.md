@@ -20,17 +20,33 @@ pw setup
 
 Do not run `pw setup` with sudo. Hermes CLI must already be installed and configured. Telegram setup is optional.
 
-## Try the Task Tracker example
+## Start here: tutorial or ready-to-run demo
 
-A disposable, beginner-friendly [Task Tracker walkthrough](examples/task_tracker/README.md) demonstrates `pw init`, requirements, planning, a one-task Hermes run, and review. The task tracker is **not prebuilt**: Projectwright generates it from the example requirements.
+**[Getting started: create your own project](docs/getting-started.md)** is a
+step-by-step guide to setting up your repository, drafting requirements,
+planning a queue, executing tasks, and reviewing/approving milestones. For a
+longer build-it-yourself exercise, see the
+[Task Tracker walkthrough](examples/task_tracker/README.md).
 
-The Debian package also installs this walkthrough and the starter README under `/usr/share/doc/projectwright/examples/task_tracker/`. Open the walkthrough after `sudo apt install projectwright`:
+**[Ready-to-run demo: counter library](examples/ready_demo/README.md)** is
+different: it creates a disposable Git repository and Projectwright project
+with prewritten requirements, acceptance tests, and a preplanned queue.
+Run the bootstrap after installation, inspect the sample state, and manually
+authorize the tasks with your configured Hermes:
 
 ```sh
-less /usr/share/doc/projectwright/examples/task_tracker/README.md
+bash /usr/share/doc/projectwright/examples/ready_demo/bootstrap.sh
+export PROJECTWRIGHT_CONFIG_DIR="$HOME/projectwright-demo/state"
+pw status --project demo-counter
+pw start --project demo-counter
 ```
 
-The initial milestone can be worked and reviewed without Telegram. Advancing to the next milestone requires a real Telegram approval callback; the demo does not silently bypass the approval gate.
+See the [demo guide](examples/ready_demo/README.md) for each file's role,
+the four-task workflow, expected test and Git results, and limitations.
+This is live agent execution, not a prerecorded success simulation; it may
+use provider tokens. Human milestone acceptance still requires Telegram.
+The package installs both guides under
+`/usr/share/doc/projectwright/`.
 
 ## Quick start
 
