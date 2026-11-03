@@ -71,7 +71,7 @@ class ReleaseHelperTests(unittest.TestCase):
                           return_value=("release/0.1.6", "a" * 40)), \
              patch.object(release, "proposed_files", return_value={}), \
              patch.object(release.sys.stdin, "isatty", return_value=True), \
-             patch.object(release, "command") as command:
+             patch.object(release, "command", side_effect=release.ReleaseError("stop before commit")) as command:
             for response in ("", "n", "N", "no", "maybe"):
                 command.reset_mock()
                 with self.subTest(response=response), \
