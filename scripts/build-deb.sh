@@ -27,6 +27,15 @@ install -m 0644 "$(dirname "$0")/../examples/task_tracker/README.md" \
   "$stage/usr/share/doc/projectwright/examples/task_tracker/README.md"
 install -m 0644 "$(dirname "$0")/../examples/task_tracker/starter/README.md" \
   "$stage/usr/share/doc/projectwright/examples/task_tracker/starter/README.md"
+# A distinct preplanned demo is shipped alongside (not as) the guided tutorial.
+mkdir -p "$stage/usr/share/doc/projectwright/examples/ready_demo"
+install -m 0644 "$(dirname "$0")/../examples/ready_demo/README.md" \
+  "$stage/usr/share/doc/projectwright/examples/ready_demo/README.md"
+install -m 0644 "$(dirname "$0")/../examples/ready_demo/bootstrap.sh" \
+  "$stage/usr/share/doc/projectwright/examples/ready_demo/bootstrap.sh"
+mkdir -p "$stage/usr/share/doc/projectwright/docs"
+install -m 0644 "$(dirname "$0")/../docs/getting-started.md" \
+  "$stage/usr/share/doc/projectwright/docs/getting-started.md"
 install -m 0644 "$(dirname "$0")/../src/projectwright/pw_plugin.py" \
   "$stage/usr/share/projectwright/hermes/projectwright-approvals.py"
 mkdir -p "$stage/usr/share/projectwright/hermes/projectwright-approvals"
