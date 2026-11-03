@@ -95,7 +95,10 @@ def authorize_planning(project: str) -> int:
         print("Requirements are missing. Create them with: pw requirements --project " + project + " --edit", file=sys.stderr)
         return 2
     from pw_milestone_guard import validate_requirements
-    diagnostics = validate_requirements(requirements.read_text(encoding="utf-8"))["issues"]
+    diagnostics = validate_requirements(
+        requirements.read_text(encoding="utf-8"),
+        strict=config.get("planning", {}).get("milestone_sequence") == "strict",
+        project_dir=config_path.parent)["issues"]
     if diagnostics:
         print("pw plan: requirements validation failed; planning remains disabled", file=sys.stderr)
         for item in diagnostics:

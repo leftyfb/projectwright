@@ -117,8 +117,74 @@ class RequirementsDiagnosticsTests(unittest.TestCase):
         policy = guard.embedded_acceptance_policy(requirements)
         self.assertIn("DEMO-1-M1-API", policy["milestones"])
 
+    def test_nonstrict_requirements_do_not_require_acceptance(self):
+        requirements = """## DEMO-1 — Goal
+### DEMO-1-M1 — First
+"""
+        with tempfile.TemporaryDirectory() as temp:
+            project = pathlib.Path(temp)
+            report = guard.validate_requirements(requirements, strict=False, project_dir=project)
+        self.assertTrue(report["valid"], report["issues"])
+        malformed = guard.validate_requirements("## DEMO-1 Goal\n", strict=False)
+        self.assertFalse(malformed["valid"])
+        self.assertIn("malformed_requirement_heading", {item["code"] for item in malformed["issues"]})
+
+    def test_strict_embedded_validation_reports_each_milestone_error(self):
+        requirements = """## DEMO-1 — Goal
+### DEMO-1-M1 — First
+#### Acceptance
+- **Scope:** `src/app.py`
+### DEMO-1-M2 — Second
+"""
+        with tempfile.TemporaryDirectory() as temp:
+            report = guard.validate_requirements(requirements, strict=True, project_dir=pathlib.Path(temp))
+        self.assertFalse(report["valid"])
+        self.assertEqual({item["code"] for item in report["issues"]},
+                         {"missing_acceptance_command", "missing_acceptance"})
+
+    def test_strict_legacy_policy_needs_no_embedded_duplicate(self):
+        requirements = """## DEMO-1 — Goal
+### DEMO-1-M1 — First
+"""
+        with tempfile.TemporaryDirectory() as temp:
+            project = pathlib.Path(temp)
+            req_file = project / "requirements.md"
+            req_file.write_text(requirements)
+            (project / "config.json").write_text(json.dumps({"planning": {
+                "milestone_sequence": "strict", "requirements_file": str(req_file)}}))
+            (project / "telegram_acceptance.json").write_text(json.dumps({"version": 1, "milestones": {
+                "DEMO-1-M1": {"requirement": "DEMO-1", "command": ["true"],
+                              "scope_paths": ["src/app.py"]}}}))
+            report = guard.validate_requirements(requirements, strict=True, project_dir=project)
+        self.assertTrue(report["valid"], report["issues"])
+
 
 class PlanDiagnosticsTests(unittest.TestCase):
+    def test_plan_uses_policy_aware_requirements_validation(self):
+        from types import SimpleNamespace
+        cases = (("nonstrict", None), ("strict", {"version": 1, "milestones": {
+            "DEMO-1-M1": {"requirement": "DEMO-1", "command": ["true"],
+                          "scope_paths": ["src/app.py"]}}}))
+        for mode, legacy in cases:
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as temp:
+                project = pathlib.Path(temp)
+                config_path = project / "config.json"
+                requirements = project / "requirements.md"
+                requirements.write_text("## DEMO-1 — Goal\n### DEMO-1-M1 — First\n")
+                planning = {"enabled": False, "requirements_file": str(requirements)}
+                if mode == "strict":
+                    planning["milestone_sequence"] = "strict"
+                    (project / "telegram_acceptance.json").write_text(json.dumps(legacy))
+                config = {"id": "demo", "planning": planning}
+                config_path.write_text(json.dumps(config))
+                with patch.object(pw_onboarding, "_config", return_value=(config_path, config)):
+                    with patch.object(pw_onboarding, "_requirements_path", return_value=requirements):
+                        with patch.object(pw_onboarding.subprocess, "run",
+                                          return_value=SimpleNamespace(returncode=0)) as manager:
+                            self.assertEqual(pw_onboarding.authorize_planning("demo"), 0)
+                manager.assert_called_once()
+                self.assertTrue(json.loads(config_path.read_text())["planning"]["enabled"])
+
     def test_plan_reports_actionable_manager_diagnostics(self):
         result = type("R", (), {
             "returncode": 3,

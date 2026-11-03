@@ -236,12 +236,12 @@ def embedded_acceptance_policy(requirements: str) -> dict | None:
     return {'version': 1, 'milestones': milestones} if present else None
 
 
-def validate_requirements(requirements: str) -> dict:
+def validate_requirements(requirements: str, *, strict: bool = True,
+                          project_dir: Path | None = None) -> dict:
     """Return first-run diagnostics without raising on user-authored Markdown.
 
-    This is deliberately separate from ``embedded_acceptance_policy``: callers
-    need all actionable errors in one status/plan response, rather than the
-    first parser exception only.
+    Acceptance sections are mandatory only in strict sequencing mode. Strict
+    projects may keep their acceptance policy in the legacy JSON file instead.
     """
     issues = []
     lines = requirements.splitlines()
@@ -286,6 +286,23 @@ def validate_requirements(requirements: str) -> dict:
             issues.append({'code': 'duplicate_milestone_heading', 'line': line_number,
                            'milestone': milestone, 'message': f'Duplicate milestone heading: {milestone}'})
         seen.add(milestone)
+    has_acceptance_like = any(re.match(r'^\s*#{4,6}\s+Acceptance\b', line) for line in lines)
+    legacy_policy = None
+    legacy_path = Path(project_dir) / 'telegram_acceptance.json' if project_dir is not None else None
+    if has_acceptance_like and legacy_path is not None and legacy_path.is_file():
+        issues.append({'code': 'duplicate_acceptance_policy_sources',
+                       'message': 'Embedded and telegram_acceptance.json policies conflict; remove one source'})
+    elif strict and not has_acceptance_like and project_dir is not None:
+        if legacy_path is not None and legacy_path.is_file():
+            legacy_error = None
+            try:
+                legacy_policy = policy_for_project(Path(project_dir))
+            except ValueError as exc:
+                legacy_error = str(exc)
+            if legacy_error is None and legacy_policy is None:
+                legacy_error = 'telegram_acceptance.json is missing or invalid for strict milestone acceptance'
+            if legacy_error is not None:
+                issues.append({'code': 'invalid_acceptance_policy', 'message': legacy_error})
     for index, (milestone, line_number) in enumerate(all_milestones):
         start = line_number
         end = len(lines)
@@ -295,9 +312,22 @@ def validate_requirements(requirements: str) -> dict:
         acceptance_indexes = [i for i, line in enumerate(body)
                               if re.match(r'^#{4,6}\s+Acceptance\s*$', line)]
         if not acceptance_indexes:
-            issues.append({'code': 'missing_acceptance', 'line': line_number,
-                           'milestone': milestone,
-                           'message': f'Missing Acceptance section for {milestone}'})
+            if not strict and not any(re.match(r'^\s*#{4,6}\s+Acceptance\b', line) for line in body):
+                continue
+            if strict and legacy_policy is not None:
+                spec = legacy_policy.get('milestones', {}).get(milestone)
+                match = re.match(r'^(.*)-M\d+(?:-|$)', milestone)
+                if (acceptance_policy_fingerprint(spec) is not None and match is not None
+                        and spec['requirement'] == match.group(1)):
+                    continue
+                code = 'invalid_acceptance_policy' if spec is not None else 'missing_acceptance'
+                message = (f'Invalid legacy acceptance policy for {milestone}' if spec is not None
+                           else f'Missing legacy acceptance policy for {milestone}')
+            else:
+                code = 'missing_acceptance'
+                message = f'Missing Acceptance section or strict legacy policy for {milestone}'
+            issues.append({'code': code, 'line': line_number, 'milestone': milestone,
+                           'message': message})
             continue
         if len(acceptance_indexes) != 1:
             issues.append({'code': 'duplicate_acceptance', 'line': line_number,

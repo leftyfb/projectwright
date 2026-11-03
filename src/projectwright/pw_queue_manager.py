@@ -227,7 +227,10 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
             diagnostics.append({'code': 'requirements_missing', 'message': 'Requirements file is missing or unset; create it with pw requirements --project ' + project})
         else:
             from pw_milestone_guard import validate_requirements
-            requirements_validation = validate_requirements(requirements.read_text(encoding='utf-8'))
+            requirements_validation = validate_requirements(
+                requirements.read_text(encoding='utf-8'),
+                strict=cfg.get('planning', {}).get('milestone_sequence') == 'strict',
+                project_dir=directory)
             diagnostics = requirements_validation['issues']
             if diagnostics:
                 blockers.append('requirements_invalid')
