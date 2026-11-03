@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare and publish a verified Projectwright release from release/X.Y.Z.
+"""Prepare and publish a verified Projectwright release from clean, synced main.
 
 Run from a clean local checkout with git and authenticated GitHub CLI:
     python3 scripts/release.py 0.1.2
@@ -42,24 +42,54 @@ def output(*args: str) -> str:
     return command(*args).stdout.strip()
 
 
-def require_clean_release_branch(version: str) -> tuple[str, str]:
+def require_release_preflight(version: str) -> tuple[str, str]:
+    """Preflight from main without changing local or remote Git refs."""
     branch = f"release/{version}"
-    if output("git", "branch", "--show-current") != branch:
-        raise ReleaseError(f"Check out {branch} before running this script")
+    if output("git", "branch", "--show-current") != "main":
+        raise ReleaseError("Check out main before running this script")
     if command("git", "status", "--porcelain").stdout.strip():
         raise ReleaseError("Worktree is not clean; commit or stash your changes first")
     repository = output("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner")
     if repository != REPO:
         raise ReleaseError(f"Expected {REPO}, found {repository}")
     local = output("git", "rev-parse", "HEAD")
-    remote = output("git", "ls-remote", "origin", f"refs/heads/{branch}").split()
-    if not remote or remote[0] != local:
-        raise ReleaseError(f"{branch} must exist on origin at the same commit; fetch/pull first")
+    remote_main = output("git", "ls-remote", "origin", "refs/heads/main").split()
+    if not remote_main or remote_main[0] != local:
+        raise ReleaseError("Local main must match origin/main; fetch/pull first")
+    # Refuse existing local or remote release branches; never overwrite or reset one.
+    if command("git", "show-ref", "--verify", "--quiet",
+               f"refs/heads/{branch}", check=False).returncode == 0:
+        raise ReleaseError(f"Local branch {branch} already exists")
+    if output("git", "ls-remote", "--heads", "origin", f"refs/heads/{branch}"):
+        raise ReleaseError(f"Remote branch {branch} already exists")
     if output("git", "ls-remote", "--tags", "origin", f"refs/tags/{version}"):
         raise ReleaseError(f"Tag {version} already exists; never overwrite a release")
     if command("gh", "release", "view", version, "-R", REPO, check=False).returncode == 0:
         raise ReleaseError(f"GitHub Release {version} already exists")
     return branch, local
+
+
+def create_release_branch(branch: str, main_sha: str) -> None:
+    """Create locally and push without allowing a remote branch overwrite."""
+    # Detect races since preflight, including an independent release creator.
+    if output("git", "rev-parse", "HEAD") != main_sha:
+        raise ReleaseError("HEAD changed after preflight")
+    if output("git", "branch", "--show-current") != "main":
+        raise ReleaseError("Branch changed after preflight")
+    if command("git", "status", "--porcelain").stdout.strip():
+        raise ReleaseError("Worktree changed after preflight")
+    remote_main = output("git", "ls-remote", "origin", "refs/heads/main").split()
+    if not remote_main or remote_main[0] != main_sha:
+        raise ReleaseError("origin/main changed after preflight; restart from updated main")
+    if output("git", "ls-remote", "--heads", "origin", f"refs/heads/{branch}"):
+        raise ReleaseError(f"Remote branch {branch} already exists")
+    command("git", "switch", "-c", branch)
+    # A non-force push cannot overwrite another branch; force is never used.
+    command("git", "push", "-u", "origin", branch)
+    pushed = output("git", "ls-remote", "--heads", "origin", f"refs/heads/{branch}").split()
+    if not pushed or pushed[0] != main_sha:
+        raise ReleaseError(f"Release branch {branch} was not published at the expected commit")
+
 
 
 def one_replace(text: str, pattern: str, replacement: str, label: str) -> str:
@@ -193,9 +223,9 @@ def main(argv: list[str] | None = None) -> int:
     if not VERSION.fullmatch(args.version):
         parser.error("Version must be X.Y.Z without a v prefix")
     try:
-        branch, _ = require_clean_release_branch(args.version)
+        branch, main_sha = require_release_preflight(args.version)
         changes = proposed_files(args.version, args.notes_file)
-        print(f"Release: {args.version}\nSource branch: {branch}")
+        print(f"Release: {args.version}\nSource: clean main ({main_sha})\nNew branch: {branch}")
         print(f"Debian version: {args.version}-1\n")
         print(changes[ROOT / "docs" / "release-notes.md"])
         if not args.yes:
@@ -208,6 +238,8 @@ def main(argv: list[str] | None = None) -> int:
             if answer.strip().lower() not in ("y", "yes"):
                 raise ReleaseError("Release cancelled without file changes")
 
+        create_release_branch(branch, main_sha)
+        print(f"Created and pushed {branch}", flush=True)
         for path, contents in changes.items():
             path.write_text(contents)
         relative = [str(path.relative_to(ROOT)) for path in changes]
