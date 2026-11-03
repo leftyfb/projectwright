@@ -4,6 +4,10 @@ Projectwright turns your requirements into a reviewable queue of small developme
 
 Hermes is the AI developer: it plans and edits using your configured model and tools. Projectwright manages the requirements, queue, safety checks, progress and approval gates. Planning proposes work; it does not authorize execution. Execution is a separate, explicit action.
 
+## Let an LLM draft your requirements
+
+You do not need to write a large specification from scratch. Describe your project to Hermes or another LLM, ask it to clarify uncertainties, and have it draft a complete `requirements.md` using the [copyable prompt in the onboarding guide](docs/llm-requirements-onboarding.md). For a greenfield project, the LLM may propose tests, files, and acceptance commands as future deliverables—but proposals must be clearly marked and verified before use. Review every decision and authorized path yourself; never present nonexistent tests or unverified commands as already working. Save the reviewed draft as the Projectwright project's `requirements.md` before planning.
+
 ## Install and set up
 
 Configure the [signed APT repository](docs/apt-repository.md), including verifying its signing-key fingerprint, then run as your normal user:
@@ -18,54 +22,47 @@ Do not run `pw setup` with sudo. Hermes CLI must already be installed and config
 
 ## Quick start
 
-Use a disposable, initialized Git repository for a first run. Projectwright creates its own state directory and connects to the repository; it does not clone, initialize, or duplicate it. Replace the example path with the path to your existing repository.
+1. Describe the project to Hermes or another LLM; use the prompt in the [onboarding guide](docs/llm-requirements-onboarding.md) to ask questions and draft requirements.
+2. Review the draft, resolve open decisions, and save the approved Markdown draft locally as `requirements.md`.
+3. Connect an existing, initialized Git repository and initialize Projectwright:
 
-```sh
-pw init --project myproject --repo ~/repos/myproject
-pw requirements --project myproject --edit
-pw plan --project myproject
-pw status --project myproject
-```
+   ```sh
+   pw init --project myproject --repo ~/repos/myproject
+   ```
 
-Write the requirements as goals and explicitly named milestones. Save and close the editor. `pw plan` is your explicit authorization to plan: it enables planning and asks Hermes to prepare or review the queue. Execution remains disabled. Review `queue.md` and the proposed tasks before proceeding. Planning requires a working Hermes CLI/provider and requirements with named milestones.
+   Project state normally lives at `~/.config/projects/myproject`; the repository remains at `~/repos/myproject`. `pw init` does not create or modify the repository.
+4. Put the reviewed draft at `~/.config/projects/myproject/requirements.md` (or use the actual configured project-state path), then explicitly plan:
 
-When you are ready for a real code change, start a manually confirmed worker run:
+   ```sh
+   pw plan --project myproject
+   ```
 
-```sh
-pw start --project myproject
-```
+5. Review the generated queue and blockers:
 
-Confirm at the prompt. `pw start` authorizes one manual dispatcher run; it does not change the project's persistent execution setting, install a timer, or enable recurring automation. The worker still applies Projectwright's Git-scope, journal, recovery and task-sequencing checks. Run `pw status --project myproject` to check progress, then review the work log, results, and `git diff` in your repository. Run `pw start` again to manually process another task. To decline the confirmation, answer no; no task is launched and project settings remain unchanged.
+   ```sh
+   pw status --project myproject
+   ```
 
-Persistent execution is a separate, explicit setting used by recurring dispatch. First authorize that setting, then install and enable a timer only if you intend the project to run unattended:
+   Inspect `queue.md` and proposed task scopes before proceeding.
+6. Manually authorize one task:
 
-```sh
-pw authorize-execution --project myproject --yes
-pw timer install-disabled myproject
-pw timer enable myproject
-```
+   ```sh
+   pw start --project myproject
+   ```
 
-`pw authorize-execution` does not install or start a timer. `install-disabled` writes the user timer units without enabling them; `enable` starts the installed timer. Use `pw timer disable myproject` to stop recurring runs and `pw timer status myproject` to inspect the timer. These timer commands are separate from the one-task `pw start` path.
+   Confirm at the prompt. This runs one manual dispatcher cycle; it does not enable persistent or recurring execution.
+7. Test the work and inspect its results and Git diff. A passing test or completed task is not milestone acceptance. Human milestone approval/rejection is supported through the configured Telegram callback flow; if that integration is not configured and enabled, acceptance remains blocked. There is no separate manual operator approval command documented.
+8. Review the results and Git diff, update requirements if needed, then repeat planning, queue review, and one-task execution until complete.
 
-Projects normally live at `$XDG_CONFIG_HOME/projects/myproject` (usually `~/.config/projects/myproject`). An existing repository can be elsewhere, such as `~/repos/myproject`. To use another Projectwright config home, pass `--config-dir /absolute/config/home` to each command; its projects are stored below `projects/`. The default selector retains compatibility with older `~/.config/projectwright/projects` and `~/.hermes/projects` locations without moving or deleting them. See [configuration paths](docs/configuration-home.md).
+See the [full onboarding guide](docs/llm-requirements-onboarding.md) for the requirements format, paths, approvals, and manual-versus-recurring execution. Recurring execution is a separate opt-in; see [CLI reference](docs/cli.md) and [operator manual](docs/manual.md).
 
-`pw status` summarizes planning and execution state, queue progress, current decision, blockers and the next action. Use `pw status --project myproject --json` for machine-readable output.
+## Documentation
 
-## Reviewing work and approvals
-
-A successful test, completed queue checkbox, worker report or Git commit is not milestone acceptance. Projectwright never infers acceptance from those signals. When Telegram approvals are configured, inspect the proposed work and use the notification's Approve or Reject button; the manager keeps later work behind the milestone gate until that decision. Without the optional approval integration, the gate remains blocked for a human decision. See [Telegram approval setup](docs/user-approval-setup.md).
-
-Recurring automation is also optional and is not enabled by these steps. See `pw timer --help` and the [operator manual](docs/manual.md) before separately configuring a project timer.
-
-## Limits and advanced documentation
-
-A Projectwright project controls one Git worktree. An application repository may be located outside the Projectwright state directory, but coordinated execution that modifies multiple repositories as one task is not supported. Use separate Projectwright projects and review them independently; do not weaken repository scope checks.
-
+- [LLM-assisted requirements and onboarding](docs/llm-requirements-onboarding.md)
 - [CLI reference](docs/cli.md)
 - [Workflow and milestone gates](docs/workflow.md)
 - [Configuration and default paths](docs/configuration-home.md)
-- [User and operator manual](docs/manual.md) — safety, recovery and operations
+- [User and operator manual](docs/manual.md)
 - [Provider adapters](docs/provider-adapters.md)
 - [Telegram approval setup](docs/user-approval-setup.md)
-- [Coverage boundaries](docs/test-coverage-matrix.md)
 - [APT installation](docs/apt-repository.md)
