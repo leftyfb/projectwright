@@ -64,6 +64,37 @@ class ReleaseHelperTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             release.main(["v0.1.2", "--yes"])
 
+    def test_yes_no_confirmation_is_opt_in_and_default_no(self):
+        # Stub all release preparation. A successful confirmation reaches git add;
+        # denied/empty input must never invoke it.
+        with patch.object(release, "require_clean_release_branch",
+                          return_value=("release/0.1.6", "a" * 40)), \
+             patch.object(release, "proposed_files", return_value={}), \
+             patch.object(release.sys.stdin, "isatty", return_value=True), \
+             patch.object(release, "command") as command:
+            for response in ("", "n", "N", "no", "maybe"):
+                command.reset_mock()
+                with self.subTest(response=response), \
+                     patch("builtins.input", return_value=response):
+                    self.assertEqual(release.main(["0.1.6"]), 1)
+                    command.assert_not_called()
+            for response in ("y", "Y", "yes", " YES "):
+                command.reset_mock()
+                with self.subTest(response=response), \
+                     patch("builtins.input", return_value=response):
+                    self.assertEqual(release.main(["0.1.6"]), 1)
+                    self.assertEqual(command.call_args.args[:2], ("git", "add"))
+
+    def test_eof_confirmation_cancels_without_changes(self):
+        with patch.object(release, "require_clean_release_branch",
+                          return_value=("release/0.1.6", "a" * 40)), \
+             patch.object(release, "proposed_files", return_value={}), \
+             patch.object(release.sys.stdin, "isatty", return_value=True), \
+             patch("builtins.input", side_effect=EOFError), \
+             patch.object(release, "command") as command:
+            self.assertEqual(release.main(["0.1.6"]), 1)
+            command.assert_not_called()
+
     def test_dispatch_uses_explicit_workflow_and_ref(self):
         with patch.object(release, "output",
                           return_value="https://github.com/leftyfb/projectwright/actions/runs/12345") as called:
