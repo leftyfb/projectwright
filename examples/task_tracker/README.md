@@ -4,22 +4,28 @@ This repository is intentionally a starter, not a finished application. It conta
 
 ## Before you begin
 
-Install Projectwright and configure Hermes with your normal AI provider as described in the [signed APT installation guide](../../docs/apt-repository.md). Projectwright's supported Ubuntu releases are 24.04 LTS and 26.04 LTS; the hosted package-install matrix covers both, while manual APT-repository installation was verified on 26.04 only and remains deferred on 24.04. This example does not ask you to configure Telegram. M1 can be planned, executed, tested, and reviewed without Telegram, but completing M1 acceptance and advancing to M2 require a real Telegram approval callback. The example is therefore not an offline-testable end-to-end M1-to-M2 lifecycle.
+Install Projectwright and configure Hermes with your normal AI provider as described in the [signed APT installation guide](https://github.com/leftyfb/projectwright/blob/main/docs/apt-repository.md). Projectwright's supported Ubuntu releases are 24.04 LTS and 26.04 LTS; the hosted package-install matrix covers both, while manual APT-repository installation was verified on 26.04 only and remains deferred on 24.04. This example does not ask you to configure Telegram. M1 can be planned, executed, tested, and reviewed without Telegram, but completing M1 acceptance and advancing to M2 require a real Telegram approval callback. The example is therefore not an offline-testable end-to-end M1-to-M2 lifecycle.
 
-Commands below assume the Projectwright CLI is `pw`, Python 3 is `python3`, and the example repository is `~/projects/task-tracker`. Set `PROJECTWRIGHT_CHECKOUT` to the path of your Projectwright source checkout before copying the starter file. Run commands in the example repository unless indicated otherwise. Avoid using a real project directory: this walkthrough creates a disposable Git repository and its own Projectwright state.
+Commands below assume the Projectwright CLI is `pw`, Python 3 is `python3`, and the example repository is `~/projects/task-tracker`. The Debian package includes the starter file at `/usr/share/doc/projectwright/examples/task_tracker/starter/README.md`; you do **not** need to clone the Projectwright source. If you are running from a source checkout instead of the Debian package, set `PROJECTWRIGHT_CHECKOUT` to your checkout path and use the fallback copy command below. Run commands in the example repository unless indicated otherwise. Avoid using a real project directory: this walkthrough creates a disposable Git repository and its own Projectwright state.
 
 ## 1. Create a disposable starter Git repository
 
 ```sh
-PROJECTWRIGHT_CHECKOUT="$HOME/repos/projectwright" # change if your checkout is elsewhere
 mkdir -p ~/projects/task-tracker
 cd ~/projects/task-tracker
 git init -b main
 ```
 
-Copy the intentionally minimal starter README from the Projectwright checkout, then commit it:
+Copy the intentionally minimal starter README installed by the Debian package, then commit it:
 
 ```sh
+cp /usr/share/doc/projectwright/examples/task_tracker/starter/README.md README.md
+```
+
+If you are working from the source checkout rather than an installed Debian package, use this instead:
+
+```sh
+PROJECTWRIGHT_CHECKOUT="$HOME/repos/projectwright" # change to your actual checkout
 cp "$PROJECTWRIGHT_CHECKOUT/examples/task_tracker/starter/README.md" README.md
 ```
 
@@ -106,7 +112,7 @@ Repeat planning/review and one-shot starts only as appropriate for the remaining
 
 ## 5. Human acceptance and next milestone
 
-A passing test, completed queue, or commit is not milestone approval. Projectwright records human acceptance through its configured Telegram approval callback. If Telegram is not configured, review is still useful, but the acceptance gate is intentionally blocked: do not edit receipts, check queue boxes, or otherwise bypass it. Set up Telegram only if you want to exercise the real approval callback, following Projectwright's Telegram approval setup and authorized-user safeguards.
+A passing test, completed queue, or commit is not milestone approval. Projectwright records human acceptance through its configured Telegram approval callback. If Telegram is not configured, review is still useful, but the acceptance gate is intentionally blocked: do not edit receipts, check queue boxes, or otherwise bypass it. Set up Telegram only if you want to exercise the real approval callback, following [Projectwright's Telegram approval setup](https://github.com/leftyfb/projectwright/blob/main/docs/user-approval-setup.md) and authorized-user safeguards.
 
 After M1's work has been reviewed and accepted through the supported Telegram callback, refresh the plan and status, verify that M2 is now the active milestone, then use `pw start --project task-tracker-example` for one task at a time. Repeat review, validation, and human acceptance. Without Telegram acceptance, stop at the gate rather than claiming progression; M2 execution is not available through this offline walkthrough.
 
