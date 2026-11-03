@@ -25,7 +25,8 @@ The script:
 1. Verifies the correct repository, clean release branch and unused version.
 2. Updates `pyproject.toml` and Debian control/output versions, and generates
    release notes from commit subjects. It prints the complete notes and asks
-   you to type `publish X.Y.Z` **before changing any source files**.
+   `Publish Projectwright X.Y.Z? [y/N]` **before changing any source files**.
+   Only `y` or `yes` confirms; Enter or any other response cancels.
 3. Commits and pushes the release preparation to that branch.
 4. Dispatches and waits for the hosted Ubuntu 24.04/26.04 release matrix on
    the exact pushed SHA. Failure stops the release.
