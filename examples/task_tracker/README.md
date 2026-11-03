@@ -1,6 +1,6 @@
-# Task Tracker CLI — Projectwright example
+# Task Tracker CLI — build-it-yourself walkthrough
 
-This repository is intentionally a starter, not a finished application. It contains this walkthrough only; Projectwright and Hermes should implement the Python CLI in the milestones below. The project uses Python's standard library and a local JSON file. It needs no Telegram, cloud service, network access, credentials, or extra package.
+This is a **guided build-it-yourself tutorial**, not a ready-to-run demo. For a preconfigured sample with an existing repository and queue, see the [ready-to-run demo](https://github.com/leftyfb/projectwright/blob/main/examples/ready_demo/README.md). This repository is intentionally a starter, not a finished application. It contains this walkthrough only; Projectwright and Hermes should implement the Python CLI in the milestones below. The project uses Python's standard library and a local JSON file. It needs no Telegram, cloud service, network access, credentials, or extra package.
 
 ## Before you begin
 
