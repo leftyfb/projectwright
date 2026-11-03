@@ -4,6 +4,8 @@ Maintenance and distribution release since 0.1.4.
 
 ## Changes
 
+- fix: request JSON status in Debian compatibility matrix
+- release: prepare Projectwright 0.1.5
 - test: exercise task tracker example lifecycle
 - docs: add Projectwright task tracker walkthrough
 - docs: clarify greenfield acceptance proposals
