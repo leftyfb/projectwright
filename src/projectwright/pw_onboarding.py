@@ -94,11 +94,42 @@ def authorize_planning(project: str) -> int:
     if not requirements.is_file():
         print("Requirements are missing. Create them with: pw requirements --project " + project + " --edit", file=sys.stderr)
         return 2
+    from pw_milestone_guard import validate_requirements
+    diagnostics = validate_requirements(
+        requirements.read_text(encoding="utf-8"),
+        strict=config.get("planning", {}).get("milestone_sequence") == "strict",
+        project_dir=config_path.parent)["issues"]
+    if diagnostics:
+        print("pw plan: requirements validation failed; planning remains disabled", file=sys.stderr)
+        for item in diagnostics:
+            if isinstance(item, dict) and item.get("message"):
+                location = ""
+                if item.get("milestone"):
+                    location = f" (requirement {item.get('requirement', 'unknown')}, milestone {item['milestone']})"
+                print(f"  -{location} {item['message']}", file=sys.stderr)
+        return 2
     planning = config.setdefault("planning", {})
     planning["enabled"] = True  # invoking pw plan is explicit planning authorization only
     _write(config_path, config)
     cmd = [sys.executable, "-B", "-m", "pw_queue_manager", "--project", project, "--once"]
-    return subprocess.run(cmd, check=False).returncode
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if result.returncode:
+        detail = (result.stdout or "").strip()
+        try:
+            payload = json.loads(detail)
+        except (TypeError, json.JSONDecodeError):
+            payload = None
+        if isinstance(payload, dict):
+            reason = payload.get("reason") or "Planning was blocked"
+            blockers = payload.get("blockers") or []
+            suffix = f" ({', '.join(str(x) for x in blockers)})" if blockers else ""
+            print(f"pw plan: {reason}{suffix}", file=sys.stderr)
+            for item in payload.get("diagnostics") or []:
+                if isinstance(item, dict) and item.get("message"):
+                    print(f"  - {item['message']}", file=sys.stderr)
+        elif result.stderr:
+            print(result.stderr, file=sys.stderr, end="" if result.stderr.endswith("\n") else "\n")
+    return result.returncode
 
 
 def start(project: str, confirmed: bool) -> int:
@@ -233,6 +264,10 @@ def status(project: str, as_json: bool) -> int:
         next_action = "Verify the selected project configuration and manager identity, then rerun pw status"
     elif report.get("decision") in {"unknown", None}:
         next_action = "Verify the configured worktree exists and is a Git repository, then rerun pw status"
+    elif report.get("blockers") and "requirements_missing" in report["blockers"]:
+        next_action = f"Create and complete requirements.md with: pw requirements --project {project} --edit"
+    elif report.get("blockers") and "requirements_invalid" in report["blockers"]:
+        next_action = f"Correct the listed requirements diagnostics, then rerun: pw status --project {project}"
     elif report.get("decision") in {"blocked", "busy", "awaiting_acceptance", "quota_blocked"}:
         next_action = "Resolve the reported blocker or approval gate, then rerun pw status"
     elif type(report.get("pending")) is not int:
@@ -249,6 +284,7 @@ def status(project: str, as_json: bool) -> int:
     print(f"Project: {project}")
     print(f"Worktree: {report.get('worktree') or 'unknown'}")
     print(f"Planning: {'enabled' if planning_enabled else 'disabled' if planning_enabled is not None else 'unknown'}")
+    print(f"Planning decision: {report.get('decision', 'unknown')}")
     print(f"Execution: {'enabled' if execution_enabled else 'disabled' if execution_enabled is not None else 'unknown'}")
     for key, label in (("pending", "Queue pending"), ("completed", "Queue completed"), ("queue_blocked", "Queue blocked")):
         if key in report:
@@ -258,6 +294,12 @@ def status(project: str, as_json: bool) -> int:
     print(f"Current task: {report.get('current_task') or 'none reported'}")
     blockers = report.get("blockers")
     print("Blockers: " + (", ".join(blockers) if isinstance(blockers, list) and blockers else "none reported"))
+    for item in report.get("diagnostics", []):
+        if isinstance(item, dict) and isinstance(item.get("message"), str):
+            location = ""
+            if item.get("milestone"):
+                location = f" (requirement {item.get('requirement', 'unknown')}, milestone {item['milestone']})"
+            print(f"Requirement issue{location}: {item['message']}")
     print("Recurring execution: " + report["recurring_execution"])
     print("Next action: " + next_action)
     return status_returncode

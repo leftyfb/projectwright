@@ -180,6 +180,28 @@ class TestTick(DispatchFixture):
                     report,
                 )
 
+    def test_blocked_response_validates_diagnostic_field_shapes(self):
+        valid = {"project": self.project, "decision": "blocked", "reason": "requirements invalid",
+                 "blockers": ["requirements_invalid"],
+                 "diagnostics": [{"code": "missing_acceptance", "message": "Add Acceptance"}],
+                 "requirements_file": None, "requirements_exists": True,
+                 "requirements_valid": False, "requirements_milestones": []}
+        self.assertEqual(dispatch.parse_manager_response(json.dumps(valid), self.project, 2), valid)
+        malformed = [
+            {**valid, "blockers": "requirements_invalid"},
+            {**valid, "blockers": [1]},
+            {**valid, "diagnostics": 7},
+            {**valid, "diagnostics": ["bad"]},
+            {**valid, "diagnostics": [{"code": "missing_acceptance"}]},
+            {**valid, "requirements_file": 3},
+            {**valid, "requirements_exists": "yes"},
+            {**valid, "requirements_valid": []},
+            {**valid, "requirements_milestones": "DEMO-1-M1"},
+        ]
+        for report in malformed:
+            with self.subTest(report=report), self.assertRaises(ValueError):
+                dispatch.parse_manager_response(json.dumps(report), self.project, 2)
+
     def test_ready_for_planner_status_decision_is_refused(self):
         report = {
             "project": self.project,
@@ -251,6 +273,32 @@ class TestTick(DispatchFixture):
             dispatch.parse_manager_response(json.dumps(report), self.project, manager.once_exit_code("queued")),
             report,
         )
+
+    def test_manager_accepts_strict_legacy_policy_without_embedded_duplicate(self):
+        repo = self.root / "worktree"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True)
+        (repo / "README.md").write_text("fixture\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "add", "README.md"], check=True)
+        subprocess.run([
+            "git", "-C", str(repo), "-c", "user.name=Fixture",
+            "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture",
+        ], check=True)
+        requirements = self.project_dir / "requirements.md"
+        requirements.write_text(
+            "## TEST-001 — Fixture requirement\n### TEST-001-M1 — Fixture milestone\n",
+            encoding="utf-8",
+        )
+        (self.project_dir / "telegram_acceptance.json").write_text(json.dumps({"version": 1, "milestones": {
+            "TEST-001-M1": {"requirement": "TEST-001", "command": ["true"],
+                            "scope_paths": ["README.md"]}}}), encoding="utf-8")
+        self.config(worktree=repo, planning={
+            "enabled": False, "milestone_sequence": "strict",
+            "requirements_file": str(requirements),
+        })
+        report = manager.inspect(self.project, self.root / "projects", mode="status")
+        self.assertTrue(report["requirements_valid"], report["diagnostics"])
+        self.assertNotIn("requirements_invalid", report["blockers"])
 
     def test_valid_exit_code_contract_preserves_busy_and_no_op(self):
         expected = {
