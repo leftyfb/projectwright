@@ -4,13 +4,14 @@ This repository is intentionally a starter, not a finished application. It conta
 
 ## Before you begin
 
-Install Projectwright and configure Hermes with your normal AI provider as described in the main Projectwright installation guide. This example does not ask you to configure Telegram. Telegram is only required for Projectwright's human milestone-approval callback; without it, you can run and review the work, but cannot record acceptance or advance past the acceptance gate.
+Install Projectwright and configure Hermes with your normal AI provider as described in the [signed APT installation guide](../../docs/apt-repository.md). Projectwright's supported Ubuntu releases are 24.04 LTS and 26.04 LTS; the hosted package-install matrix covers both, while manual APT-repository installation was verified on 26.04 only and remains deferred on 24.04. This example does not ask you to configure Telegram. M1 can be planned, executed, tested, and reviewed without Telegram, but completing M1 acceptance and advancing to M2 require a real Telegram approval callback. The example is therefore not an offline-testable end-to-end M1-to-M2 lifecycle.
 
-Commands below assume the Projectwright CLI is `pw`, Python 3 is `python3`, and the example repository is `~/projects/task-tracker`. Run commands in that repository unless indicated otherwise. Avoid using a real project directory: this walkthrough creates a disposable Git repository and its own Projectwright state.
+Commands below assume the Projectwright CLI is `pw`, Python 3 is `python3`, and the example repository is `~/projects/task-tracker`. Set `PROJECTWRIGHT_CHECKOUT` to the path of your Projectwright source checkout before copying the starter file. Run commands in the example repository unless indicated otherwise. Avoid using a real project directory: this walkthrough creates a disposable Git repository and its own Projectwright state.
 
 ## 1. Create a disposable starter Git repository
 
 ```sh
+PROJECTWRIGHT_CHECKOUT="$HOME/repos/projectwright" # change if your checkout is elsewhere
 mkdir -p ~/projects/task-tracker
 cd ~/projects/task-tracker
 git init -b main
@@ -19,7 +20,7 @@ git init -b main
 Copy the intentionally minimal starter README from the Projectwright checkout, then commit it:
 
 ```sh
-cp ~/repos/projectwright/examples/task_tracker/starter/README.md README.md
+cp "$PROJECTWRIGHT_CHECKOUT/examples/task_tracker/starter/README.md" README.md
 ```
 
 ```sh
@@ -107,7 +108,13 @@ Repeat planning/review and one-shot starts only as appropriate for the remaining
 
 A passing test, completed queue, or commit is not milestone approval. Projectwright records human acceptance through its configured Telegram approval callback. If Telegram is not configured, review is still useful, but the acceptance gate is intentionally blocked: do not edit receipts, check queue boxes, or otherwise bypass it. Set up Telegram only if you want to exercise the real approval callback, following Projectwright's Telegram approval setup and authorized-user safeguards.
 
-After M1's work has been reviewed and accepted through the supported callback, refresh the plan and status, verify that M2 is now the active milestone, then use `pw start --project task-tracker-example` for one task at a time. Repeat review, validation, and human acceptance. Without Telegram acceptance, stop at the gate rather than claiming progression.
+After M1's work has been reviewed and accepted through the supported Telegram callback, refresh the plan and status, verify that M2 is now the active milestone, then use `pw start --project task-tracker-example` for one task at a time. Repeat review, validation, and human acceptance. Without Telegram acceptance, stop at the gate rather than claiming progression; M2 execution is not available through this offline walkthrough.
+
+## What automated and live testing cover
+
+The repository's automated `tests/integration/test_task_tracker_projectwright_e2e.py` uses a disposable Git repository, isolated Projectwright state, the installed-style `pw` entrypoint, and a controlled fake Hermes provider. It covers initialization, requirements, planning/queue creation, a one-shot run, the separate execution-authorization state, a manually driven task cycle, and the M1 acceptance block without Telegram. It does not test a real Hermes provider, Telegram delivery/callbacks, or M2 progression.
+
+A separate live-Hermes smoke test performed initialization, planning, and one one-shot task, then stopped at the genuine M1 human-acceptance gate. It did not record approval, test Telegram, or advance to M2. The automated fake-provider test and that limited live smoke test are distinct evidence; neither claims the full lifecycle was completed.
 
 ## Expected outcomes
 
@@ -117,6 +124,7 @@ After M1's work has been reviewed and accepted through the supported callback, r
 - The starter repository contains no completed tracker. Its source and tests appear only as Projectwright executes approved tasks.
 - When built, `python3 -B -m unittest discover -s tests -p test_task_tracker_m1.py` and the corresponding M2 command should pass. Initially they are expected to fail because the example is deliberately unimplemented.
 - With Telegram approval unavailable, the workflow is verified only through task completion/review, not through milestone acceptance or progression.
+- Reaching M2 requires a real human acceptance through Telegram; do not treat the fake-provider integration test as evidence of Telegram or M2 behavior.
 
 ## Troubleshooting
 
