@@ -20,6 +20,18 @@ pw setup
 
 Do not run `pw setup` with sudo. Hermes CLI must already be installed and configured. Telegram setup is optional.
 
+## Try the Task Tracker example
+
+A disposable, beginner-friendly [Task Tracker walkthrough](examples/task_tracker/README.md) demonstrates `pw init`, requirements, planning, a one-task Hermes run, and review. The task tracker is **not prebuilt**: Projectwright generates it from the example requirements.
+
+The Debian package also installs this walkthrough and the starter README under `/usr/share/doc/projectwright/examples/task_tracker/`. Open the walkthrough after `sudo apt install projectwright`:
+
+```sh
+less /usr/share/doc/projectwright/examples/task_tracker/README.md
+```
+
+The initial milestone can be worked and reviewed without Telegram. Advancing to the next milestone requires a real Telegram approval callback; the demo does not silently bypass the approval gate.
+
 ## Quick start
 
 1. Describe the project to Hermes or another LLM; use the prompt in the [onboarding guide](docs/llm-requirements-onboarding.md) to ask questions and draft requirements.
