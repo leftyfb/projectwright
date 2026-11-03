@@ -92,6 +92,7 @@ class ReleaseHelperTests(unittest.TestCase):
                         create_branch.assert_not_called()
                 for response in ("y", "Y", "yes", " YES "):
                     command.reset_mock()
+                    create_branch.reset_mock()
                     with self.subTest(response=response), \
                          patch("builtins.input", return_value=response):
                         self.assertEqual(release.main(["0.1.6"]), 1)
