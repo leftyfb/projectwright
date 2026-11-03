@@ -6,7 +6,7 @@ Hermes is the AI developer: it plans and edits using your configured model and t
 
 ## Let an LLM draft your requirements
 
-You do not need to write a large specification from scratch. Describe your project to Hermes or another LLM, ask it to clarify uncertainties, and have it draft a complete `requirements.md` using the [copyable prompt in the onboarding guide](docs/llm-requirements-onboarding.md). Review every decision, acceptance command, and authorized path yourself; the model must not invent capabilities or tests. Save the approved draft as the Projectwright project's `requirements.md` before planning.
+You do not need to write a large specification from scratch. Describe your project to Hermes or another LLM, ask it to clarify uncertainties, and have it draft a complete `requirements.md` using the [copyable prompt in the onboarding guide](docs/llm-requirements-onboarding.md). For a greenfield project, the LLM may propose tests, files, and acceptance commands as future deliverables—but proposals must be clearly marked and verified before use. Review every decision and authorized path yourself; never present nonexistent tests or unverified commands as already working. Save the reviewed draft as the Projectwright project's `requirements.md` before planning.
 
 ## Install and set up
 
@@ -51,7 +51,7 @@ Do not run `pw setup` with sudo. Hermes CLI must already be installed and config
    ```
 
    Confirm at the prompt. This runs one manual dispatcher cycle; it does not enable persistent or recurring execution.
-7. Test the work and explicitly approve or reject milestone acceptance when requested. A passing test or completed task is not approval. Telegram approvals are optional, but without the configured integration and an authorized human callback, milestone acceptance remains blocked.
+7. Test the work and inspect its results and Git diff. A passing test or completed task is not milestone acceptance. Human milestone approval/rejection is supported through the configured Telegram callback flow; if that integration is not configured and enabled, acceptance remains blocked. There is no separate manual operator approval command documented.
 8. Review the results and Git diff, update requirements if needed, then repeat planning, queue review, and one-task execution until complete.
 
 See the [full onboarding guide](docs/llm-requirements-onboarding.md) for the requirements format, paths, approvals, and manual-versus-recurring execution. Recurring execution is a separate opt-in; see [CLI reference](docs/cli.md) and [operator manual](docs/manual.md).
