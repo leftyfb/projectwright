@@ -59,7 +59,7 @@ class RealSubprocessChain(unittest.TestCase):
         self.queue = self.project / "queue.md"
         self.queue.write_text("- [ ] **P101 — READ** inspect the isolated fixture\n")
         req = self.project / "requirements.md"
-        req.write_text("## DEMO-1 — Disposable requirement\n\n### DEMO-1-M1 — Read fixture\n")
+        req.write_text("## DEMO-1 — Disposable requirement\n\n### DEMO-1-M1 — Read fixture\n\n#### Acceptance\n- **Command:** `python3 -B -m unittest --help`\n- **Scope:** `probe.txt`\n")
         self.hermes = self.base / "fake-hermes"
         self.hermes.write_text(
             "#!/usr/bin/env python3\n"
@@ -166,13 +166,13 @@ class RealSubprocessChain(unittest.TestCase):
         )
         self.config["planning"]["milestone_sequence"] = "strict"
         self.save_config()
-        (self.project / "telegram_acceptance.json").write_text(json.dumps({
-            "version": 1,
-            "milestones": {"DEMO-1-M1": {
-                "requirement": "DEMO-1", "command": ["/bin/true"],
-                "scope_paths": ["probe.txt"],
-            }},
-        }))
+        (self.project / "requirements.md").write_text(
+            "## DEMO-1 — Disposable requirement\n\n"
+            "### DEMO-1-M1 — Read fixture\n"
+            "#### Acceptance\n"
+            "- **Command:** `/bin/true`\n"
+            "- **Scope:** `probe.txt`\n"
+        )
 
     def one_shot_with_preflight_hook(self, hook):
         spec = importlib.util.spec_from_file_location(
@@ -211,12 +211,12 @@ class RealSubprocessChain(unittest.TestCase):
 
     def test_worker_rejects_acceptance_policy_changed_after_manager_preflight(self):
         self.strict_active_task()
-        policy_path = self.project / "telegram_acceptance.json"
+        policy_path = self.project / "requirements.md"
 
         def revoke_acceptance():
-            policy = json.loads(policy_path.read_text())
-            policy["milestones"]["DEMO-1-M1"]["scope_paths"] = []
-            policy_path.write_text(json.dumps(policy))
+            policy_path.write_text(policy_path.read_text().replace(
+                "- **Scope:** `probe.txt`", "- **Scope:** `../probe.txt`"
+            ))
 
         result = self.one_shot_with_preflight_hook(revoke_acceptance)
         self.assertNotEqual(result, 0)
@@ -254,7 +254,6 @@ class RealSubprocessChain(unittest.TestCase):
     def test_worker_rejects_future_milestone_queued_after_manager_preflight(self):
         self.strict_active_task()
         requirements_path = Path(self.config["planning"]["requirements_file"])
-        policy_path = self.project / "telegram_acceptance.json"
 
         def queue_future_milestone():
             requirements_path.write_text(
@@ -262,12 +261,6 @@ class RealSubprocessChain(unittest.TestCase):
                 "### DEMO-1-M1 — Read fixture\n\n"
                 "### DEMO-1-M2 — Follow-up fixture\n"
             )
-            policy = json.loads(policy_path.read_text())
-            policy["milestones"]["DEMO-1-M2"] = {
-                "requirement": "DEMO-1", "command": ["/bin/true"],
-                "scope_paths": ["probe.txt"],
-            }
-            policy_path.write_text(json.dumps(policy))
             self.queue.write_text(
                 "- [ ] **P102 — READ** DEMO-1 / DEMO-1-M2: inspect the follow-up fixture\n"
             )

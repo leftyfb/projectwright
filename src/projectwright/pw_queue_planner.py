@@ -151,16 +151,20 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
     req_setting = policy['requirements_file']
     if not policy['enabled']:
         return {**out, 'decision': 'disabled'}
-    if not isinstance(req_setting, str) or not req_setting:
-        return {**out, 'decision': 'blocked', 'reason': 'Requirements unset'}
-    req_file = Path(req_setting).expanduser()
-    if not req_file.is_file():
-        return {**out, 'decision': 'blocked', 'reason': 'Requirements file missing'}
+    req_file = Path(req_setting).expanduser() if isinstance(req_setting, str) and req_setting else None
     with lock.open('a+') as handle:
         try:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return {**out, 'decision': 'busy', 'reason': 'Project lock held; skip planning'}
+        if req_file is None:
+            return {**out, 'decision': 'blocked', 'reason': 'Requirements unset', 'blockers': ['requirements_missing'], 'diagnostics': [{'code': 'requirements_missing', 'message': 'Set planning.requirements_file or create requirements.md'}]}
+        if not req_file.is_file():
+            return {**out, 'decision': 'blocked', 'reason': 'Requirements file missing', 'blockers': ['requirements_missing'], 'diagnostics': [{'code': 'requirements_missing', 'message': 'Create it with pw requirements --project ' + project}]}
+        from pw_milestone_guard import validate_requirements
+        diagnostics = validate_requirements(req_file.read_text(encoding='utf-8'))['issues']
+        if diagnostics:
+            return {**out, 'decision': 'blocked', 'reason': 'Requirements validation failed', 'blockers': ['requirements_invalid'], 'diagnostics': diagnostics}
         queue_bytes = queue_file.read_bytes()
         req_bytes = req_file.read_bytes()
         queue = queue_bytes.decode('utf-8')

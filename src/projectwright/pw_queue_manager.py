@@ -220,9 +220,20 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
         requirements = Path(reqfile).expanduser() if isinstance(reqfile, str) and reqfile else None
         req_exists = bool(requirements and requirements.is_file())
         req_hash = hashlib.sha256(requirements.read_bytes()).hexdigest() if req_exists else None
+        diagnostics = []
+        requirements_validation = {'valid': False, 'milestones': []}
+        if not req_exists or requirements is None:
+            blockers.append('requirements_missing')
+            diagnostics.append({'code': 'requirements_missing', 'message': 'Requirements file is missing or unset; create it with pw requirements --project ' + project})
+        else:
+            from pw_milestone_guard import validate_requirements
+            requirements_validation = validate_requirements(requirements.read_text(encoding='utf-8'))
+            diagnostics = requirements_validation['issues']
+            if diagnostics:
+                blockers.append('requirements_invalid')
         # A fully verified set of explicitly named milestones needs no model call.
         # Fail open to a review if requirements contain no explicit milestone headings.
-        if req_exists and not blockers:
+        if req_exists and not diagnostics and not blockers:
             from project_milestone_guard import current_receipts, milestone_ids
             milestone_set = milestone_ids(requirements.read_text(encoding='utf-8'))
             receipts = current_receipts(read_json_optional(directory/'planning_state.json'),
@@ -256,7 +267,17 @@ def inspect(project: str, root: Path, *, mode: str, quota_evaluator=None) -> dic
                   'queue_sha256': hashlib.sha256(queue_bytes).hexdigest(),
                   'pending_tasks': summary['pending'],
                   'max_add_now': max(0, min(policy['batch'], policy['target']-summary['pending_count'], policy['cap']-summary['pending_count'])),
-                  'blockers': blockers, 'planning_enabled': policy['enabled']}
+                  'blockers': blockers, 'diagnostics': diagnostics,
+                  'requirements_file': reqfile, 'requirements_exists': req_exists,
+                  'requirements_valid': requirements_validation['valid'],
+                  'requirements_milestones': requirements_validation['milestones'],
+                  'planning_enabled': policy['enabled']}
+        if 'requirements_missing' in blockers or 'requirements_invalid' in blockers:
+            reason = ('Requirements are missing; create requirements.md before planning'
+                      if 'requirements_missing' in blockers else
+                      'Requirements need correction before planning')
+            result.update(decision='blocked', reason=reason)
+            return result
         # Strict milestone sequencing is opt-in and checked before quota / AI.
         if cfg.get('planning', {}).get('milestone_sequence') == 'strict' and not blockers and req_exists:
             from pw_milestone_sequence import evaluate

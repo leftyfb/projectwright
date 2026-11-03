@@ -236,6 +236,127 @@ def embedded_acceptance_policy(requirements: str) -> dict | None:
     return {'version': 1, 'milestones': milestones} if present else None
 
 
+def validate_requirements(requirements: str) -> dict:
+    """Return first-run diagnostics without raising on user-authored Markdown.
+
+    This is deliberately separate from ``embedded_acceptance_policy``: callers
+    need all actionable errors in one status/plan response, rather than the
+    first parser exception only.
+    """
+    issues = []
+    lines = requirements.splitlines()
+    requirement_re = re.compile(r'^\s*##\s+([A-Z][A-Z0-9]*-\d+)\s+[—-]\s+.+$')
+    milestone_re = re.compile(r'^\s*###\s+([A-Z][A-Z0-9]*-\d+(?:-[A-Z0-9]+)*)\s+[—-]\s+.+$')
+    requirement_ids = {m.group(1) for line in lines if (m := requirement_re.match(line))}
+    for number, line in enumerate(lines, 1):
+        if line.lstrip().startswith('##') and not line.lstrip().startswith('###'):
+            candidate = re.match(r'^\s*##\s+([A-Z][A-Z0-9]*-\d+)\b', line)
+            if candidate and not requirement_re.match(line):
+                issues.append({'code': 'malformed_requirement_heading', 'line': number,
+                               'requirement': candidate.group(1),
+                               'message': f'Requirement heading {candidate.group(1)} must use ## {candidate.group(1)} — title'})
+    if not requirement_ids and not any(issue['code'] == 'malformed_requirement_heading' for issue in issues):
+        issues.append({'code': 'missing_requirement_heading',
+                       'message': 'Add a requirement heading such as ## DEMO-1 — Goal'})
+    milestones = []
+    malformed_milestones = []
+    for number, line in enumerate(lines, 1):
+        match = milestone_re.match(line)
+        if match and re.search(r'-M\d+(?:-|$)', match.group(1)):
+            milestone = match.group(1)
+            milestones.append((milestone, number))
+            if milestone.rsplit('-M', 1)[0] not in requirement_ids:
+                issues.append({'code': 'missing_requirement_heading', 'line': number,
+                               'milestone': milestone,
+                               'message': f'Missing requirement heading for {milestone}'})
+        elif re.search(r'\b[A-Z][A-Z0-9]*-\d+-M\d+\b', line) and line.lstrip().startswith('#'):
+            malformed_id = line.lstrip('# ').split()[0]
+            malformed_milestones.append((malformed_id, number))
+            issues.append({'code': 'malformed_milestone_heading', 'line': number,
+                           'milestone': malformed_id,
+                           'message': f'Milestone heading {malformed_id} must use ### {malformed_id} — title'})
+    all_milestones = sorted(milestones + malformed_milestones, key=lambda item: item[1])
+    milestone_requirement_ids = {milestone.rsplit('-M', 1)[0] for milestone, _ in milestones}
+    for requirement_id in sorted(requirement_ids - milestone_requirement_ids):
+        issues.append({'code': 'missing_milestone_heading', 'requirement': requirement_id,
+                       'message': f'Requirement {requirement_id} defines no milestone headings'})
+    seen = set()
+    for milestone, line_number in all_milestones:
+        if milestone in seen:
+            issues.append({'code': 'duplicate_milestone_heading', 'line': line_number,
+                           'milestone': milestone, 'message': f'Duplicate milestone heading: {milestone}'})
+        seen.add(milestone)
+    for index, (milestone, line_number) in enumerate(all_milestones):
+        start = line_number
+        end = len(lines)
+        if index + 1 < len(all_milestones):
+            end = all_milestones[index + 1][1] - 1
+        body = lines[start:end]
+        acceptance_indexes = [i for i, line in enumerate(body)
+                              if re.match(r'^#{4,6}\s+Acceptance\s*$', line)]
+        if not acceptance_indexes:
+            issues.append({'code': 'missing_acceptance', 'line': line_number,
+                           'milestone': milestone,
+                           'message': f'Missing Acceptance section for {milestone}'})
+            continue
+        if len(acceptance_indexes) != 1:
+            issues.append({'code': 'duplicate_acceptance', 'line': line_number,
+                           'milestone': milestone,
+                           'message': f'Duplicate Acceptance sections for {milestone}'})
+            continue
+        acceptance = acceptance_indexes[0]
+        acceptance_depth = len(body[acceptance]) - len(body[acceptance].lstrip('#'))
+        acceptance_end = len(body)
+        for index in range(acceptance + 1, len(body)):
+            if re.match(r'^#{1,' + str(acceptance_depth) + r'}\s+', body[index]):
+                acceptance_end = index
+                break
+        command_values, scope_values = [], []
+        for entry in body[acceptance + 1:acceptance_end]:
+            if not entry.strip():
+                continue
+            command_match = re.fullmatch(r'\s*-\s+\*\*Command:\*\*\s+`([^`]+)`\s*', entry)
+            scope_match = re.fullmatch(r'\s*-\s+\*\*Scope:\*\*\s+`([^`]+)`\s*', entry)
+            if command_match:
+                command_values.append(command_match.group(1))
+            elif scope_match:
+                scope_values.append(scope_match.group(1))
+            else:
+                issues.append({'code': 'invalid_acceptance_entry', 'line': line_number,
+                               'milestone': milestone, 'message': f'Invalid Acceptance entry for {milestone}'})
+        if len(command_values) != 1:
+            issues.append({'code': 'missing_acceptance_command' if not command_values else 'invalid_acceptance_command',
+                           'line': line_number, 'milestone': milestone,
+                           'message': f'{milestone} Acceptance requires exactly one Command'})
+        else:
+            raw_command = command_values[0]
+            try:
+                command = shlex.split(raw_command)
+            except ValueError:
+                command = []
+            if (not command or any(token in raw_command for token in ('&&', '||', ';', '|', '>', '<', '$('))):
+                issues.append({'code': 'invalid_acceptance_command', 'line': line_number,
+                               'milestone': milestone,
+                               'message': f'Acceptance Command must be a literal executable argv for {milestone}'})
+        if not scope_values:
+            issues.append({'code': 'missing_acceptance_scope', 'line': line_number,
+                           'milestone': milestone, 'message': f'{milestone} Acceptance requires one or more Scope entries'})
+        if len(set(scope_values)) != len(scope_values):
+            issues.append({'code': 'invalid_acceptance_scope', 'line': line_number,
+                           'milestone': milestone,
+                           'message': f'{milestone} Acceptance Scope entries must be unique'})
+        for scope in scope_values:
+            if not _valid_scope_path(scope):
+                issues.append({'code': 'invalid_acceptance_scope', 'line': line_number,
+                               'milestone': milestone,
+                               'message': f'Acceptance Scope must be a literal relative path: {scope}'})
+    for issue in issues:
+        milestone = issue.get('milestone')
+        if isinstance(milestone, str) and '-M' in milestone:
+            issue.setdefault('requirement', milestone.rsplit('-M', 1)[0])
+    return {'valid': not issues, 'issues': issues, 'milestones': [m for m, _ in milestones]}
+
+
 def policy_for_project(project_dir: Path) -> dict | None:
     project_dir = Path(project_dir)
     config_path = project_dir / 'config.json'

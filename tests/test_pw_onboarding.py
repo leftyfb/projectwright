@@ -22,7 +22,12 @@ class OnboardingTests(unittest.TestCase):
         self.config = {"id": "demo", "planning": {"enabled": False, "requirements_file": str(self.project / "requirements.md")}, "execution": {"enabled": False}}
         self.config_path = self.project / "config.json"
         self.config_path.write_text(json.dumps(self.config))
-        (self.project / "requirements.md").write_text("# Requirements\n")
+        (self.project / "requirements.md").write_text("""## DEMO-1 — Goal
+### DEMO-1-M1 — First milestone
+#### Acceptance
+- **Command:** `/bin/true`
+- **Scope:** `README.md`
+""")
         self.env = patch.dict(os.environ, {"PROJECTWRIGHT_CONFIG_DIR": str(self.config_home)}, clear=False)
         self.env.start()
         self.addCleanup(self.env.stop)

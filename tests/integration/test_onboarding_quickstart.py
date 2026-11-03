@@ -98,6 +98,12 @@ pathlib.Path(report).write_text(json.dumps({"task_id":"P101","status":"completed
             # These are the commands shown by README, substituting a disposable repo.
             run("init", "--project", "myproject", "--repo", str(repo))
             run("requirements", "--project", "myproject", "--edit")
+            requirements = cfg_home / "projects/myproject/requirements.md"
+            requirements.write_text(requirements.read_text() + """
+#### Acceptance
+- **Command:** `python3 -B -m unittest --help`
+- **Scope:** `README.md`
+""")
             planned = run("plan", "--project", "myproject")
             self.assertIn("P101", (cfg_home / "projects/myproject/queue.md").read_text())
             status = run("status", "--project", "myproject")

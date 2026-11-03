@@ -45,7 +45,9 @@ MANAGER_EXIT_CODES = {
 DECISION_FIELDS = {
     'queued': {'project', 'decision', 'pending', 'added', 'task_ids', 'planning_mode', 'notes_sync'},
     'busy': {'project', 'decision', 'reason'},
-    'blocked': {'project', 'decision', 'reason', 'pending', 'milestone'},
+    'blocked': {'project', 'decision', 'reason', 'pending', 'milestone', 'blockers', 'diagnostics',
+                'requirements_file', 'requirements_exists', 'requirements_valid', 'requirements_milestones',
+                'planning_enabled'},
     'no_op': {'project', 'decision', 'pending', 'reason'},
     'disabled': {'project', 'decision'},
     'awaiting_acceptance': {'project', 'decision', 'pending', 'reason', 'milestone', 'milestones'},
@@ -121,6 +123,37 @@ def parse_manager_response(stdout, project, returncode):
         any(not isinstance(item, str) for item in report['milestones'])
     ):
         raise ValueError('manager milestones must be a string list')
+    if 'blockers' in report and (
+        not isinstance(report['blockers'], list) or
+        any(not isinstance(item, str) for item in report['blockers'])
+    ):
+        raise ValueError('manager blockers must be a string list')
+    if 'diagnostics' in report:
+        diagnostics = report['diagnostics']
+        if not isinstance(diagnostics, list):
+            raise ValueError('manager diagnostics must be a list')
+        for item in diagnostics:
+            if (not isinstance(item, dict) or
+                    not isinstance(item.get('code'), str) or not item['code'] or
+                    not isinstance(item.get('message'), str) or not item['message']):
+                raise ValueError('manager diagnostic must include code and message strings')
+            if 'line' in item and (type(item['line']) is not int or item['line'] < 1):
+                raise ValueError('manager diagnostic line must be a positive integer')
+            if any(key in item and not isinstance(item[key], str)
+                   for key in ('requirement', 'milestone')):
+                raise ValueError('manager diagnostic requirement and milestone must be strings')
+    requirements_file = report.get('requirements_file')
+    if ('requirements_file' in report and requirements_file is not None and
+            not isinstance(requirements_file, str)):
+        raise ValueError('manager requirements_file must be a string or null')
+    for key in ('requirements_exists', 'requirements_valid'):
+        if key in report and type(report[key]) is not bool:
+            raise ValueError(f'manager {key} must be a boolean')
+    if 'requirements_milestones' in report and (
+        not isinstance(report['requirements_milestones'], list) or
+        any(not isinstance(item, str) for item in report['requirements_milestones'])
+    ):
+        raise ValueError('manager requirements_milestones must be a string list')
     if decision == 'awaiting_acceptance' and ('milestone' in report) == ('milestones' in report):
         raise ValueError('manager awaiting_acceptance requires one milestone field')
     if decision == 'busy' and report['reason'] != 'Project lock held; skip planning':

@@ -180,6 +180,28 @@ class TestTick(DispatchFixture):
                     report,
                 )
 
+    def test_blocked_response_validates_diagnostic_field_shapes(self):
+        valid = {"project": self.project, "decision": "blocked", "reason": "requirements invalid",
+                 "blockers": ["requirements_invalid"],
+                 "diagnostics": [{"code": "missing_acceptance", "message": "Add Acceptance"}],
+                 "requirements_file": None, "requirements_exists": True,
+                 "requirements_valid": False, "requirements_milestones": []}
+        self.assertEqual(dispatch.parse_manager_response(json.dumps(valid), self.project, 2), valid)
+        malformed = [
+            {**valid, "blockers": "requirements_invalid"},
+            {**valid, "blockers": [1]},
+            {**valid, "diagnostics": 7},
+            {**valid, "diagnostics": ["bad"]},
+            {**valid, "diagnostics": [{"code": "missing_acceptance"}]},
+            {**valid, "requirements_file": 3},
+            {**valid, "requirements_exists": "yes"},
+            {**valid, "requirements_valid": []},
+            {**valid, "requirements_milestones": "DEMO-1-M1"},
+        ]
+        for report in malformed:
+            with self.subTest(report=report), self.assertRaises(ValueError):
+                dispatch.parse_manager_response(json.dumps(report), self.project, 2)
+
     def test_ready_for_planner_status_decision_is_refused(self):
         report = {
             "project": self.project,
@@ -226,7 +248,7 @@ class TestTick(DispatchFixture):
         ], check=True)
         requirements = self.project_dir / "requirements.md"
         requirements.write_text(
-            "## TEST-001 — Fixture requirement\n### TEST-001-M1 — Fixture milestone\n",
+            "## TEST-001 — Fixture requirement\n### TEST-001-M1 — Fixture milestone\n#### Acceptance\n- **Command:** `python3 -B -m unittest --help`\n- **Scope:** `README.md`\n",
             encoding="utf-8",
         )
         cfg = self.config(worktree=repo, planning={
