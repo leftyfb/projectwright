@@ -6,28 +6,33 @@ reviewable. Never put a signing key, passphrase, GitHub token, or Hermes/Telegra
 credential in a release script, source commit, test, or workflow output.
 GitHub Actions stores the APT signing material as configured secrets.
 
-## One-command release from an existing release branch
+## One-command release from main
 
 With a local clone of this public repository, Python 3, Git and an authenticated
-[GitHub CLI](https://cli.github.com/) (`gh auth login`), first create the
-`release/X.Y.Z` branch from the reviewed and CI-passing `main`, publish
-that branch to GitHub, and check it out locally. The branch must be clean and
-at the same commit as `origin/release/X.Y.Z`.
-
-Then run **one command** from the repository checkout:
+[GitHub CLI](https://cli.github.com/) (`gh auth login`), begin from the
+reviewed, CI-passing `main` branch. It must be clean and match `origin/main`;
+do not create a release branch yourself.
 
 ```sh
-python3 scripts/release.py X.Y.Z
+git switch main
+git pull --ff-only
+./scripts/release.py X.Y.Z
 ```
+
+The script creates and pushes `release/X.Y.Z` automatically **after** the
+interactive publishing confirmation. If you decline, no branch is created.
+It refuses an existing local or remote release branch or an already-published
+version instead of overwriting one.
 
 The script:
 
-1. Verifies the correct repository, clean release branch and unused version.
-2. Updates `pyproject.toml` and Debian control/output versions, and generates
-   release notes from commit subjects. It prints the complete notes and asks
-   `Publish Projectwright X.Y.Z? [y/N]` **before changing any source files**.
-   Only `y` or `yes` confirms; Enter or any other response cancels.
-3. Commits and pushes the release preparation to that branch.
+1. Verifies the correct repository, clean/synchronized `main`, nonexistent release branch, and unused version.
+2. Prepares the proposed metadata and release notes from commit subjects in memory.
+   It prints the complete notes and asks `Publish Projectwright X.Y.Z? [y/N]`
+   **before creating a branch or changing source files**. Only `y` or `yes`
+   confirms; Enter or any other response cancels.
+3. Creates and pushes `release/X.Y.Z` from that exact main commit, checks it out,
+   then writes, commits and pushes the release preparation to the branch.
 4. Dispatches and waits for the hosted Ubuntu 24.04/26.04 release matrix on
    the exact pushed SHA. Failure stops the release.
 5. Dispatches the existing guarded release publisher from `main` with that

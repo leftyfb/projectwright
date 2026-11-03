@@ -58,7 +58,7 @@ class ReleaseHelperTests(unittest.TestCase):
                     release.proposed_files("0.1.2", None)
 
     def test_confirmation_refuses_non_version_and_unreviewed_branch(self):
-        with patch.object(release, "require_clean_release_branch",
+        with patch.object(release, "require_release_preflight",
                           side_effect=release.ReleaseError("wrong branch")):
             self.assertEqual(release.main(["0.1.2", "--yes"]), 1)
         with self.assertRaises(SystemExit):
@@ -66,32 +66,38 @@ class ReleaseHelperTests(unittest.TestCase):
 
     def test_yes_no_confirmation_is_opt_in_and_default_no(self):
         # All writes remain inside a temporary directory. Refused responses
-        # never touch files or start a git command; accepted ones reach git add.
+        # never touch files, create a release branch or start a git command.
+        # Accepted responses create the branch before reaching git add.
         with tempfile.TemporaryDirectory(prefix="pw-release-confirm-") as tmp:
             root = Path(tmp)
             notes = root / "docs" / "release-notes.md"
             notes.parent.mkdir()
             with patch.object(release, "ROOT", root), \
-                 patch.object(release, "require_clean_release_branch",
+                 patch.object(release, "require_release_preflight",
                               return_value=("release/0.1.6", "a" * 40)), \
                  patch.object(release, "proposed_files",
                               return_value={notes: "# Proposed release notes\\n"}), \
                  patch.object(release.sys.stdin, "isatty", return_value=True), \
+                 patch.object(release, "create_release_branch") as create_branch, \
                  patch.object(release, "command",
                               side_effect=release.ReleaseError("stop before commit")) as command:
                 for response in ("", "n", "N", "no", "maybe"):
                     command.reset_mock()
+                    create_branch.reset_mock()
                     with self.subTest(response=response), \
                          patch("builtins.input", return_value=response):
                         self.assertEqual(release.main(["0.1.6"]), 1)
                         self.assertFalse(notes.exists())
                         command.assert_not_called()
+                        create_branch.assert_not_called()
                 for response in ("y", "Y", "yes", " YES "):
                     command.reset_mock()
+                    create_branch.reset_mock()
                     with self.subTest(response=response), \
                          patch("builtins.input", return_value=response):
                         self.assertEqual(release.main(["0.1.6"]), 1)
                         self.assertEqual(notes.read_text(), "# Proposed release notes\\n")
+                        create_branch.assert_called_once_with("release/0.1.6", "a" * 40)
                         self.assertEqual(command.call_args.args[:2], ("git", "add"))
                         notes.unlink()
 
@@ -100,16 +106,18 @@ class ReleaseHelperTests(unittest.TestCase):
             root = Path(tmp)
             notes = root / "release-notes.md"
             with patch.object(release, "ROOT", root), \
-                 patch.object(release, "require_clean_release_branch",
+                 patch.object(release, "require_release_preflight",
                               return_value=("release/0.1.6", "a" * 40)), \
                  patch.object(release, "proposed_files",
                               return_value={notes: "# Proposed notes\\n"}), \
                  patch.object(release.sys.stdin, "isatty", return_value=True), \
                  patch("builtins.input", side_effect=EOFError), \
+                 patch.object(release, "create_release_branch") as create_branch, \
                  patch.object(release, "command") as command:
                 self.assertEqual(release.main(["0.1.6"]), 1)
                 self.assertFalse(notes.exists())
                 command.assert_not_called()
+                create_branch.assert_not_called()
 
     def test_dispatch_uses_explicit_workflow_and_ref(self):
         with patch.object(release, "output",
