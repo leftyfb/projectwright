@@ -201,8 +201,11 @@ def main(argv: list[str] | None = None) -> int:
         if not args.yes:
             if not sys.stdin.isatty():
                 raise ReleaseError("Terminal confirmation required; use --yes only deliberately")
-            answer = input(f"Type 'publish {args.version}' to commit, test, tag and publish: ")
-            if answer != f"publish {args.version}":
+            try:
+                answer = input(f"Publish Projectwright {args.version}? [y/N] ")
+            except EOFError:
+                raise ReleaseError("Release cancelled without file changes") from None
+            if answer.strip().lower() not in ("y", "yes"):
                 raise ReleaseError("Release cancelled without file changes")
 
         for path, contents in changes.items():
