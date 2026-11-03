@@ -1,6 +1,6 @@
-# Task Tracker CLI — Projectwright example
+# Task Tracker CLI — guided build-it-yourself walkthrough
 
-This repository is intentionally a starter, not a finished application. It contains this walkthrough only; Projectwright and Hermes should implement the Python CLI in the milestones below. The project uses Python's standard library and a local JSON file. It needs no Telegram, cloud service, network access, credentials, or extra package.
+This is a **build-it-yourself walkthrough**, not the separate [preconfigured runnable demo](../ready_demo/README.md). The Task Tracker repository is intentionally a starter, not a finished application. It contains this walkthrough only; Projectwright and Hermes should implement the Python CLI in the milestones below. The project uses Python's standard library and a local JSON file. It needs no Telegram, cloud service, network access, credentials, or extra package.
 
 ## Before you begin
 
@@ -16,18 +16,23 @@ cd ~/projects/task-tracker
 git init -b main
 ```
 
-Copy the intentionally minimal starter README installed by the Debian package, then commit it:
+Copy the starter README **once**, using the method that matches your installation.
+
+**APT package (recommended):**
 
 ```sh
 cp /usr/share/doc/projectwright/examples/task_tracker/starter/README.md README.md
 ```
 
-If you are working from the source checkout rather than an installed Debian package, use this instead:
+**Source checkout only (alternative, not an additional step):**
 
 ```sh
-PROJECTWRIGHT_CHECKOUT="$HOME/repos/projectwright" # change to your actual checkout
-cp "$PROJECTWRIGHT_CHECKOUT/examples/task_tracker/starter/README.md" README.md
+cp "$HOME/repos/projectwright/examples/task_tracker/starter/README.md" README.md
 ```
+
+If your source checkout is elsewhere, replace `$HOME/repos/projectwright` with its actual path. **Do not run both copy commands.** The installed starter README contains only the project introduction; it is not the requirements document.
+
+Confirm that `README.md` exists, then commit it:
 
 ```sh
 git add README.md
@@ -38,12 +43,21 @@ The source and tests do not exist yet. That is intentional: the planner is being
 
 ## 2. Initialize a separate Projectwright project and add requirements
 
+Use the **same project ID**, `task-tracker-example`, in **every** `pw` command. The directory `~/projects/task-tracker` is the *application Git repository*, not the Projectwright project ID.
+
 ```sh
 pw init --project task-tracker-example --repo ~/projects/task-tracker
+```
+
+Read the JSON returned by `pw init`: its `project_directory` field is the **actual** Projectwright state directory. Depending on earlier installations, it may be `~/.config/projects/task-tracker-example` **or** `~/.hermes/projects/task-tracker-example`. Do not assume the new default path is always selected.
+
+Now open the requirements editor:
+
+```sh
 pw requirements --project task-tracker-example --edit
 ```
 
-In the editor, replace the blank draft with the complete requirements below. Save and exit. The requirements file is stored with Projectwright state, separately from the Git repository.
+**Important: the editor starts with a blank file.** Copy **the entire Markdown requirements block directly below**, from `# Task Tracker CLI requirements` through the final `README.md` Scope line, **into the editor**, then save and exit. Running `pw requirements --edit` alone does *not* populate requirements, and the starter repository's `README.md` is not a substitute. If no editor opens, set `EDITOR=nano` (or another installed editor) and rerun the command.
 
 ```markdown
 # Task Tracker CLI requirements
@@ -82,6 +96,16 @@ Non-goals: synchronization, accounts, network access, GUI, due dates, priorities
 
 The commands and future source/test paths above are proposed deliverables, not claims that the files or tests already exist. After each milestone is implemented, inspect its exact command, paths, test safety, and Git tracking before requesting acceptance. Do not broaden scope just to make a command pass.
 
+**Verify the file was actually saved before planning.** Run the following using the `project_directory` path reported by `pw init` (replace the example path if your initialization printed something different):
+
+```sh
+PROJECT_STATE="$HOME/.hermes/projects/task-tracker-example" # replace with pw init's project_directory
+test -s "$PROJECT_STATE/requirements.md" && echo "Requirements file is nonempty"
+sed -n '1,18p' "$PROJECT_STATE/requirements.md"
+```
+
+The first line should be `# Task Tracker CLI requirements` and the document should contain both `TRACK-1-M1` and `TRACK-1-M2`. If the file is empty or missing, rerun the editor and save the full requirements block. These checks read only the Projectwright state; they do not execute tasks.
+
 ## 3. Plan, then inspect before authorizing work
 
 ```sh
@@ -89,7 +113,7 @@ pw plan --project task-tracker-example
 pw status --project task-tracker-example
 ```
 
-Read `queue.md` in the Projectwright state directory (normally `~/.config/projects/task-tracker-example/queue.md`). Check that the queue has small tasks for M1 first, the requested paths are the only project files in scope, and no task introduces a dependency or external service. Planning is not execution authorization. Fix requirements and re-plan if the proposal is unsafe or out of scope.
+Read `queue.md` in the **actual `project_directory` printed by `pw init`**, which might be a legacy path such as `~/.hermes/projects/task-tracker-example/`. If `pw plan` is blocked, do not execute tasks; use the troubleshooting section below and inspect `pw status --project task-tracker-example --json`. Check that the queue has small tasks for M1 first, the requested paths are the only project files in scope, and no task introduces a dependency or external service. Planning is not execution authorization. Fix requirements and re-plan if the proposal is unsafe or out of scope.
 
 ## 4. Run one task at a time
 
@@ -134,6 +158,10 @@ A separate live-Hermes smoke test performed initialization, planning, and one on
 
 ## Troubleshooting
 
+- **`pw status --project task-tracker` says the project is not initialized:** you initialized `task-tracker-example`, not `task-tracker`. Use `pw status --project task-tracker-example` consistently. **Do not rerun `pw init`** on an already initialized project.
+- **`pw plan: Planning was blocked`:** first confirm the complete requirements were saved (Step 2). Then run `pw status --project task-tracker-example --json` to inspect `reason`, `blockers`, and `diagnostics`. A blank requirements file, Git worktree problem, or provider problem requires different fixes. Do not infer which one from this generic message alone.
+- **`pw init` returned a `~/.hermes/projects/...` path rather than `~/.config/projects/...`:** Projectwright retains a backwards-compatible legacy project root. Use the `project_directory` reported by initialization. It is separate from your application Git repository; no migration or reinitialization is required.
+- **I ran both `cp` commands:** they are alternatives, not sequential steps. If the file was copied before your initial Git commit, no harm; only one command is necessary.
 - `pw: command not found`: install Projectwright and verify `pw --help` works.
 - Hermes/provider errors during `pw plan` or `pw start`: configure the normal Hermes provider and retry; this example does not supply credentials or an alternate provider.
 - Planning reports invalid requirements: preserve the exact heading IDs, `#### Acceptance` heading, one literal executable command and one or more repository-relative scope entries per milestone. Keep other criteria outside the acceptance block.
