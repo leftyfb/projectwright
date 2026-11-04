@@ -225,7 +225,8 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
             return {**out, 'decision': 'awaiting_acceptance',
                     'milestones': pending_acceptance,
                     'reason': 'Completed milestone requires acceptance approval; no model call'}
-        if planning_state.get('blocked_requirements_sha256') == hashlib.sha256(req_bytes).hexdigest():
+        if (summary['pending_count'] > 0 and
+                planning_state.get('blocked_requirements_sha256') == hashlib.sha256(req_bytes).hexdigest()):
             return {**out, 'decision': 'no_op', 'reason': 'Previous planning blocked; requirements unchanged'}
         since = state.get('completed_since_strategic_review',0)
         review = since >= policy['review']
@@ -252,7 +253,9 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
                   f'Each task must be 20-360 characters, narrowly scoped, safe and verifiable. '
                   f'Avoid rerunning completed work, tests that invoke production actions, unnecessary tests, or filler. '
                   f'Every task must refer to actual requirement and milestone IDs found in the requirements text. '
-                  f'If there is no approved actionable work, return {{"tasks": []}}. '
+                  f'These requirements authorize PROPOSED future files and test commands as planning goals; they do not need to exist yet. ' 
+                  f'Human milestone acceptance is required only AFTER implementation and verification; do not require it to generate initial tasks. ' 
+                  f'If all milestones are already accepted or there is genuinely no actionable requirement, return {{"tasks": []}}. '
                   f'Already verified milestones (do not propose tasks for these): {sorted(receipt_map)}. '
                   f'CURRENT MILESTONE ONLY: {active_milestone if strict else None}. '
                   f'Mode: {mode}; maximum task count: {available}; existing queue and completed work follow.\n'
@@ -266,6 +269,9 @@ def plan_once(project: str, root: Path, *, planner=run_planner, quota_evaluator=
             if not proposed.get('tasks'):
                 if set(proposed) != {'tasks'} or not isinstance(proposed['tasks'], list):
                     raise ValueError('Invalid empty proposal')
+                if summary['pending_count'] == 0 and all_milestones and (all_milestones - set(receipt_map)):
+                    return {**out, 'decision': 'planner_failed',
+                            'reason': 'Planner returned no tasks despite unaccepted milestones and an empty queue; review requirements or provider output, then retry'}
                 new_plan = dict(planning_state, blocked_requirements_sha256=hashlib.sha256(req_bytes).hexdigest(),
                                 last_planning_result='no_actionable_work', last_planning_at=datetime.now(timezone.utc).isoformat())
                 if review:
