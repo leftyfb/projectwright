@@ -24,7 +24,7 @@ class DefaultProjectRootTests(unittest.TestCase):
             home = Path(tmp)
             with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(home / "xdg")}, clear=True), patch("pathlib.Path.home", return_value=home):
                 self.assertEqual(dispatch.default_project_root(), home / "projects")
-                self.assertEqual(manager.default_project_root(), home / "xdg" / "projects")
+                self.assertEqual(manager.default_project_root(), home / "projects")
 
     def test_home_root_wins_over_xdg_and_hermes(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -51,8 +51,8 @@ class DefaultProjectRootTests(unittest.TestCase):
             old = home / ".hermes" / "projects"
             old.mkdir(parents=True)
             with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(home / "xdg")}, clear=True), patch("pathlib.Path.home", return_value=home):
-                self.assertEqual(dispatch.default_project_root(), old)
-                self.assertEqual(manager.default_project_root(), old)
+                self.assertEqual(dispatch.default_project_root(), home / "projects")
+                self.assertEqual(manager.default_project_root(), home / "projects")
 
     def test_explicit_config_dir_preserves_subdirectory_contract(self):
         with tempfile.TemporaryDirectory() as tmp:
