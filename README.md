@@ -42,8 +42,8 @@ The initial milestone can be worked and reviewed without Telegram. Advancing to 
    pw init --project myproject --repo ~/repos/myproject
    ```
 
-   Project state normally lives at `~/.config/projects/myproject`; the repository remains at `~/repos/myproject`. `pw init` does not create or modify the repository.
-4. Put the reviewed draft at `~/.config/projects/myproject/requirements.md` (or use the actual configured project-state path), then explicitly plan:
+   Project state normally lives at `~/projects/myproject`; the repository remains at `~/repos/myproject`. `pw init` does not create or modify the repository.
+4. Put the reviewed draft at `~/projects/myproject/requirements.md` (or use the actual configured project-state path), then explicitly plan:
 
    ```sh
    pw plan --project myproject

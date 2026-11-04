@@ -18,16 +18,14 @@ def default_project_root():
     legacy_override = os.environ.get('HERMES_PROJECT_CONFIG_DIR')
     if legacy_override:
         return Path(legacy_override).expanduser()
-    xdg = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
-    root = xdg / 'projects'
-    previous = xdg / 'projectwright' / 'projects'
-    legacy = Path.home() / '.hermes' / 'projects'
-    # Prefer the new location, but do not strand existing project state.
-    if root.is_dir():
-        return root
-    if previous.is_dir():
-        return previous
-    return legacy if legacy.is_dir() else root
+    # Projectwright project state belongs in ~/projects by default. Do not
+    # silently create *new* projects under legacy XDG/Hermes directories just
+    # because one of those directories happens to exist.
+    #
+    # Existing installations can select their original state explicitly using
+    # HERMES_PROJECT_CONFIG_DIR (direct root) or PROJECTWRIGHT_CONFIG_DIR
+    # (configuration home, with /projects appended).
+    return Path.home() / 'projects'
 
 
 SAFE_IDLE = {'awaiting_acceptance', 'disabled', 'no_op'}

@@ -31,7 +31,7 @@ class ReadmeQuickstartTests(unittest.TestCase):
     def test_documented_init_requirements_plan_status_and_manual_start(self):
         with tempfile.TemporaryDirectory(prefix="pw-onboarding-") as td:
             base = Path(td); home = base / "home"; home.mkdir()
-            cfg_home = base / "xdg"; repo = base / "repos/myproject"; repo.mkdir(parents=True)
+            cfg_home = home; repo = base / "repos/myproject"; repo.mkdir(parents=True)
             git(repo, "init", "-b", "main")
             git(repo, "config", "user.name", "Fixture")
             git(repo, "config", "user.email", "fixture@example.invalid")

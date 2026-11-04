@@ -17,14 +17,14 @@ spec.loader.exec_module(dispatch)
 
 
 class ProjectRootSelectionTests(unittest.TestCase):
-    def test_xdg_default_when_no_legacy_root_exists(self):
+    def test_home_default_when_no_legacy_root_exists(self):
         with tempfile.TemporaryDirectory() as td:
             home = Path(td) / "home"
             home.mkdir()
             xdg = Path(td) / "xdg"
             with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": str(xdg)}, clear=True):
                 with mock.patch.object(Path, "home", return_value=home):
-                    self.assertEqual(dispatch.default_project_root(), xdg / "projects")
+                    self.assertEqual(dispatch.default_project_root(), home / "projects")
 
     def test_explicit_projectwright_home_beats_legacy(self):
         with tempfile.TemporaryDirectory() as td:
@@ -38,16 +38,16 @@ class ProjectRootSelectionTests(unittest.TestCase):
                 with mock.patch.object(Path, "home", return_value=home):
                     self.assertEqual(dispatch.default_project_root(), custom / "projects")
 
-    def test_legacy_root_fallback_without_xdg_projects(self):
+    def test_legacy_root_does_not_redirect_new_projects(self):
         with tempfile.TemporaryDirectory() as td:
             home = Path(td) / "home"
             legacy = home / ".hermes" / "projects"
             legacy.mkdir(parents=True)
             with mock.patch.dict(os.environ, {}, clear=True):
                 with mock.patch.object(Path, "home", return_value=home):
-                    self.assertEqual(dispatch.default_project_root(), legacy)
+                    self.assertEqual(dispatch.default_project_root(), home / "projects")
 
-    def test_xdg_root_preferred_when_it_exists(self):
+    def test_home_default_even_when_xdg_root_exists(self):
         with tempfile.TemporaryDirectory() as td:
             home = Path(td) / "home"
             (home / ".hermes" / "projects").mkdir(parents=True)
@@ -56,7 +56,7 @@ class ProjectRootSelectionTests(unittest.TestCase):
             root.mkdir(parents=True)
             with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": str(xdg)}, clear=True):
                 with mock.patch.object(Path, "home", return_value=home):
-                    self.assertEqual(dispatch.default_project_root(), root)
+                    self.assertEqual(dispatch.default_project_root(), home / "projects")
 
 
 if __name__ == "__main__":

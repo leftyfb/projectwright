@@ -1,4 +1,4 @@
-"""Regression coverage for the default XDG project root and legacy migration."""
+"""Regression coverage for ~/projects default and explicit legacy overrides."""
 import importlib.util
 import os
 from pathlib import Path
@@ -23,36 +23,36 @@ class DefaultProjectRootTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(home / "xdg")}, clear=True), patch("pathlib.Path.home", return_value=home):
-                self.assertEqual(dispatch.default_project_root(), home / "xdg" / "projects")
-                self.assertEqual(manager.default_project_root(), home / "xdg" / "projects")
+                self.assertEqual(dispatch.default_project_root(), home / "projects")
+                self.assertEqual(manager.default_project_root(), home / "projects")
 
-    def test_new_root_wins_over_previous_and_hermes(self):
+    def test_home_root_wins_over_xdg_and_hermes(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             xdg = home / "xdg"
             for path in (xdg / "projects", xdg / "projectwright" / "projects", home / ".hermes" / "projects"):
                 path.mkdir(parents=True)
             with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(xdg)}, clear=True), patch("pathlib.Path.home", return_value=home):
-                self.assertEqual(dispatch.default_project_root(), xdg / "projects")
+                self.assertEqual(dispatch.default_project_root(), home / "projects")
 
-    def test_previous_xdg_root_remains_discoverable(self):
+    def test_previous_xdg_root_not_selected_implicitly(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             xdg = home / "xdg"
             old = xdg / "projectwright" / "projects"
             old.mkdir(parents=True)
             with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(xdg)}, clear=True), patch("pathlib.Path.home", return_value=home):
-                self.assertEqual(dispatch.default_project_root(), old)
-                self.assertEqual(manager.default_project_root(), old)
+                self.assertEqual(dispatch.default_project_root(), home / "projects")
+                self.assertEqual(manager.default_project_root(), home / "projects")
 
-    def test_hermes_legacy_root_remains_discoverable(self):
+    def test_hermes_legacy_root_not_selected_implicitly(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             old = home / ".hermes" / "projects"
             old.mkdir(parents=True)
             with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(home / "xdg")}, clear=True), patch("pathlib.Path.home", return_value=home):
-                self.assertEqual(dispatch.default_project_root(), old)
-                self.assertEqual(manager.default_project_root(), old)
+                self.assertEqual(dispatch.default_project_root(), home / "projects")
+                self.assertEqual(manager.default_project_root(), home / "projects")
 
     def test_explicit_config_dir_preserves_subdirectory_contract(self):
         with tempfile.TemporaryDirectory() as tmp:

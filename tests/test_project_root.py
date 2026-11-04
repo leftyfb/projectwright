@@ -1,4 +1,4 @@
-"""Configuration home selection without mutating a user's Hermes installation."""
+"""Project state root selection without mutating a user's Hermes installation."""
 import os
 from pathlib import Path
 import sys
@@ -17,20 +17,20 @@ from contextlib import redirect_stdout
 
 
 class ProjectRootSelection(unittest.TestCase):
-    def test_xdg_default_and_legacy_fallback(self):
+    def test_home_default_ignores_existing_legacy_roots(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             with patch.object(Path, "home", return_value=home), patch.dict(os.environ, {}, clear=True):
-                self.assertEqual(default_project_root(), home / ".config/projects")
+                self.assertEqual(default_project_root(), home / "projects")
                 old = home / ".hermes/projects"
                 old.mkdir(parents=True)
-                self.assertEqual(default_project_root(), old)
+                self.assertEqual(default_project_root(), home / "projects")
                 previous = home / ".config/projectwright/projects"
                 previous.mkdir(parents=True)
-                self.assertEqual(default_project_root(), previous)
+                self.assertEqual(default_project_root(), home / "projects")
                 new = home / ".config/projects"
                 new.mkdir(parents=True)
-                self.assertEqual(default_project_root(), new)
+                self.assertEqual(default_project_root(), home / "projects")
 
     def test_explicit_projectwright_overrides_legacy(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -77,12 +77,12 @@ class ProjectRootSelection(unittest.TestCase):
                     self.assertEqual(pw_dispatch.default_project_root(), Path(tmp) / "projects")
             run.assert_called_once()
 
-    def test_legacy_override_and_custom_xdg(self):
+    def test_legacy_override_and_xdg_does_not_redirect_default(self):
         with tempfile.TemporaryDirectory() as tmp:
             with patch.dict(os.environ, {"HERMES_PROJECT_CONFIG_DIR": tmp + "/legacy"}, clear=True):
                 self.assertEqual(default_project_root(), Path(tmp) / "legacy")
             with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/xdg", "HOME": tmp + "/home"}, clear=True):
-                self.assertEqual(default_project_root(), Path(tmp) / "xdg/projects")
+                self.assertEqual(default_project_root(), Path(tmp) / "home/projects")
 
 
 if __name__ == "__main__":
