@@ -1,7 +1,9 @@
 # Configuration home and project paths
 
-By default, project state lives under `$XDG_CONFIG_HOME/projects/<project-id>/`
-(or `~/.config/projects/<project-id>/` when `XDG_CONFIG_HOME` is unset).
+By default, Projectwright project state lives under `~/projects/<project-id>/`.
+This contains `requirements.md`, `queue.md`, `config.json` and work logs.
+Projectwright does **not** use `~/.config/projects` or `~/.hermes/projects`
+as the default for new projects, even if those legacy directories exist.
 The project's Git worktree defaults to `worktree/` inside that project directory,
 but can point to a separate repository using `pw init --repo PATH`, configuration or `PROJECTWRIGHT_WORKTREE`.
 
@@ -18,14 +20,24 @@ subprocesses as `PROJECTWRIGHT_CONFIG_DIR`, so each sees the same project
 directory. On a direct manager/worker invocation, `--config-dir` is also
 supported.
 
-Project directory resolution, when no explicit CLI root is supplied:
+Project directory selection:
 
-1. `PROJECTWRIGHT_CONFIG_DIR/projects` if set.
-2. `HERMES_PROJECT_CONFIG_DIR` if set (backwards-compatible direct project-root override).
-3. `$XDG_CONFIG_HOME/projects` (normally `~/.config/projects`).
-4. If that directory does not exist, reuse existing `$XDG_CONFIG_HOME/projectwright/projects`, then `~/.hermes/projects`.
+1. `PROJECTWRIGHT_CONFIG_DIR/projects` if explicitly set.
+2. `HERMES_PROJECT_CONFIG_DIR` if explicitly set (legacy direct-root override).
+3. **`~/projects` otherwise**, regardless of existing legacy directories.
 
-The selector never moves or rewrites an existing project. Existing roots remain discoverable when the new root is absent. If multiple roots exist, the first existing location in this order wins; use an explicit `--config-dir` to select another root. The explicit override still treats its value as a configuration home and appends `projects/`.
+Existing directories are never automatically migrated, overwritten, or deleted.
+To inspect an older project that still lives at `~/.hermes/projects`, explicitly
+select that root for the command, for example:
+
+```sh
+HERMES_PROJECT_CONFIG_DIR="$HOME/.hermes/projects" pw status --project older-project
+```
+
+Move old state only as an intentional, separately reviewed migration. The
+`PROJECTWRIGHT_CONFIG_DIR` option/environment variable denotes a configuration
+home whose `projects/` child is used; it is **not** a direct project root.
+The `HERMES_PROJECT_CONFIG_DIR` override remains a direct project-root path.
 
 **Missing configuration behavior:** an ordinary unprepared project without `config.json` is disabled, and no provider, Git repository, queue or credentials are created. An **explicitly prepared** config-free project with a Git worktree, HEAD commit, branch match, queue and work log can be manually inspected and executed, as described later on this page. With `requirements.md` an explicit planning path is supported. Unattended scheduling and human approval are never inferred.
 
