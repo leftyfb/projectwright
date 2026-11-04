@@ -49,7 +49,7 @@ Use the **same project ID**, `task-tracker-example`, in **every** `pw` command. 
 pw init --project task-tracker-example --repo ~/projects/task-tracker
 ```
 
-Read the JSON returned by `pw init`: its `project_directory` field is the **actual** Projectwright state directory. Depending on earlier installations, it may be `~/.config/projects/task-tracker-example` **or** `~/.hermes/projects/task-tracker-example`. Do not assume the new default path is always selected.
+Read the JSON returned by `pw init`: its `project_directory` field is the **actual** Projectwright state directory. With the corrected default it is `~/projects/task-tracker-example`. Older installed packages might still select legacy directories; consult the path printed by your actual installed version and do not automatically move existing state.
 
 Now open the requirements editor:
 
@@ -113,7 +113,7 @@ pw plan --project task-tracker-example
 pw status --project task-tracker-example
 ```
 
-Read `queue.md` in the **actual `project_directory` printed by `pw init`**, which might be a legacy path such as `~/.hermes/projects/task-tracker-example/`. If `pw plan` is blocked, do not execute tasks; use the troubleshooting section below and inspect `pw status --project task-tracker-example --json`. Check that the queue has small tasks for M1 first, the requested paths are the only project files in scope, and no task introduces a dependency or external service. Planning is not execution authorization. Fix requirements and re-plan if the proposal is unsafe or out of scope.
+Read `queue.md` in the **actual `project_directory` printed by `pw init`**, normally `~/projects/task-tracker-example/`. If `pw plan` is blocked, do not execute tasks; use the troubleshooting section below and inspect `pw status --project task-tracker-example --json`. Check that the queue has small tasks for M1 first, the requested paths are the only project files in scope, and no task introduces a dependency or external service. Planning is not execution authorization. Fix requirements and re-plan if the proposal is unsafe or out of scope.
 
 ## 4. Run one task at a time
 
