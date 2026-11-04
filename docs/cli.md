@@ -34,7 +34,7 @@ Use `pw timer disable NAME` to stop recurring runs and `pw timer status NAME` to
 
 ## Project paths
 
-The default project root is `$XDG_CONFIG_HOME/projects` (normally `~/.config/projects`). The selector recognizes older `$XDG_CONFIG_HOME/projectwright/projects` and `~/.hermes/projects` roots without moving, overwriting or deleting their projects. Existing roots are preferred when the new root has not yet been created. Use `--config-dir /absolute/config/home` consistently to select a config home; the project directory is `config-home/projects/NAME`. `PROJECTWRIGHT_CONFIG_DIR` has the same config-home meaning. The legacy `HERMES_PROJECT_CONFIG_DIR` remains a direct project-root override.
+The default project root is `~/projects`. Existing project state in older `$XDG_CONFIG_HOME/projects`, `$XDG_CONFIG_HOME/projectwright/projects` or `~/.hermes/projects` roots is not moved or automatically selected. Specify an old root explicitly with `HERMES_PROJECT_CONFIG_DIR` to access it. Use `--config-dir /absolute/config/home` consistently to select a config home; the project directory is `config-home/projects/NAME`. `PROJECTWRIGHT_CONFIG_DIR` has the same config-home meaning. The legacy `HERMES_PROJECT_CONFIG_DIR` remains a direct project-root override.
 
 ## Existing commands
 
