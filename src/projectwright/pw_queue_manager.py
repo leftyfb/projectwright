@@ -71,22 +71,9 @@ def provider_argv(cfg: dict, phase: str, *, prompt: str | None = None) -> tuple[
 
 
 def default_project_root() -> Path:
-    """Resolve the shared Projectwright project root.
-
-    PROJECTWRIGHT_CONFIG_DIR is a config home containing projects/. The
-    older HERMES_PROJECT_CONFIG_DIR remains a direct-root override. Prefer the
-    new XDG projects/ root, then discover existing pre-onboarding locations
-    without moving or deleting them.
-    """
-    selected = os.environ.get('PROJECTWRIGHT_CONFIG_DIR')
-    direct = os.environ.get('HERMES_PROJECT_CONFIG_DIR')
-    if selected:
-        return Path(selected).expanduser() / 'projects'
-    if direct:
-        return Path(direct).expanduser()
-    xdg = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
-    candidates = (xdg / 'projects', xdg / 'projectwright' / 'projects', Path.home() / '.hermes' / 'projects')
-    return next((path for path in candidates if path.is_dir()), candidates[0])
+    """Use the same root selector as every other Projectwright entrypoint."""
+    from pw_dispatch import default_project_root as resolve
+    return resolve()
 
 
 def project_config(project: str, root: Path) -> tuple[Path, dict]:
