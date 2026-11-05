@@ -318,16 +318,43 @@ def cycle_approved(task: Task, before: tuple, after: tuple) -> None:
     cycle_write(record)
 
 
-def allowed_test_file(name: str) -> bool:
+def milestone_test_scope(task: Task) -> list[str] | None:
+    """Resolve explicitly declared test-file scope for the queued milestone.
+
+    This is narrower than the generic test-file patterns. A TEST worker must
+    not place tests under a different directory than the acceptance policy.
+    """
+    match = re.match(r'^([A-Z][A-Z0-9]*-\\d+) / ([A-Z][A-Z0-9]*-\\d+-M\\d+(?:-[A-Z0-9]+)*):', task.description)
+    if match is None:
+        return None
+    requirements_setting = PROJECT.get('planning', {}).get('requirements_file')
+    if not requirements_setting:
+        return None
+    from pw_milestone_guard import embedded_acceptance_policy
+    policy = embedded_acceptance_policy(
+        Path(requirements_setting).expanduser().read_text(encoding='utf-8'))
+    if policy is None:
+        return None
+    milestone = policy['milestones'].get(match.group(2))
+    if milestone is None or milestone['requirement'] != match.group(1):
+        return None
+    return [path for path in milestone['scope_paths']
+            if path.endswith('.py') and Path(path).name.startswith('test_')]
+
+
+def allowed_test_file(name: str, task: Task | None = None) -> bool:
     """Only configured test Python file patterns are permitted for TEST changes."""
-    patterns = PROJECT.get('test_file_patterns', ['scripts/test_*.py'])
+    patterns = PROJECT.get('test_file_patterns', ['scripts/test_*.py', 'tests/test_*.py'])
     if (not isinstance(patterns, list) or not patterns or
         any(not isinstance(p, str) or not p or p.startswith('/') or '..' in Path(p).parts or
             not p.endswith('.py') for p in patterns)):
         raise ValueError('Invalid project test_file_patterns configuration')
     if not name.endswith('.py') or name.startswith('/') or '..' in Path(name).parts:
         return False
-    return any(fnmatch.fnmatchcase(name, pattern) for pattern in patterns)
+    if not any(fnmatch.fnmatchcase(name, pattern) for pattern in patterns):
+        return False
+    scoped = milestone_test_scope(task) if task is not None else None
+    return scoped is None or name in scoped
 
 
 def cycle_record_failed_test(task: Task, before: tuple, after: tuple, original_queue: bytes) -> bool:
@@ -354,7 +381,7 @@ def cycle_record_failed_test(task: Task, before: tuple, after: tuple, original_q
     changed = changed_files(before, after)
     if not changed:
         return False
-    if any(not allowed_test_file(name) for name in changed):
+    if any(not allowed_test_file(name, task) for name in changed):
         return False
     # Do not journal potentially malicious symlinks or unusual file types.
     if any((WORKTREE / name).is_symlink() or
@@ -495,7 +522,7 @@ def verify(task: Task, response: dict, before: tuple, after: tuple) -> tuple[boo
     if task.kind in {'READ', 'VERIFY', 'DECIDE'} and (files or committed):
         return False, f'{task.kind} scope violation: repository changes/commit: {sorted(files)}'
     if task.kind == 'TEST':
-        if committed or any(not allowed_test_file(f) for f in files):
+        if committed or any(not allowed_test_file(f, task) for f in files):
             return False, f'TEST scope violation: commit or non-test-file changes: {sorted(files)}'
     if task.kind == 'EDIT' and committed:
         return False, 'EDIT scope violation: created commit'
