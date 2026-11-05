@@ -44,7 +44,12 @@ def resolve(root: Path, data: str):
     return action, directory, record
 
 
-def approve(root: Path, data: str) -> str:
+def approve(root: Path, data: str, include_directory: bool = False):
+    """Approve pinned evidence; optionally return the exact validated state directory.
+
+    Legacy callers receive the original message string. The Telegram plugin
+    uses the verified directory for completion delivery, not a name lookup.
+    """
     action, directory, pinned = resolve(root, data)
     if action != 'a':
         raise ValueError('Not an approval callback')
@@ -70,7 +75,8 @@ def approve(root: Path, data: str) -> str:
         current = json.loads(path.read_text())
         if current == pinned:
             path.unlink()
-    return f'APPROVED {(directory.parent.name if directory.name == ".pw" else directory.name)} / {milestone} at {receipt["git_head"][:12]}'
+    message = f'APPROVED {(directory.parent.name if directory.name == ".pw" else directory.name)} / {milestone} at {receipt["git_head"][:12]}'
+    return (message, directory) if include_directory else message
 
 
 def reject(root: Path, data: str) -> str:
