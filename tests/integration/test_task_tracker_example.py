@@ -30,6 +30,24 @@ class TaskTrackerExampleTests(unittest.TestCase):
                 self.assertNotIn("..", Path(scope).parts)
                 self.assertNotIn("*", scope)
 
+    def test_walkthrough_uses_one_repository_and_embedded_project_name(self):
+        text = GUIDE.read_text(encoding="utf-8")
+        starter = STARTER.read_text(encoding="utf-8")
+        quickstart = (ROOT / "README.md").read_text(encoding="utf-8")
+        cli = (ROOT / "docs/cli.md").read_text(encoding="utf-8")
+        self.assertIn("pw init ~/projects/task-tracker-example", text)
+        self.assertIn("cd ~/projects/task-tracker-example", text)
+        self.assertIn(".pw/requirements.md", text)
+        self.assertIn(".pw/queue.md", text)
+        self.assertIn(".pw/work_log.md", text)
+        self.assertIn("task-tracker-example", starter)
+        self.assertNotIn("pw init --project task-tracker-example --repo", text)
+        self.assertNotIn("~/projects/task-tracker/", text)
+        self.assertNotIn("~/.hermes/projects/task-tracker-example", text)
+        self.assertNotIn("separate Projectwright project", text)
+        self.assertIn("pw init ~/projects/myproject", quickstart)
+        self.assertIn("pw init ~/projects/task-tracker-example", cli)
+
     def test_walkthrough_covers_gates_and_local_only_limits(self):
         text = GUIDE.read_text(encoding="utf-8").lower()
         for phrase in (
