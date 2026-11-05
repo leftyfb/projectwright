@@ -222,6 +222,17 @@ def main():
         else:
             scan(a.root, project=a.project, milestone=a.milestone)
         rows=notify_pending(a.root,dry_run=not a.send,project=a.project)
+    # A gateway callback attempts immediate completion delivery. The existing
+    # per-user notifier timer also retries interrupted or failed delivery.
+    if a.send:
+        from pw_completion import notify_completion
+        directories = ([a.root / a.project] if a.project is not None else
+                       sorted(d for d in a.root.iterdir() if d.is_dir() and
+                              (d / 'config.json').is_file()) if a.root.is_dir() else [])
+        for directory in directories:
+            delivered = notify_completion(directory)
+            if delivered:
+                rows.append(f'COMPLETED {directory.name}: notified {len(delivered)} recipient(s)')
     print('\n'.join(rows) if rows else 'No new notifications')
 
 if __name__=='__main__':
