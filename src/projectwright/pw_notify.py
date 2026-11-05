@@ -73,6 +73,29 @@ def send(root: Path, record: dict, transport=None, *, recipient=None, values=Non
     return body['result']['message_id']
 
 
+
+def send_text(message: str, recipient: str, *, values=None, transport=None) -> int:
+    """Deliver a plain Telegram message to a configured authorized user."""
+    vals = values if values is not None else config_values(Path.home() / '.hermes' / '.env')
+    token = vals.get('TELEGRAM_BOT_TOKEN')
+    if not token or recipient not in parse_allowed_users(vals.get('TELEGRAM_ALLOWED_USERS', '')):
+        raise ValueError('Telegram recipient is not authorized or bot token is missing')
+    payload = {'chat_id': recipient, 'text': message}
+    if transport is not None:
+        return transport(payload)
+    request = Request('https://api.telegram.org/bot' + token + '/sendMessage',
+                      data=json.dumps(payload).encode('utf-8'),
+                      headers={'Content-Type': 'application/json'}, method='POST')
+    try:
+        with urlopen(request, timeout=15) as response:
+            data = json.load(response)
+    except Exception as exc:
+        raise RuntimeError(f'Telegram completion notification failed ({type(exc).__name__})') from None
+    if data.get('ok') is not True:
+        raise RuntimeError('Telegram completion notification failed')
+    return data['result']['message_id']
+
+
 def _delivery_state(marker: Path, current_id: str, users):
     if not marker.exists():
         return {}
@@ -199,6 +222,17 @@ def main():
         else:
             scan(a.root, project=a.project, milestone=a.milestone)
         rows=notify_pending(a.root,dry_run=not a.send,project=a.project)
+    # A gateway callback attempts immediate completion delivery. The existing
+    # per-user notifier timer also retries interrupted or failed delivery.
+    if a.send:
+        from pw_completion import notify_completion
+        directories = ([a.root / a.project] if a.project is not None else
+                       sorted(d for d in a.root.iterdir() if d.is_dir() and
+                              (d / 'config.json').is_file()) if a.root.is_dir() else [])
+        for directory in directories:
+            delivered = notify_completion(directory)
+            if delivered:
+                rows.append(f'COMPLETED {directory.name}: notified {len(delivered)} recipient(s)')
     print('\n'.join(rows) if rows else 'No new notifications')
 
 if __name__=='__main__':

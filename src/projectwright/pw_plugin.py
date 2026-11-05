@@ -56,6 +56,14 @@ def _factory(app, adapter):
             return
         await q.answer('Recorded')
         await q.edit_message_text(result)
+        if action == 'a':
+            # Completion delivery is separate from acceptance. Any Telegram
+            # outage must not turn an already-approved milestone into an error.
+            try:
+                from pw_completion import notify_completion
+                await asyncio.to_thread(notify_completion, root / q.data.split(':', 3)[2])
+            except Exception:
+                LOG.exception('Project completion notice could not be sent; notifier timer may retry')
     # Filter excludes all Hermes core buttons. Hermes reorders plugin callback handlers ahead of catch-all.
     app.add_handler(CallbackQueryHandler(on_press, pattern=r'^pwa:[ar]:[a-z][a-z0-9_-]{0,63}:[0-9a-f]{20}$'))
 

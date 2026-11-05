@@ -116,3 +116,27 @@ completed COMMIT journal. If that evidence is missing, the old approval stays
 stale and requires explicit revalidation. Unscoped legacy receipts remain
 HEAD-strict.
 
+
+### Final project completion notification
+
+After the last declared milestone is approved through the authorized Telegram
+callback, Projectwright sends a separate **Projectwright — project complete**
+message to the configured Telegram recipients. The summary contains the
+project name, the number of accepted milestones and completed queue tasks,
+the declared milestone titles, and the final Git commit. This is generated
+deterministically from the project records; it makes no model call.
+
+Projectwright sends this only if every declared milestone has a current,
+verified acceptance receipt, no queue tasks are pending/blocked/invalid,
+the Git worktree is clean and on the configured branch, and no worker/Git
+cycle is active. An intermediate approval or rejected callback cannot
+announce completion.
+
+Delivery receipts are recorded per authorized Telegram user and completed
+project revision in `telegram_completion_notified.json`. The existing
+`pw notify --send` timer retries delivery when the callback's immediate
+notification fails. As with milestone notification, a crash after Telegram
+accepts a message but before the local receipt is saved may cause one repeat.
+Telegram delivery failures never revoke or invalidate an approved milestone.
+No Hermes service restart is initiated automatically.
+
