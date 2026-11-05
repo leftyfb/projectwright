@@ -46,10 +46,10 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         self.root.mkdir()
 
     def repository(self, parent="outside", contents="VALUE = 1\n", *,
-                   strict=True) -> Path:
+                   strict=True, shared=False) -> Path:
         repo = self.base / parent / "task-tracker-example"
         repo.parent.mkdir(parents=True, exist_ok=True)
-        config_file = embedded.initialize(repo)
+        config_file = embedded.initialize(repo, shared=shared)
         git(repo, "config", "user.name", "Fixture")
         git(repo, "config", "user.email", "fixture@example.invalid")
         (repo / "probe.py").write_text(contents, encoding="utf-8")
@@ -73,6 +73,9 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
             "- **Scope:** `probe.py`\n",
             encoding="utf-8",
         )
+        if shared:
+            git(repo, "add", ".pw/README.md", ".pw/requirements.md", ".pw/config.json")
+            git(repo, "commit", "-qm", "shared Projectwright definitions")
         embedded.register(repo)
         return repo
 
@@ -121,6 +124,22 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         self.assertEqual(len(completion_sent), 2)
         self.assertTrue(all("reply_markup" not in payload for payload in completion_sent))
         self.assertEqual(git(repo, "status", "--porcelain=v1"), "")
+
+    def test_shared_definitions_stay_clean_during_approval(self):
+        repo = self.repository(shared=True)
+        marker = repo / ".pw"
+        records = approval.scan(self.root)
+        self.assertEqual(len(records), 1)
+        pinned = records[0]
+        result = pw_buttons.approve(
+            self.root, pw_buttons.callback_data("a", pinned))
+        self.assertIn("APPROVED", result)
+        tracked = git(repo, "ls-files", "--", ".pw").splitlines()
+        self.assertEqual(set(tracked), {
+            ".pw/README.md", ".pw/config.json", ".pw/requirements.md",
+        })
+        self.assertTrue((marker / "planning_state.json").exists())
+        self.assertEqual(git(repo, "status", "--porcelain=v1", "--untracked-files=all"), "")
 
     def test_rejection_and_stale_evidence_fail_closed(self):
         repo = self.repository()
