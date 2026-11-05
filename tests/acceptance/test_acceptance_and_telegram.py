@@ -290,6 +290,19 @@ class TelegramApprovalAndButtonTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exactly one pending"):
             bridge.approve_single(self.root)
 
+    def test_explicit_already_approved_milestone_is_noop(self) -> None:
+        self.scan_one()
+        bridge.approve_single(self.root)
+        # An accepted milestone has current receipt evidence, so a
+        # redundant explicit notification must not generate new buttons.
+        with patch("builtins.print") as output:
+            self.assertEqual(bridge.scan(self.root, project="fixture",
+                                         milestone="DEMO-1-M1"), [])
+        output.assert_any_call(
+            "fixture / DEMO-1-M1: already accepted with current verified evidence; no new request"
+        )
+        self.assertFalse((self.project / "telegram_approval_pending.json").exists())
+
     def test_stale_approval_fails_closed_without_receipt(self) -> None:
         self.scan_one()
         self.req.write_text(self.req.read_text() + "\nChanged while awaiting approval.\n")
