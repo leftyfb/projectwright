@@ -61,6 +61,37 @@ class EmbeddedLayoutTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 initialize(repo)
 
+    def test_shared_ignore_conflict_is_preflight_and_does_not_create_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "task-tracker-example"
+            repo.mkdir()
+            subprocess.run(["git", "-C", str(repo), "init", "-b", "main"],
+                           check=True, capture_output=True)
+            ignore = repo / ".gitignore"
+            ignore.write_text("/.pw/\n")
+            with self.assertRaisesRegex(ValueError, "conflicts"):
+                initialize(repo, shared=True)
+            self.assertFalse((repo / ".pw").exists())
+            self.assertEqual(ignore.read_text(), "/.pw/\n")
+
+    def test_preexisting_tracked_state_is_rejected_before_creation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "task-tracker-example"
+            repo.mkdir()
+            subprocess.run(["git", "-C", str(repo), "init", "-b", "main"],
+                           check=True, capture_output=True)
+            state = repo / ".pw/state"
+            state.mkdir(parents=True)
+            (state / "record.json").write_text("sensitive")
+            subprocess.run(["git", "-C", str(repo), "add", ".pw/state/record.json"],
+                           check=True, capture_output=True)
+            (state / "record.json").unlink()
+            state.rmdir()
+            (repo / ".pw").rmdir()
+            with self.assertRaisesRegex(ValueError, "tracks .pw"):
+                initialize(repo)
+            self.assertFalse((repo / ".pw").exists())
+
     def test_arbitrary_location_and_name_check(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "custom" / "task-tracker-example"
