@@ -113,6 +113,8 @@ def main() -> int:
             parser.error("--project must match repository directory name")
         try:
             output = initialize_embedded(directory, shared=args.shared)
+            from pw_embedded import register
+            register(output.parent.parent)
         except (ValueError, FileExistsError, OSError, subprocess.CalledProcessError) as exc:
             parser.error(str(exc))
         print(json.dumps({"project": output.parent.parent.name, "config": str(output), "project_directory": str(output.parent.parent), "decision": "disabled"}))
