@@ -563,7 +563,7 @@ def approve(cfg: dict, project_dir: Path, requirement: str, milestone: str, test
             if not isinstance(expected, dict):
                 raise ValueError('Expected approval evidence must be an object')
             pinned = {
-                'project': project_dir.name,
+                'project': (project_dir.parent.name if project_dir.name == '.pw' else project_dir.name),
                 'requirement': requirement,
                 'milestone': milestone,
                 'head': head,
