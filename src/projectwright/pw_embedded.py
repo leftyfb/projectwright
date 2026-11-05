@@ -158,11 +158,20 @@ def directory(project: str, root: Path) -> Path:
         if state.is_symlink() or not (state / "config.json").is_file():
             raise ValueError("Embedded project state missing or symlinked")
         return state
-    found = discover(Path.cwd()) if root == (Path.home() / "projects") else None
-    if found is not None:
-        if found.parent.name != project:
-            raise ValueError("Project ID does not match current repository")
-        return found
+    if root == (Path.home() / "projects"):
+        found = discover(Path.cwd())
+        if found is not None:
+            if found.parent.name != project:
+                raise ValueError("Project ID does not match current repository")
+            return found
+        registered = [m for m in registered_projects() if m.parent.name == project]
+        legacy = root / project
+        if (legacy / "config.json").is_file():
+            registered.append(legacy)
+        if len(registered) > 1:
+            raise ValueError("Ambiguous project ID; run from the repository or supply an explicit project location")
+        if registered:
+            return registered[0]
     return root / project
 
 
