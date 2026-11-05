@@ -110,9 +110,10 @@ def scan(root, project=None, milestone=None):
     if milestone is not None and project is None:
         raise ValueError('A project is required when selecting a milestone')
     found=[]
-    for directory in sorted(root.iterdir()) if root.is_dir() else []:
-        if project is not None and directory.name != project: continue
-        if not directory.is_dir() or not PROJECT_RE.fullmatch(directory.name): continue
+    from pw_embedded import state_directories, project_id
+    for directory in state_directories(root):
+        if project is not None and project_id(directory) != project: continue
+        if not directory.is_dir() or not PROJECT_RE.fullmatch(project_id(directory)): continue
         if not (directory / 'config.json').is_file():
             if project is not None:
                 raise FileNotFoundError(f'Project {project!r} is not initialized: {directory / "config.json"}')
