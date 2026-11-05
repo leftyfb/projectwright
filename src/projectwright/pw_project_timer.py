@@ -27,6 +27,8 @@ def _systemd_argument(value: str) -> str:
     """One literal ExecStart argument; prevent whitespace/specifier injection."""
     if not value or any(ch in value for ch in ("\n", "\r", "\x00")):
         raise ValueError("Invalid systemd executable argument")
+    if re.fullmatch(r"/[A-Za-z0-9_./+-]+", value):
+        return value  # Preserve existing unit format when quoting is unnecessary.
     safe = value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%")
     return '"' + safe + '"'
 
