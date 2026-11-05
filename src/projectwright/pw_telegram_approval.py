@@ -39,8 +39,10 @@ def atomic_json(path, data):
 
 def project_data(directory):
     from pw_config import load as load_config
-    config_path, cfg = load_config(directory.name, directory.parent)
-    if not config_path.is_file() or cfg.get('id') != directory.name or not PROJECT_RE.fullmatch(directory.name):
+    from pw_embedded import project_id
+    project = project_id(directory)
+    config_path, cfg = load_config(project, directory.parent, directory_override=directory)
+    if not config_path.is_file() or cfg.get('id') != project or not PROJECT_RE.fullmatch(project):
         raise ValueError('Project ID mismatch')
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from project_milestone_guard import policy_for_project
@@ -87,19 +89,20 @@ def evidence(directory, cfg, milestone, spec):
             return None
         fingerprints = {'milestone_requirements_sha256': milestone_hash,
                         'acceptance_policy_sha256': policy_hash}
-    return dict(**fingerprints, project=directory.name, requirement=requirement, milestone=milestone,
+    return dict(**fingerprints, project=(directory.parent.name if directory.name == ".pw" else directory.name), requirement=requirement, milestone=milestone,
                 head=head, requirements_sha256=digest(req), queue_sha256=digest(queue),
                 task_ids=[t['id'] for t in tasks], scope_paths=paths, command=command)
 
 def load_pending(root, project=None):
     records=[]
-    for directory in sorted(root.iterdir()) if root.is_dir() else []:
-        if project is not None and directory.name != project: continue
-        if not directory.is_dir() or not PROJECT_RE.fullmatch(directory.name): continue
+    from pw_embedded import state_directories, project_id
+    for directory in state_directories(root):
+        if project is not None and project_id(directory) != project: continue
+        if not directory.is_dir() or not PROJECT_RE.fullmatch(project_id(directory)): continue
         record_path=directory/'telegram_approval_pending.json'
         if not record_path.exists(): continue
         data=json.loads(record_path.read_text())
-        if data.get('project') != directory.name: raise ValueError('Pending record project mismatch')
+        if data.get('project') != project_id(directory): raise ValueError('Pending record project mismatch')
         records.append((directory,data))
     return records
 
@@ -116,7 +119,7 @@ def scan(root, project=None, milestone=None):
             continue  # Ordinary ~/projects source checkout, not an initialized pw project.
         cfg, policy=project_data(directory)
         if milestone is not None and (policy is None or milestone not in policy.get('milestones', {})):
-            raise ValueError(f'No acceptance policy for {directory.name} / {milestone}')
+            raise ValueError(f'No acceptance policy for {project_id(directory)} / {milestone}')
         if policy is None: continue
         # Do not scan when the project itself is disabled.
         if not cfg.get('planning',{}).get('enabled',False): continue
@@ -142,7 +145,7 @@ def scan(root, project=None, milestone=None):
                     continue
                 allowed = {selection['milestone']}
                 if milestone is not None and milestone not in allowed:
-                    raise ValueError(f'{directory.name} / {milestone} is not the current milestone awaiting acceptance')
+                    raise ValueError(f'{project_id(directory)} / {milestone} is not the current milestone awaiting acceptance')
             else:
                 allowed = {milestone} if milestone is not None else set(policy['milestones'])
             for candidate_milestone,spec in policy['milestones'].items():
@@ -165,10 +168,10 @@ def scan(root, project=None, milestone=None):
                                              if record['milestone'] in recorded)
                 never_approved = sorted(record['milestone'] for record in options
                                         if record['milestone'] not in recorded)
-                print(f'{directory.name}: multiple completed milestones; no ambiguous request sent. '
+                print(f'{project_id(directory)}: multiple completed milestones; no ambiguous request sent. '
                       f'Previously approved but currently stale: {previously_approved}; '
                       f'never approved: {never_approved}. '
-                      f'Use pw notify --project {directory.name} --milestone MILESTONE_ID to revalidate one explicitly')
+                      f'Use pw notify --project {project_id(directory)} --milestone MILESTONE_ID to revalidate one explicitly')
             elif milestone is not None:
                 # An explicit request for an already-current milestone is a
                 # successful no-op, not an approval failure. Recheck against
@@ -187,9 +190,9 @@ def scan(root, project=None, milestone=None):
                     policy=policy, journal=journal,
                 )
                 if milestone in receipts:
-                    print(f'{directory.name} / {milestone}: already accepted with current verified evidence; no new request')
+                    print(f'{project_id(directory)} / {milestone}: already accepted with current verified evidence; no new request')
                 else:
-                    raise ValueError(f'No currently eligible approval for {directory.name} / {milestone}')
+                    raise ValueError(f'No currently eligible approval for {project_id(directory)} / {milestone}')
     return found
 
 def approve_single(root):
@@ -209,7 +212,8 @@ def approve_single(root):
     # Do not remove request if receipt wasn't actually written.
     if receipt['git_head'] != pinned['head']: raise RuntimeError('Unexpected receipt HEAD')
     (directory/'telegram_approval_pending.json').unlink()
-    return f'APPROVED {directory.name} / {milestone} at {receipt["git_head"][:12]}. Next scheduled run may plan.'
+    from pw_embedded import project_id
+    return f'APPROVED {project_id(directory)} / {milestone} at {receipt["git_head"][:12]}. Next scheduled run may plan.'
 
 def main():
     p=argparse.ArgumentParser()
