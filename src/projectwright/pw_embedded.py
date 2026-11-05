@@ -31,7 +31,7 @@ until explicitly authorized.
 EXCLUDE = ("/.pw/\n",)
 SHARED_EXCLUDE = (
     "/.pw/*\n", "!/.pw/README.md\n", "!/.pw/requirements.md\n",
-    "!/.pw/queue.md\n", "!/.pw/config.json\n",
+    "!/.pw/config.json\n",
     "/.pw/state/\n", "/.pw/logs/\n", "/.pw/results/\n",
 )
 
@@ -283,3 +283,20 @@ def state_directories(root: Path) -> list[Path]:
                if p.is_dir() and ID.fullmatch(p.name) and (p / "config.json").is_file()]
               if root.is_dir() else [])
     return sorted(legacy + registered_projects(), key=lambda p: str(p))
+
+def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser(description="Register a moved or existing embedded Projectwright repository")
+    parser.add_argument("path", nargs="?", type=Path, default=Path.cwd())
+    args = parser.parse_args()
+    try:
+        register(args.path)
+    except (ValueError, OSError, json.JSONDecodeError) as exc:
+        parser.error(str(exc))
+    print(json.dumps({"repository": str(args.path.expanduser().resolve()),
+                      "registration": "updated"}))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
