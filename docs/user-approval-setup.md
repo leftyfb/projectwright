@@ -89,3 +89,30 @@ required for each account. Isolated Hermes discovery/registration and live Appro
 **First-run interface:** new packages should use `pw setup`. Previously built preview artifacts may not include this command; `pw-timer setup-user` is the older direct onboarding route.
 
 See [full manual](manual.md) and [packaging operations](packaging-and-operations.md).
+
+### Ambiguous or stale milestone approvals
+
+`pw notify --project PROJECT --send` refuses to select arbitrarily when
+multiple completed milestones need acceptance. It reports which milestones
+were previously approved but whose evidence is now stale, versus milestones
+that have never been approved. To explicitly rerun acceptance for one eligible
+milestone, use:
+
+```bash
+pw notify --project PROJECT --milestone REQUIREMENT-M1
+pw notify --project PROJECT --milestone REQUIREMENT-M1 --send
+```
+
+The first command previews the eligible request without sending it; the second
+pins the evidence and sends the Telegram buttons. Clicking Approve reruns the
+configured acceptance command against the current clean Git worktree.
+The pinned request is still checked for staleness under the project lock.
+The explicit selection cannot bypass strict milestone sequencing.
+
+A previously accepted scoped milestone is kept valid after a successor COMMIT
+only when Projectwright can verify the exact successor commit chain through
+acceptance policy scopes, completed queue tasks and an accepted receipt or
+completed COMMIT journal. If that evidence is missing, the old approval stays
+stale and requires explicit revalidation. Unscoped legacy receipts remain
+HEAD-strict.
+
