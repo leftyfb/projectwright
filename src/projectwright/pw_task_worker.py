@@ -401,18 +401,17 @@ def cycle_record_failed_test(task: Task, before: tuple, after: tuple, original_q
 
 
 def explicit_commit_paths(description: str) -> set[str] | None:
-    """Conservatively extract an explicit 'commit only ...' list.
+    """Extract a literal 'commit only file1, file2, and file3' scope.
 
-    An unparseable instruction is a stop condition, never permission to
-    silently commit a subset. Older unconstrained COMMIT tasks retain the
-    existing cycle-allowlist checks.
+    Unparseable explicit instructions fail closed; older unconstrained COMMIT
+    tasks continue to use the cycle allowlist.
     """
-    match = re.search(r'\\bcommit only\\s+(.+?)(?:[.;]|$)', description, re.IGNORECASE)
+    match = re.search(r'\bcommit only\s+(.+?)(?:\.(?:\s|$)|;|$)', description, re.IGNORECASE)
     if match is None:
         return None
     raw = match.group(1)
-    parts = re.split(r',\\s*|\\s+and\\s+', raw)
-    paths = {p.strip().strip('\\x60') for p in parts}
+    parts = re.split(r',\s*|\s+and\s+', raw)
+    paths = {p.strip().strip('\x60') for p in parts}
     if (not paths or any(not p or not re.fullmatch(r'[A-Za-z0-9_./-]+', p)
                          or p.startswith('/') or '..' in Path(p).parts
                          for p in paths) or len(paths) != len(parts)):
