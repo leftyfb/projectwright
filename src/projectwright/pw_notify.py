@@ -110,12 +110,13 @@ def _still_pending(directory: Path, pinned: dict) -> bool:
         return False
 
 
-def notify_pending(root: Path, *, dry_run=False, transport=None):
+def notify_pending(root: Path, *, dry_run=False, transport=None, project=None):
     import project_telegram_approval as bridge
     out=[]
     values = None
     users: tuple[str, ...] = ()
-    for directory, pinned in bridge.load_pending(root):
+    pending = bridge.load_pending(root) if project is None else bridge.load_pending(root, project=project)
+    for directory, pinned in pending:
         marker=directory/'telegram_approval_notified.json'
         current_id=request_id(pinned)
         rejected=directory/'telegram_approval_rejected.json'
@@ -132,7 +133,6 @@ def notify_pending(root: Path, *, dry_run=False, transport=None):
         delivered = _delivery_state(marker, current_id, users)
         if all(user in delivered for user in users):
             continue
-        lock=Path(json.loads((directory/'config.json').read_text())['lock']).expanduser()
         # Serialize notifier instances; do not hold worker project lock over network.
         notify_lock=directory/'.telegram_notify.lock'
         with notify_lock.open('a+') as f:
@@ -175,11 +175,21 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--root', type=Path, default=__import__('project_queue_manager').default_project_root())
     parser.add_argument('--send', action='store_true')
+    parser.add_argument('--project', help='Scan and notify only this initialized Projectwright project')
     a=parser.parse_args()
     # Scan first, under per-project locks. A failed scan is reported, never silently bypassed.
     from project_telegram_approval import scan
-    scan(a.root)
-    rows=notify_pending(a.root,dry_run=not a.send)
+    if a.project is not None:
+        if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', a.project):
+            parser.error('--project must be a valid project ID')
+        if not (a.root / a.project / 'config.json').is_file():
+            parser.error(f'Project {a.project!r} is not initialized under {a.root}')
+    if a.project is None:
+        scan(a.root)
+        rows=notify_pending(a.root,dry_run=not a.send)
+    else:
+        scan(a.root, project=a.project)
+        rows=notify_pending(a.root,dry_run=not a.send,project=a.project)
     print('\n'.join(rows) if rows else 'No new notifications')
 
 if __name__=='__main__':
