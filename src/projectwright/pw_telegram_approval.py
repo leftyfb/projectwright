@@ -38,8 +38,9 @@ def atomic_json(path, data):
         if os.path.exists(name): os.unlink(name)
 
 def project_data(directory):
-    cfg = json.loads((directory / 'config.json').read_text())
-    if cfg.get('id') != directory.name or not PROJECT_RE.fullmatch(directory.name):
+    from pw_config import load as load_config
+    config_path, cfg = load_config(directory.name, directory.parent)
+    if not config_path.is_file() or cfg.get('id') != directory.name or not PROJECT_RE.fullmatch(directory.name):
         raise ValueError('Project ID mismatch')
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from project_milestone_guard import policy_for_project
@@ -90,9 +91,10 @@ def evidence(directory, cfg, milestone, spec):
                 head=head, requirements_sha256=digest(req), queue_sha256=digest(queue),
                 task_ids=[t['id'] for t in tasks], scope_paths=paths, command=command)
 
-def load_pending(root):
+def load_pending(root, project=None):
     records=[]
     for directory in sorted(root.iterdir()) if root.is_dir() else []:
+        if project is not None and directory.name != project: continue
         if not directory.is_dir() or not PROJECT_RE.fullmatch(directory.name): continue
         record_path=directory/'telegram_approval_pending.json'
         if not record_path.exists(): continue
@@ -101,10 +103,15 @@ def load_pending(root):
         records.append((directory,data))
     return records
 
-def scan(root):
+def scan(root, project=None):
     found=[]
     for directory in sorted(root.iterdir()) if root.is_dir() else []:
+        if project is not None and directory.name != project: continue
         if not directory.is_dir() or not PROJECT_RE.fullmatch(directory.name): continue
+        if not (directory / 'config.json').is_file():
+            if project is not None:
+                raise FileNotFoundError(f'Project {project!r} is not initialized: {directory / "config.json"}')
+            continue  # Ordinary ~/projects source checkout, not an initialized pw project.
         cfg, policy=project_data(directory)
         if policy is None: continue
         # Do not scan when the project itself is disabled.
