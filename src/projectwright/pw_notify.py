@@ -73,6 +73,29 @@ def send(root: Path, record: dict, transport=None, *, recipient=None, values=Non
     return body['result']['message_id']
 
 
+
+def send_text(message: str, recipient: str, *, values=None, transport=None) -> int:
+    """Deliver a plain Telegram message to a configured authorized user."""
+    vals = values if values is not None else config_values(Path.home() / '.hermes' / '.env')
+    token = vals.get('TELEGRAM_BOT_TOKEN')
+    if not token or recipient not in parse_allowed_users(vals.get('TELEGRAM_ALLOWED_USERS', '')):
+        raise ValueError('Telegram recipient is not authorized or bot token is missing')
+    payload = {'chat_id': recipient, 'text': message}
+    if transport is not None:
+        return transport(payload)
+    request = Request('https://api.telegram.org/bot' + token + '/sendMessage',
+                      data=json.dumps(payload).encode('utf-8'),
+                      headers={'Content-Type': 'application/json'}, method='POST')
+    try:
+        with urlopen(request, timeout=15) as response:
+            data = json.load(response)
+    except Exception as exc:
+        raise RuntimeError(f'Telegram completion notification failed ({type(exc).__name__})') from None
+    if data.get('ok') is not True:
+        raise RuntimeError('Telegram completion notification failed')
+    return data['result']['message_id']
+
+
 def _delivery_state(marker: Path, current_id: str, users):
     if not marker.exists():
         return {}
