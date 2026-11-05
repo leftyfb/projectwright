@@ -106,7 +106,10 @@ def load(project: str, root: Path | None = None, *, directory_override: Path | N
     if selected is not None:
         if not selected or not Path(selected).expanduser().is_absolute():
             raise ValueError("PROJECTWRIGHT_WORKTREE must be an absolute path")
-        result["worktree"] = str(Path(selected).expanduser())
+        candidate = Path(selected).expanduser().resolve()
+        if overrides.get("layout") == "embedded" and candidate != directory.parent.resolve():
+            raise ValueError("Embedded worktree override must match owning repository")
+        result["worktree"] = str(candidate)
     branch = os.environ.get("PROJECTWRIGHT_BRANCH")
     if branch is not None:
         if not branch or branch.startswith("-") or not re.fullmatch(r"[A-Za-z0-9_./-]+", branch) or ".." in branch or branch.endswith("/"):
