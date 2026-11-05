@@ -39,7 +39,8 @@ def completion_details(directory: Path) -> dict | None:
         return None
     if Path(cfg["cycle_file"]).expanduser().exists():
         return None
-    worker_path = directory / "worker_journal.json"
+    from pw_worker_journal import journal_path
+    worker_path = journal_path(cfg, config_path)
     journal = json.loads(worker_path.read_text()) if worker_path.exists() else {}
     if journal.get("current_task") is not None:
         return None
