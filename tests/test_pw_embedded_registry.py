@@ -67,6 +67,20 @@ class RegistryAndSafety(unittest.TestCase):
             self.assertIn("WantedBy=timers.target", timer)
             self.assertNotIn("OnCalendar=", timer)
 
+    def test_systemd_escapes_paths_with_spaces_and_specifiers(self):
+        from pw_project_timer import _systemd_argument, approval_notify_units
+        script = Path("/opt/project wright/dispatcher%demo.py")
+        service, _ = unit_strings("task-tracker-example", 20, script,
+                                  repo=Path("/home/fixture/projects with spaces/task-tracker-example"))
+        self.assertIn('"/opt/project wright/dispatcher%%demo.py"', service)
+        self.assertIn("PROJECTWRIGHT_PROJECT_DIR=", service)
+        self.assertIn("projects with spaces", service)
+        self.assertIn("ExecStart=/usr/bin/python3 -B ", service)
+        notifier_service, _ = approval_notify_units(Path("/opt/project wright/notifier.py"))
+        self.assertIn('"/opt/project wright/notifier.py"', notifier_service)
+        with self.assertRaises(ValueError):
+            _systemd_argument("/tmp/script\nExecStart=/bin/false")
+
     def test_git_runtime_state_must_not_be_in_index(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "task-tracker-example"
