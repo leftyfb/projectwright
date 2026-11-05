@@ -332,7 +332,7 @@ class TelegramApprovalAndButtonTests(unittest.TestCase):
     def test_completion_refuses_unaccepted_additional_milestone(self) -> None:
         self.scan_one()
         bridge.approve_single(self.root)
-        self.req.write_text(self.req.read_text() + "\\n### DEMO-1-M2 — Next work\\n")
+        self.req.write_text(self.req.read_text() + "\n### DEMO-1-M2 — Next work\n")
         self.assertIsNone(pw_completion.completion_details(self.project))
 
     def test_stale_approval_fails_closed_without_receipt(self) -> None:
