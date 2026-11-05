@@ -134,7 +134,8 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         self.assertFalse((marker / "planning_state.json").exists())
         (marker / "telegram_approval_rejected.json").unlink()
         (marker / "requirements.md").write_text(
-            (marker / "requirements.md").read_text() + "\nChanged requirements\n")
+            (marker / "requirements.md").read_text().replace(
+                "### DEMO-1-M1 — Milestone", "### DEMO-1-M1 — Revised milestone"))
         with self.assertRaisesRegex(ValueError, "stale"):
             pw_buttons.approve(self.root, pw_buttons.callback_data("a", record))
         self.assertFalse((marker / "planning_state.json").exists())
