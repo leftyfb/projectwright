@@ -176,7 +176,13 @@ def main():
     parser.add_argument('--root', type=Path, default=__import__('project_queue_manager').default_project_root())
     parser.add_argument('--send', action='store_true')
     parser.add_argument('--project', help='Scan and notify only this initialized Projectwright project')
+    parser.add_argument('--milestone', help='Explicitly select one eligible completed milestone; requires --project')
     a=parser.parse_args()
+    if a.milestone is not None:
+        if a.project is None:
+            parser.error('--milestone requires --project')
+        if not re.fullmatch(r'[A-Z][A-Z0-9]*-[0-9]+-M[0-9]+(?:-[A-Za-z0-9_-]+)?', a.milestone):
+            parser.error('--milestone must be a valid milestone ID')
     # Scan first, under per-project locks. A failed scan is reported, never silently bypassed.
     from project_telegram_approval import scan
     if a.project is not None:
@@ -188,7 +194,10 @@ def main():
         scan(a.root)
         rows=notify_pending(a.root,dry_run=not a.send)
     else:
-        scan(a.root, project=a.project)
+        if a.milestone is None:
+            scan(a.root, project=a.project)
+        else:
+            scan(a.root, project=a.project, milestone=a.milestone)
         rows=notify_pending(a.root,dry_run=not a.send,project=a.project)
     print('\n'.join(rows) if rows else 'No new notifications')
 
