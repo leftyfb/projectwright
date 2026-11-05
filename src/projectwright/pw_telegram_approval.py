@@ -96,7 +96,12 @@ def evidence(directory, cfg, milestone, spec):
 def load_pending(root, project=None):
     records=[]
     from pw_embedded import state_directories, project_id
-    for directory in state_directories(root):
+    legacy_pending = ([d for d in root.iterdir() if d.is_dir() and
+                       PROJECT_RE.fullmatch(d.name) and
+                       (d / "telegram_approval_pending.json").is_file()]
+                      if root.is_dir() else [])
+    directories = sorted(set(state_directories(root)) | set(legacy_pending))
+    for directory in directories:
         if project is not None and project_id(directory) != project: continue
         if not directory.is_dir() or not PROJECT_RE.fullmatch(project_id(directory)): continue
         record_path=directory/'telegram_approval_pending.json'
