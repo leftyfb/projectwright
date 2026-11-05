@@ -284,26 +284,8 @@ def main() -> int:
     return 0
 
 if __name__=='__main__':
-    try:raise SystemExit(main())
-    except Exception as e: print(f'REFUSED: {e}',file=sys.stderr);raise SystemExit(2)
-, installed_timer, re.M)
-            if match is None:
-                raise ValueError('Invalid installed timer interval')
-            expected_service, expected_timer = unit_strings(
-                a.project, int(match.group(1)), script, repo=repo)
-            if (service_path.read_text(encoding='utf-8') != expected_service
-                    or installed_timer != expected_timer):
-                raise ValueError('Embedded systemd units differ from generated project scope; inspect and reinstall disabled units')
-        # Disabling an existing unit is always allowed, even if the timer
-        # interval differs or the unit was altered; refusing would leave
-        # unattended execution running. Symlinks remain prohibited.
-    if a.action=='enable':
-        if not service_path.exists() or not timer_path.exists():raise ValueError('Units not installed')
-        # Explicit user action only. Never silently enable on install.
-        subprocess.run(['systemctl','--user','enable','--now',unit+'.timer'],check=True);return 0
-    if a.action=='disable':subprocess.run(['systemctl','--user','disable','--now',unit+'.timer'],check=True);return 0
-    return 0
-
-if __name__=='__main__':
-    try:raise SystemExit(main())
-    except Exception as e: print(f'REFUSED: {e}',file=sys.stderr);raise SystemExit(2)
+    try:
+        raise SystemExit(main())
+    except Exception as e:
+        print(f'REFUSED: {e}', file=sys.stderr)
+        raise SystemExit(2)
