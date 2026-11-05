@@ -400,7 +400,26 @@ def cycle_record_failed_test(task: Task, before: tuple, after: tuple, original_q
     return True
 
 
-def cycle_commit_precheck() -> None:
+def explicit_commit_paths(description: str) -> set[str] | None:
+    """Extract a literal 'commit only file1, file2, and file3' scope.
+
+    Unparseable explicit instructions fail closed; older unconstrained COMMIT
+    tasks continue to use the cycle allowlist.
+    """
+    match = re.search(r'\bcommit only\s+(.+?)(?:\.(?:\s|$)|;|$)', description, re.IGNORECASE)
+    if match is None:
+        return None
+    raw = match.group(1)
+    parts = re.split(r',\s*(?:and\s+)?|\s+and\s+', raw)
+    paths = {p.strip().strip('\x60') for p in parts}
+    if (not paths or any(not p or not re.fullmatch(r'[A-Za-z0-9_./-]+', p)
+                         or p.startswith('/') or '..' in Path(p).parts
+                         for p in paths) or len(paths) != len(parts)):
+        raise RuntimeError('Cannot parse explicit COMMIT file scope; manual review required')
+    return paths
+
+
+def cycle_commit_precheck(task: Task) -> None:
     record = cycle_read()
     if not record or record['phase'] != 'active':
         raise RuntimeError('No active cycle for COMMIT')
@@ -408,6 +427,15 @@ def cycle_commit_precheck() -> None:
     extra = dirty - set(record['allowed'])
     if extra:
         raise RuntimeError(f'Unapproved dirty paths before COMMIT: {sorted(extra)}')
+    declared = explicit_commit_paths(task.description)
+    if declared is not None:
+        excluded = dirty - declared
+        if excluded:
+            raise RuntimeError(
+                f'COMMIT scope mismatch before creating a commit: {sorted(excluded)} '
+                'have uncommitted changes outside the explicitly assigned files. '
+                'Review or revise the assignment; nothing has been committed.'
+            )
 
 
 def cycle_finish_commit(before: tuple, after: tuple) -> None:
@@ -744,7 +772,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
             return 5
         cycle_begin(task)
         if task.kind == 'COMMIT':
-            cycle_commit_precheck()
+            cycle_commit_precheck(task)
         before = repo_state()
         RESULT_DIR.mkdir(parents=True, exist_ok=True)
         result_prefix = RESULT_DIR / f'{datetime.now().strftime("%Y%m%d_%H%M%S_%f")}_{task.task_id}'

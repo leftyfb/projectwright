@@ -431,11 +431,10 @@ def policy_for_project(project_dir: Path) -> dict | None:
 def current_receipts(planning_state: dict, requirements: bytes, queue: str, head: str,
                      *, repo: Path | None = None, strict: bool = False, policy: dict | None = None,
                      journal: dict | None = None) -> dict:
-    """Validate task, requirements and Git evidence without trusting task checkboxes alone.
+    """Validate receipts against requirements, tasks and evidenced Git history.
 
-    Legacy receipts remain HEAD-strict. In strict mode, a previously accepted
-    milestone can be carried through individually evidenced successor commits;
-    a pending successor requires a matching completed worker journal.
+    Earlier receipts can survive an authorized successor milestone commit in
+    either sequencing mode. Unscoped legacy receipts remain HEAD-strict.
     """
     output = {}
     records = planning_state.get('verified_milestones', {})
@@ -472,7 +471,7 @@ def current_receipts(planning_state: dict, requirements: bytes, queue: str, head
             output[milestone] = r
         elif repo is not None and _git_scoped_evidence_current(Path(repo), r, head):
             output[milestone] = r
-    if not strict or repo is None or not isinstance(policy, dict):
+    if repo is None or not isinstance(policy, dict):
         return output
     # Evidence chain: accepted successors supply their pinned commit, and one
     # unapproved final successor may use the worker's completed COMMIT journal.
@@ -486,7 +485,17 @@ def current_receipts(planning_state: dict, requirements: bytes, queue: str, head
     for i, milestone in enumerate(sequence):
         if milestone in output or milestone not in valid_base:
             continue
-        cursor = valid_base[milestone].get('git_head')
+        receipt = valid_base[milestone]
+        # A legacy unscoped receipt cannot be safely carried forward. In
+        # default mode also require the original acceptance scope and command
+        # to still match the configured milestone policy.
+        spec = policy.get('milestones', {}).get(milestone)
+        if (acceptance_policy_fingerprint(spec) is None
+                or receipt.get('scope_version') != 1
+                or receipt.get('scope_paths') != spec['scope_paths']
+                or receipt.get('acceptance_command') != spec['command']):
+            continue
+        cursor = receipt.get('git_head')
         if not isinstance(cursor, str):
             continue
         for successor in sequence[i + 1:]:

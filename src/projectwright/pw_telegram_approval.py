@@ -103,7 +103,9 @@ def load_pending(root, project=None):
         records.append((directory,data))
     return records
 
-def scan(root, project=None):
+def scan(root, project=None, milestone=None):
+    if milestone is not None and project is None:
+        raise ValueError('A project is required when selecting a milestone')
     found=[]
     for directory in sorted(root.iterdir()) if root.is_dir() else []:
         if project is not None and directory.name != project: continue
@@ -113,6 +115,8 @@ def scan(root, project=None):
                 raise FileNotFoundError(f'Project {project!r} is not initialized: {directory / "config.json"}')
             continue  # Ordinary ~/projects source checkout, not an initialized pw project.
         cfg, policy=project_data(directory)
+        if milestone is not None and (policy is None or milestone not in policy.get('milestones', {})):
+            raise ValueError(f'No acceptance policy for {directory.name} / {milestone}')
         if policy is None: continue
         # Do not scan when the project itself is disabled.
         if not cfg.get('planning',{}).get('enabled',False): continue
@@ -137,8 +141,10 @@ def scan(root, project=None):
                 if selection['decision'] != 'awaiting_acceptance':
                     continue
                 allowed = {selection['milestone']}
+                if milestone is not None and milestone not in allowed:
+                    raise ValueError(f'{directory.name} / {milestone} is not the current milestone awaiting acceptance')
             else:
-                allowed = set(policy['milestones'])
+                allowed = {milestone} if milestone is not None else set(policy['milestones'])
             for milestone,spec in policy['milestones'].items():
                 if milestone not in allowed:
                     continue
@@ -151,7 +157,20 @@ def scan(root, project=None):
                     atomic_json(pending_path, options[0])
                     found.append(options[0])
             elif len(options)>1:
-                print(f'{directory.name}: multiple completed milestones; not creating an ambiguous request')
+                state_path = directory / 'planning_state.json'
+                state = json.loads(state_path.read_text()) if state_path.exists() else {}
+                recorded = state.get('verified_milestones', {})
+                recorded = recorded if isinstance(recorded, dict) else {}
+                previously_approved = sorted(record['milestone'] for record in options
+                                             if record['milestone'] in recorded)
+                never_approved = sorted(record['milestone'] for record in options
+                                        if record['milestone'] not in recorded)
+                print(f'{directory.name}: multiple completed milestones; no ambiguous request sent. '
+                      f'Previously approved but currently stale: {previously_approved}; '
+                      f'never approved: {never_approved}. '
+                      f'Use pw notify --project {directory.name} --milestone MILESTONE_ID to revalidate one explicitly')
+            elif milestone is not None:
+                raise ValueError(f'No currently eligible approval for {directory.name} / {milestone}')
     return found
 
 def approve_single(root):

@@ -127,6 +127,33 @@ class ReceiptChainTests(unittest.TestCase):
     def test_accepted_receipt_survives_authorized_successor_commit(self) -> None:
         self.assertIn("PW-005-M1", self.receipts())
 
+    def test_default_receipt_survives_evidenced_successor_commit(self) -> None:
+        original = self.state["verified_milestones"]["PW-005-M1"]
+        original["requirements_sha256"] = guard.sha(REQUIREMENTS)
+        receipts = guard.current_receipts(
+            self.state, REQUIREMENTS, self.queue, self.second,
+            repo=self.repo, strict=False, policy=self.policy,
+            journal=self.journal,
+        )
+        self.assertIn("PW-005-M1", receipts)
+
+    def test_default_receipt_requires_scoped_successor_evidence(self) -> None:
+        original = self.state["verified_milestones"]["PW-005-M1"]
+        original["requirements_sha256"] = guard.sha(REQUIREMENTS)
+        for journal in ({}, {"current_task": {"id": "P104"}}):
+            with self.subTest(journal=journal):
+                receipts = guard.current_receipts(
+                    self.state, REQUIREMENTS, self.queue, self.second,
+                    repo=self.repo, strict=False, policy=self.policy,
+                    journal=journal,
+                )
+                self.assertNotIn("PW-005-M1", receipts)
+        original.pop("scope_paths")
+        self.assertNotIn("PW-005-M1", guard.current_receipts(
+            self.state, REQUIREMENTS, self.queue, self.second,
+            repo=self.repo, strict=False, policy=self.policy, journal=self.journal,
+        ))
+
     def test_missing_or_wrong_journal_blocks_successor_bridge(self) -> None:
         variants = (
             {},
