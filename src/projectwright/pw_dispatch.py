@@ -506,11 +506,12 @@ def cli():
         'defaults': ('pw_defaults', []),
         'init': ('pw_init', []),
         'register': ('pw_embedded', []),
+        'migrate': ('pw_migrate', []),
         'requirements': ('pw_onboarding', ['requirements']),
         'start': ('pw_onboarding', ['start']),
         'authorize-execution': ('pw_onboarding', ['authorize-execution']),
     }
-    usage = 'usage: pw {tick|status|plan|start|authorize-execution|requirements|worker|notify|timer|setup|setup-user|defaults|init|register} [options]'
+    usage = 'usage: pw {tick|status|plan|start|authorize-execution|requirements|worker|notify|timer|setup|setup-user|defaults|init|register|migrate} [options]'
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
         print(usage)
         return 0 if len(sys.argv) > 1 else 2
