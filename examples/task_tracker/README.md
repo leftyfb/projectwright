@@ -1,6 +1,6 @@
 # Task Tracker example
 
-This is a **build-it-yourself** example. Projectwright and Hermes will create the task tracker; it is not prebuilt. Everything lives in **one Git repository**, with Projectwright state in `.pw/`.
+This is a **build-it-yourself** example. Projectwright and Hermes will create the task tracker using Python's standard library; it is not prebuilt. Everything lives in **one Git repository**, with Projectwright state in `.pw/`.
 
 The repository name and Projectwright project ID are both **`task-tracker-example`**. These instructions use the Debian installation; no Projectwright source checkout is needed.
 
