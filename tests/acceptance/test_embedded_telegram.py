@@ -149,6 +149,13 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         second = json.loads((two / ".pw/telegram_approval_pending.json").read_text())
         self.assertNotEqual(pw_buttons.request_id(first), pw_buttons.request_id(second))
         with self.assertRaisesRegex(ValueError, "Ambiguous"):
+            approval.scan(self.root, project=one.name, milestone="DEMO-1-M1")
+        with patch.object(sys, "argv", ["pw-notify", "--root", str(self.root),
+                                         "--project", one.name]):
+            with self.assertRaises(SystemExit) as error:
+                pw_notify.main()
+        self.assertEqual(error.exception.code, 2)
+        with self.assertRaisesRegex(ValueError, "Ambiguous"):
             embedded.directory(one.name, Path.home() / "projects")
         result, selected = pw_buttons.approve(
             self.root, pw_buttons.callback_data("a", first), True)
