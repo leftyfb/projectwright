@@ -186,8 +186,8 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         query.answer = answer
         query.edit_message_text = edit_message_text
         with patch.dict(sys.modules, {"telegram": types.ModuleType("telegram"),
-                                      "telegram.ext": telegram_ext}), \\
-             patch.object(pw_plugin, "_authorized_ids", return_value=frozenset({"123"})), \\
+                                      "telegram.ext": telegram_ext}), \
+             patch.object(pw_plugin, "_authorized_ids", return_value=frozenset({"123"})), \
              patch.object(pw_completion, "notify_completion", return_value=[]) as completion:
             pw_plugin._factory(app, None)
             asyncio.run(callbacks[0].callback(
