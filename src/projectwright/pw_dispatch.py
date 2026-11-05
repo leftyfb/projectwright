@@ -30,6 +30,7 @@ def default_project_root():
 
 SAFE_IDLE = {'awaiting_acceptance', 'disabled', 'no_op'}
 CYCLE_BLOCKERS = {'active_git_cycle', 'dirty_worktree_review'}
+LEGACY_CYCLE_BLOCKERS = {'branch_or_worktree', 'active_git_cycle'}
 MANAGER_EXIT_CODES = {
     'queued': 0,
     'busy': 2,
@@ -203,9 +204,18 @@ def authorized_cycle_task(project, scripts, report):
     if report.get('decision') != 'blocked':
         return False
     reason = report.get('reason')
-    if (not isinstance(reason, str) or set(reason.split(', ')) != CYCLE_BLOCKERS
-            or not isinstance(report.get('blockers'), list)
-            or set(report['blockers']) != CYCLE_BLOCKERS):
+    if not isinstance(reason, str):
+        return False
+    reason_blockers = set(reason.split(', '))
+    # The manager's read-only --status and planning --once pathways use
+    # different blocker names. Both must be exact known cycle-only shapes.
+    if reason_blockers not in (CYCLE_BLOCKERS, LEGACY_CYCLE_BLOCKERS):
+        return False
+    blockers = report.get('blockers')
+    if blockers is not None and (not isinstance(blockers, list)
+                                 or set(blockers) != reason_blockers):
+        return False
+    if blockers is None and reason_blockers != LEGACY_CYCLE_BLOCKERS:
         return False
     try:
         import importlib.util
