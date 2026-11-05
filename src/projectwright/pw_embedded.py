@@ -85,6 +85,13 @@ def initialize(path: Path, *, shared: bool = False) -> Path:
         raise ValueError("Project destination is not a directory")
     if target.exists() and (target / ".pw").exists():
         raise FileExistsError("Projectwright project already exists")
+    # Refuse predictable errors BEFORE making project state or changing Git.
+    ignore = target / ".gitignore"
+    if ignore.is_symlink():
+        raise ValueError("Refusing symlinked .gitignore")
+    previous = ignore.read_text(encoding="utf-8") if ignore.is_file() else ""
+    if shared and "/.pw/" in previous.splitlines():
+        raise ValueError("Existing /.pw/ ignore rule conflicts with shared mode")
     existing_parent = next((parent for parent in (target, *target.parents)
                             if parent.exists() and parent.is_dir()), None)
     top = _git_root(existing_parent) if existing_parent else None
@@ -92,6 +99,16 @@ def initialize(path: Path, *, shared: bool = False) -> Path:
         raise ValueError("Must initialize at a Git repository root, not inside another repository")
     if not target.exists():
         target.mkdir(parents=True)
+    if top == target:
+        # Git can track deleted .pw/ files even before the directory exists.
+        # Initializing on top of their index entries could leak operational
+        # state through an existing Git history or a subsequent commit.
+        tracked = subprocess.check_output(
+            ["git", "-C", str(target), "ls-files", "--cached", "--", ".pw"],
+            text=True,
+        ).strip()
+        if tracked:
+            raise ValueError("Existing Git index tracks .pw files; review before initialization")
     if top is None:
         subprocess.run(["git", "-C", str(target), "init", "-b", "main"],
                        check=True, capture_output=True, text=True)
@@ -126,12 +143,6 @@ def initialize(path: Path, *, shared: bool = False) -> Path:
             fd = os.open(file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
                 handle.write(contents)
-        ignore = target / ".gitignore"
-        if ignore.is_symlink():
-            raise ValueError("Refusing symlinked .gitignore")
-        previous = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
-        if shared and "/.pw/" in previous.splitlines():
-            raise ValueError("Existing /.pw/ ignore rule conflicts with shared mode")
         entries = SHARED_EXCLUDE if shared else EXCLUDE
         # Only append the requested policy, avoiding duplicate identical rules.
         with ignore.open("a", encoding="utf-8") as handle:
