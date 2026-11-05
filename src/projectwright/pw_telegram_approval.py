@@ -157,8 +157,18 @@ def scan(root, project=None, milestone=None):
                     atomic_json(pending_path, options[0])
                     found.append(options[0])
             elif len(options)>1:
-                print(f'{directory.name}: multiple completed milestones; not creating an ambiguous request. '
-                      f'Use pw notify --project {directory.name} --milestone MILESTONE_ID to select one explicitly')
+                state_path = directory / 'planning_state.json'
+                state = json.loads(state_path.read_text()) if state_path.exists() else {}
+                recorded = state.get('verified_milestones', {})
+                recorded = recorded if isinstance(recorded, dict) else {}
+                previously_approved = sorted(record['milestone'] for record in options
+                                             if record['milestone'] in recorded)
+                never_approved = sorted(record['milestone'] for record in options
+                                        if record['milestone'] not in recorded)
+                print(f'{directory.name}: multiple completed milestones; no ambiguous request sent. '
+                      f'Previously approved but currently stale: {previously_approved}; '
+                      f'never approved: {never_approved}. '
+                      f'Use pw notify --project {directory.name} --milestone MILESTONE_ID to revalidate one explicitly')
             elif milestone is not None:
                 raise ValueError(f'No currently eligible approval for {directory.name} / {milestone}')
     return found
