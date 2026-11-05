@@ -609,7 +609,7 @@ class RealSubprocessChain(unittest.TestCase):
         git(repo, "init", "-q", "-b", "main")
         git(repo, "config", "user.email", "fixture@example.invalid")
         git(repo, "config", "user.name", "Fixture")
-        (repo / "probe.txt").write_text("unaltered\\n")
+        (repo / "probe.txt").write_text("unaltered\n")
         config_file = embedded_init(repo)
         git(repo, "add", ".")
         git(repo, "commit", "-qm", "baseline")
@@ -620,14 +620,14 @@ class RealSubprocessChain(unittest.TestCase):
         cfg["planning"]["milestone_sequence"] = "strict"
         config_file.write_text(json.dumps(cfg))
         (repo / ".pw/queue.md").write_text(
-            "- [ ] **P101 — READ** DEMO-1 / DEMO-1-M1: inspect the isolated fixture\\n"
+            "- [ ] **P101 — READ** DEMO-1 / DEMO-1-M1: inspect the isolated fixture\n"
         )
         (repo / ".pw/requirements.md").write_text(
-            "## DEMO-1 — Disposable requirement\\n\\n"
-            "### DEMO-1-M1 — Read fixture\\n"
-            "#### Acceptance\\n"
-            "- **Command:** `/bin/true`\\n"
-            "- **Scope:** `probe.txt`\\n"
+            "## DEMO-1 — Disposable requirement\n\n"
+            "### DEMO-1-M1 — Read fixture\n"
+            "#### Acceptance\n"
+            "- **Command:** `/bin/true`\n"
+            "- **Scope:** `probe.txt`\n"
         )
         launcher = ([self.installed_dispatch] if self.installed_dispatch else
                     [sys.executable, "-B", str(self.scripts / "pw_dispatch.py")])
@@ -643,7 +643,7 @@ class RealSubprocessChain(unittest.TestCase):
                  "--project", "task-tracker-example", "--status"],
                 env=env, capture_output=True, text=True, timeout=10)
             self.fail("Embedded dispatcher failed: " + result.stdout + result.stderr +
-                      "\\nmanager stdout: " + manager.stdout + "\\nmanager stderr: " + manager.stderr)
+                      "\nmanager stdout: " + manager.stdout + "\nmanager stderr: " + manager.stderr)
         self.assertIn("WORKER rc=0", result.stdout)
         self.assertIn("[x] **P101", (repo / ".pw/queue.md").read_text())
         self.assertTrue((repo / ".pw/state/worker_journal.json").exists())
