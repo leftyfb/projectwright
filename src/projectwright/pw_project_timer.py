@@ -16,11 +16,11 @@ def unit_name(project: str, repo: Path | None = None) -> str:
 
 
 def _systemd_environment(name: str, value: str) -> str:
-    if "\\n" in value or "\\r" in value or "\\x00" in value:
+    if "\n" in value or "\r" in value or "\x00" in value:
         raise ValueError("Invalid systemd environment value")
     # Quote according to systemd.syntax and double specifier expansion.
     escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%")
-    return 'Environment="' + name + "=" + escaped + '"\\n'
+    return 'Environment="' + name + "=" + escaped + '"\n'
 
 
 def unit_strings(project: str, minutes: int, script: Path, *,
