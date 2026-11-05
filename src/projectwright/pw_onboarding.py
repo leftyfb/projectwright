@@ -268,7 +268,11 @@ def status(project: str, as_json: bool) -> int:
         next_action = f"Create and complete requirements.md with: pw requirements --project {project} --edit"
     elif report.get("blockers") and "requirements_invalid" in report["blockers"]:
         next_action = f"Correct the listed requirements diagnostics, then rerun: pw status --project {project}"
-    elif report.get("decision") in {"blocked", "busy", "awaiting_acceptance", "quota_blocked"}:
+    elif report.get("decision") == "awaiting_acceptance":
+        next_action = ("Queued tasks are complete, but milestone acceptance is still pending. "
+                       "Run pw notify to preview the approval request, approve it through the "
+                       "configured Telegram callback, then run: pw plan --project " + project)
+    elif report.get("decision") in {"blocked", "busy", "quota_blocked"}:
         next_action = "Resolve the reported blocker or approval gate, then rerun pw status"
     elif type(report.get("pending")) is not int:
         next_action = "Queue counts are unknown; inspect the project queue and manager blockers, then rerun pw status"
