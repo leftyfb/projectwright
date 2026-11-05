@@ -49,24 +49,28 @@ def _factory(app, adapter):
             return
         try:
             action = q.data.split(':', 2)[1]
-            result = await asyncio.to_thread(approve if action == 'a' else reject, root, q.data)
+            target_dir = None
+            if action == 'a':
+                approved = await asyncio.to_thread(approve, root, q.data, True)
+                if isinstance(approved, tuple):
+                    result, target_dir = approved
+                else:
+                    result = approved
+            else:
+                result = await asyncio.to_thread(reject, root, q.data)
         except Exception as exc:
             LOG.exception('Milestone action refused')
             await q.answer('Request stale or approval refused. See gateway logs.', show_alert=True)
             return
         await q.answer('Recorded')
         await q.edit_message_text(result)
-        if action == 'a':
-            # Completion delivery is separate from acceptance. Any Telegram
-            # outage must not turn an already-approved milestone into an error.
+        if action == 'a' and target_dir is not None:
+            # The exact directory was verified by approve under its acceptance
+            # guard. Never rediscover by name after the pending record is gone.
+            # Completion delivery is separate and cannot undo acceptance.
             try:
                 from pw_completion import notify_completion
-                from pw_embedded import projects_for_name
-                project = q.data.split(':', 3)[2]
-                matches = projects_for_name(project, root)
-                if len(matches) != 1:
-                    raise ValueError('Ambiguous completion delivery target; notifier may retry')
-                await asyncio.to_thread(notify_completion, matches[0])
+                await asyncio.to_thread(notify_completion, target_dir)
             except Exception:
                 LOG.exception('Project completion notice could not be sent; notifier timer may retry')
     # Filter excludes all Hermes core buttons. Hermes reorders plugin callback handlers ahead of catch-all.
