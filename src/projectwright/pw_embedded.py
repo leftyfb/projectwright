@@ -269,19 +269,36 @@ def projects_for_name(project: str, root: Path) -> list[Path]:
 
 
 def callback_project(root: Path, project: str, request: str) -> Path:
-    """Resolve a callback by pinned record hash; refuse ambiguous matches."""
+    """Resolve a pinned callback uniquely across legacy and registered projects."""
     import hashlib
+    if not ID.fullmatch(project):
+        raise ValueError("Invalid callback project ID")
+    candidates = [m for m in registered_projects() if m.parent.name == project]
+    legacy = root / project
+    # Legacy callbacks have always been resolved directly against root/name,
+    # including tests and pending records created before config.json existed.
+    if legacy.is_dir() and not legacy.is_symlink():
+        candidates.append(legacy)
     matches = []
-    for marker in projects_for_name(project, root):
+    had_pending = False
+    for marker in candidates:
         pending = marker / "telegram_approval_pending.json"
-        if pending.is_file() and not pending.is_symlink():
+        if pending.is_symlink():
+            raise ValueError("Symlinked pending approval record")
+        if pending.is_file():
+            had_pending = True
             raw = json.loads(pending.read_text(encoding="utf-8"))
             canonical = json.dumps(raw, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
-            if hashlib.sha256(canonical).hexdigest()[:20] == request:
+            if raw.get("project") == project and hashlib.sha256(canonical).hexdigest()[:20] == request:
                 matches.append(marker)
-    if len(matches) != 1:
+    if len(matches) > 1:
         raise ValueError("Stale or ambiguous Projectwright callback")
-    return matches[0]
+    if len(matches) == 1:
+        return matches[0]
+    if not had_pending:
+        raise ValueError("Approval no longer pending")
+    raise ValueError("Stale or mismatched approval request")
+
 
 def project_id(directory: Path) -> str:
     return directory.parent.name if directory.name == ".pw" else directory.name
