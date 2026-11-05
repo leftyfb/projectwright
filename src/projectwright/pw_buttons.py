@@ -33,14 +33,15 @@ def resolve(root: Path, data: str):
     if match is None:
         raise ValueError('Unknown callback')
     action, project, rid = match.groups()
-    p = root / project / 'telegram_approval_pending.json'
-    # Avoid path traversal; regular file checks and exact project binding.
+    from pw_embedded import callback_project
+    directory = callback_project(root, project, rid)
+    p = directory / 'telegram_approval_pending.json'
     if not p.is_file() or p.is_symlink():
         raise ValueError('Approval no longer pending')
     record = json.loads(p.read_text(encoding='utf-8'))
     if record.get('project') != project or request_id(record) != rid:
         raise ValueError('Stale or mismatched approval request')
-    return action, root / project, record
+    return action, directory, record
 
 
 def approve(root: Path, data: str) -> str:
@@ -69,7 +70,7 @@ def approve(root: Path, data: str) -> str:
         current = json.loads(path.read_text())
         if current == pinned:
             path.unlink()
-    return f'APPROVED {directory.name} / {milestone} at {receipt["git_head"][:12]}'
+    return f'APPROVED {(directory.parent.name if directory.name == ".pw" else directory.name)} / {milestone} at {receipt["git_head"][:12]}'
 
 
 def reject(root: Path, data: str) -> str:
@@ -81,7 +82,8 @@ def reject(root: Path, data: str) -> str:
     action, directory, pinned = resolve(root, data)
     if action != 'r':
         raise ValueError('Not a rejection callback')
-    cfg = json.loads((directory / 'config.json').read_text())
+    from pw_config import load as load_config
+    cfg = load_config(pinned["project"], directory.parent, directory_override=directory)[1]
     lock = Path(cfg['lock']).expanduser()
     with lock.open('a+') as handle:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -92,7 +94,7 @@ def reject(root: Path, data: str) -> str:
             sys.path.insert(0, str(scripts))
         import project_telegram_approval as bridge
         bridge.atomic_json(directory / 'telegram_approval_rejected.json', current)
-    return f'REJECTED {directory.name} / {pinned["milestone"]}. Manual review required.'
+    return f'REJECTED {(directory.parent.name if directory.name == ".pw" else directory.name)} / {pinned["milestone"]}. Manual review required.'
 
 
 def message_text(record: dict) -> str:
