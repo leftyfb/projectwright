@@ -25,9 +25,9 @@ def _systemd_environment(name: str, value: str) -> str:
 
 def _systemd_argument(value: str) -> str:
     """One literal ExecStart argument; prevent whitespace/specifier injection."""
-    if not value or any(ch in value for ch in ("\\n", "\\r", "\\x00")):
+    if not value or any(ch in value for ch in ("\n", "\r", "\x00")):
         raise ValueError("Invalid systemd executable argument")
-    safe = value.replace("\\\\", "\\\\\\\\").replace('"', '\\\\"').replace("%", "%%")
+    safe = value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%")
     return '"' + safe + '"'
 
 
