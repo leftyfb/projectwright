@@ -816,7 +816,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
         verification = result['verification'] if result else 'No verified result.'
         files = sorted(changed_files(before, report_after))
         following = pick_task(update_selected_only(original, task, 'x') if ok else original)
-        next_label = f'{following.task_id} — {following.kind}: {following.description}' if following else 'All tasks complete'
+        next_label = f'{following.task_id} — {following.kind}: {following.description}' if following else 'Queue empty; check pw status for milestone acceptance or further planning'
         msg = (f'{status_icon} {PROJECT["display_name"]} worker\n'
                f'Task: {task.task_id} — {task.kind}: {task.description}\n'
                f'Result: {status}: {summary}\n'
