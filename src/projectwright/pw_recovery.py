@@ -34,7 +34,9 @@ def project_config(project: str, root: Path) -> tuple[Path, dict]:
     from pw_config import load as load_config
     config_file, cfg = load_config(project, root)
     directory = config_file.parent
-    if not config_file.is_file() or cfg.get('id') != project:
+    if not config_file.is_file():
+        config_file.read_text(encoding='utf-8')  # Preserve legacy missing-path diagnostics.
+    if cfg.get('id') != project:
         raise ValueError('Project configuration ID mismatch')
     for k in ('queue', 'worktree', 'cycle_file', 'lock'):
         if not isinstance(cfg.get(k), str):
