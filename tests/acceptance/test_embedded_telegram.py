@@ -45,7 +45,7 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         self.root = self.base / "legacy"
         self.root.mkdir()
 
-    def repository(self, parent="outside", contents="VALUE = 1\\n", *,
+    def repository(self, parent="outside", contents="VALUE = 1\n", *,
                    strict=True) -> Path:
         repo = self.base / parent / "task-tracker-example"
         repo.parent.mkdir(parents=True, exist_ok=True)
@@ -61,16 +61,16 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
             cfg["planning"]["milestone_sequence"] = "strict"
         config_file.write_text(json.dumps(cfg), encoding="utf-8")
         (repo / ".pw/queue.md").write_text(
-            "- [x] **P1 — READ** DEMO-1 / DEMO-1-M1: inspect fixture\\n"
-            "- [x] **P2 — COMMIT** DEMO-1 / DEMO-1-M1: commit fixture\\n",
+            "- [x] **P1 — READ** DEMO-1 / DEMO-1-M1: inspect fixture\n"
+            "- [x] **P2 — COMMIT** DEMO-1 / DEMO-1-M1: commit fixture\n",
             encoding="utf-8",
         )
         (repo / ".pw/requirements.md").write_text(
-            "## DEMO-1 — Disposable requirement\\n\\n"
-            "### DEMO-1-M1 — Milestone\\n"
-            "#### Acceptance\\n"
-            "- **Command:** `/bin/true`\\n"
-            "- **Scope:** `probe.py`\\n",
+            "## DEMO-1 — Disposable requirement\n\n"
+            "### DEMO-1-M1 — Milestone\n"
+            "#### Acceptance\n"
+            "- **Command:** `/bin/true`\n"
+            "- **Scope:** `probe.py`\n",
             encoding="utf-8",
         )
         embedded.register(repo)
@@ -134,14 +134,14 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         self.assertFalse((marker / "planning_state.json").exists())
         (marker / "telegram_approval_rejected.json").unlink()
         (marker / "requirements.md").write_text(
-            (marker / "requirements.md").read_text() + "\\nChanged requirements\\n")
+            (marker / "requirements.md").read_text() + "\nChanged requirements\n")
         with self.assertRaisesRegex(ValueError, "stale"):
             pw_buttons.approve(self.root, pw_buttons.callback_data("a", record))
         self.assertFalse((marker / "planning_state.json").exists())
 
     def test_duplicate_names_route_by_pinned_evidence_not_by_name(self):
-        one = self.repository("first", "VALUE = 1\\n")
-        two = self.repository("second", "VALUE = 2\\n")
+        one = self.repository("first", "VALUE = 1\n")
+        two = self.repository("second", "VALUE = 2\n")
         records = approval.scan(self.root)
         self.assertEqual(len(records), 2)
         first = json.loads((one / ".pw/telegram_approval_pending.json").read_text())
