@@ -1,16 +1,36 @@
 """Manage disabled-by-default per-project systemd user schedules."""
 from __future__ import annotations
-import argparse, json, os, re, subprocess, sys, shutil
+import argparse, hashlib, json, os, re, subprocess, sys, shutil
 from pathlib import Path
 
 ID = re.compile(r'[a-z][a-z0-9_-]{0,63}\Z')
 
-def unit_strings(project: str, minutes: int, script: Path) -> tuple[str,str]:
+def unit_name(project: str, repo: Path | None = None) -> str:
+    if not ID.fullmatch(project):
+        raise ValueError("Invalid project")
+    if repo is None:
+        return "projectwright-worker-" + project
+    # Distinct repositories with the same basename cannot share a systemd unit.
+    digest = hashlib.sha256(str(repo.resolve()).encode("utf-8")).hexdigest()[:12]
+    return "projectwright-worker-" + project + "-" + digest
+
+
+def _systemd_environment(name: str, value: str) -> str:
+    if "\\n" in value or "\\r" in value or "\\x00" in value:
+        raise ValueError("Invalid systemd environment value")
+    # Quote according to systemd.syntax and double specifier expansion.
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%")
+    return 'Environment="' + name + "=" + escaped + '"\\n'
+
+
+def unit_strings(project: str, minutes: int, script: Path, *,
+                 repo: Path | None = None) -> tuple[str,str]:
     if not ID.fullmatch(project) or not 5 <= minutes <= 1440:
         raise ValueError('Invalid project or interval (5..1440 minutes)')
     if not script.is_absolute(): raise ValueError('Dispatcher script path must be absolute')
+    environment = _systemd_environment('PROJECTWRIGHT_PROJECT_DIR', str(repo.resolve())) if repo else ''
     service = ('[Unit]\nDescription=Projectwright dispatcher for '+project+'\n'
-               '[Service]\nType=oneshot\nExecStart=/usr/bin/python3 -B '+str(script)+' --project '+project+'\n'
+               '[Service]\nType=oneshot\n' + environment + 'ExecStart=/usr/bin/python3 -B '+str(script)+' --project '+project+'\n'
                'TimeoutStartSec=45min\n')
     timer = ('[Unit]\nDescription=Schedule project worker for '+project+'\n'
              '[Timer]\nOnBootSec=2min\nOnUnitInactiveSec='+str(minutes)+'min\nPersistent=false\n'
@@ -193,18 +213,28 @@ def main() -> int:
     p=argparse.ArgumentParser();p.add_argument('action',choices=['check','install-disabled','enable','disable','status']);p.add_argument('project');p.add_argument('--minutes',type=int,default=20);p.add_argument('--root',type=Path,default=None)
     a=p.parse_args()
     if not ID.fullmatch(a.project):p.error('Invalid project ID')
-    unit='projectwright-worker-'+a.project
-    # Query systemd even if the project config or dispatcher script is gone.
-    if a.action=='status':
-        return subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False).returncode
     from project_queue_manager import default_project_root
+    from pw_embedded import directory as project_directory
     root = a.root if a.root is not None else default_project_root()
-    directory=root/a.project
-    cfg=json.loads((directory/'config.json').read_text())
-    if cfg.get('id')!=a.project: raise ValueError('Project config mismatch')
+    directory = None
+    repo = None
+    # Legacy status must work even after the project directory disappears.
+    if a.action == 'status' and not os.environ.get('PROJECTWRIGHT_PROJECT_DIR'):
+        unit = unit_name(a.project)
+        return subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False).returncode
+    directory = project_directory(a.project, root)
+    if directory.name == '.pw':
+        repo = directory.parent
+    unit = unit_name(a.project, repo)
+    if a.action == 'status':
+        return subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False).returncode
+    from pw_config import load as load_config
+    cfg_path, cfg = load_config(a.project, root)
+    if not cfg_path.is_file() or cfg_path.parent != directory or cfg.get('id') != a.project:
+        raise ValueError('Project config missing or mismatched')
     script=Path(__file__).resolve().parent/'pw_dispatch.py'
     if not script.is_file(): raise ValueError('Dispatcher script missing')
-    service,timer=unit_strings(a.project,a.minutes,script)
+    service,timer=unit_strings(a.project,a.minutes,script,repo=repo)
     dest=Path.home()/'.config/systemd/user'
     service_path=dest/(unit+'.service');timer_path=dest/(unit+'.timer')
     if a.action=='check':print(service);print(timer);return 0
