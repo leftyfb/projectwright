@@ -22,12 +22,12 @@ class TaskTrackerExampleTests(unittest.TestCase):
         self.assertTrue(REQUIREMENTS.is_file())
         text = REQUIREMENTS.read_text(encoding="utf-8")
         self.assertGreaterEqual(len(re.findall(r"^### TRACK-1-M[0-9]+ — ", text, re.M)), 2)
-        blocks = re.findall(r"#### Acceptance\\n((?:- \\*\\*(?:Command|Scope):\\*\\* `[^`]+`\\n)+)", text)
+        blocks = re.findall(r"#### Acceptance\n((?:- \*\*(?:Command|Scope):\*\* `[^`]+`\n)+)", text)
         self.assertEqual(len(blocks), 2)
         for block in blocks:
-            self.assertEqual(len(re.findall(r"^- \\*\\*Command:\\*\\* `", block, re.M)), 1)
-            self.assertGreaterEqual(len(re.findall(r"^- \\*\\*Scope:\\*\\* `", block, re.M)), 1)
-            for scope in re.findall(r"^- \\*\\*Scope:\\*\\* `([^`]+)`", block, re.M):
+            self.assertEqual(len(re.findall(r"^- \*\*Command:\*\* `", block, re.M)), 1)
+            self.assertGreaterEqual(len(re.findall(r"^- \*\*Scope:\*\* `", block, re.M)), 1)
+            for scope in re.findall(r"^- \*\*Scope:\*\* `([^`]+)`", block, re.M):
                 self.assertFalse(scope.startswith("/"))
                 self.assertNotIn("..", Path(scope).parts)
                 self.assertNotIn("*", scope)
