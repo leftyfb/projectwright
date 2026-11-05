@@ -80,5 +80,37 @@ class EmbeddedLayoutTests(unittest.TestCase):
             self.assertIsNone(discover(inner))
 
 
+    def test_embedded_config_rejects_secrets_and_absolute_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "task-tracker-example"
+            config = initialize(repo)
+            original = json.loads(config.read_text())
+            with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}):
+                for invalid in (
+                    {**original, "provider": {"api_key": "not-allowed"}},
+                    {**original, "worktree": "/tmp/unrelated"},
+                    {**original, "planning": {"enabled": False,
+                                                "requirements_file": "../../outside.md"}},
+                ):
+                    config.write_text(json.dumps(invalid))
+                    with self.assertRaises(ValueError):
+                        load(repo.name)
+            config.write_text(json.dumps(original))
+
+    def test_registered_project_lookup_refuses_duplicate_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            names = []
+            for folder in ("first", "second"):
+                repo = Path(tmp) / folder / "task-tracker-example"
+                repo.parent.mkdir()
+                initialize(repo)
+                names.append(repo / ".pw")
+            with patch("pw_embedded.registered_projects", return_value=names), \
+                 patch("pw_embedded.discover", return_value=None), \
+                 patch.object(Path, "home", return_value=Path(tmp)):
+                from pw_embedded import directory
+                with self.assertRaisesRegex(ValueError, "Ambiguous"):
+                    directory("task-tracker-example", Path(tmp) / "projects")
+
 if __name__ == "__main__":
     unittest.main()
