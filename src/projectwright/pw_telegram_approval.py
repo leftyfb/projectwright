@@ -114,6 +114,10 @@ def load_pending(root, project=None):
 def scan(root, project=None, milestone=None):
     if milestone is not None and project is None:
         raise ValueError('A project is required when selecting a milestone')
+    if project is not None:
+        from pw_embedded import projects_for_name
+        if len(projects_for_name(project, root)) > 1:
+            raise ValueError('Ambiguous project name for explicit Telegram scan')
     found=[]
     from pw_embedded import state_directories, project_id
     for directory in state_directories(root):
