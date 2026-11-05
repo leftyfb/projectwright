@@ -218,10 +218,8 @@ def main() -> int:
     root = a.root if a.root is not None else default_project_root()
     directory = None
     repo = None
-    # Legacy status must work even after the project directory disappears.
-    if a.action == 'status' and not os.environ.get('PROJECTWRIGHT_PROJECT_DIR'):
-        unit = unit_name(a.project)
-        return subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False).returncode
+    # Resolving a registered repository also works when invoked outside its cwd.
+    # Missing legacy projects still map to their historic unit names for status.
     directory = project_directory(a.project, root)
     if directory.name == '.pw':
         repo = directory.parent
