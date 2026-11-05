@@ -212,8 +212,11 @@ def main():
         if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', a.project):
             parser.error('--project must be a valid project ID')
         from pw_embedded import projects_for_name
-        if not projects_for_name(a.project, a.root):
+        matches = projects_for_name(a.project, a.root)
+        if not matches:
             parser.error(f'Project {a.project!r} is not initialized')
+        if len(matches) != 1:
+            parser.error(f'Project {a.project!r} is ambiguous; use unscoped notification scanning')
     if a.project is None:
         scan(a.root)
         rows=notify_pending(a.root,dry_run=not a.send)
