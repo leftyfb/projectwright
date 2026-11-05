@@ -128,6 +128,27 @@ class EmbeddedLayoutTests(unittest.TestCase):
                         load(repo.name)
             config.write_text(json.dumps(original))
 
+    def test_onboarding_preserves_relative_paths_and_ignores_temp_symlink(self):
+        from pw_onboarding import _config, _write
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "task-tracker-example"
+            config_path = initialize(repo)
+            with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}):
+                raw_path, raw = _config(repo.name)
+                self.assertEqual(raw_path, config_path)
+                self.assertEqual(raw["worktree"], "..")
+                outside = Path(tmp) / "outside"
+                outside.write_text("unchanged")
+                (repo / ".pw/config.json.tmp").symlink_to(outside)
+                raw["execution"]["enabled"] = True
+                _write(config_path, raw)
+                self.assertEqual(outside.read_text(), "unchanged")
+                self.assertEqual(json.loads(config_path.read_text())["worktree"], "..")
+                raw["provider"] = {"api_key": "invalid"}
+                config_path.write_text(json.dumps(raw))
+                with self.assertRaisesRegex(ValueError, "secrets"):
+                    _config(repo.name)
+
     def test_registered_project_lookup_refuses_duplicate_names(self):
         with tempfile.TemporaryDirectory() as tmp:
             names = []
