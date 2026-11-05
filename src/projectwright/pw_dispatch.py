@@ -530,8 +530,18 @@ def cli():
             config_dir = str(candidate)
     if config_dir:
         os.environ['PROJECTWRIGHT_CONFIG_DIR'] = config_dir
+    env = os.environ.copy()
+    if command != "init" and "--config-dir" not in sys.argv[2:]:
+        from pw_embedded import discover
+        try:
+            found = discover(Path.cwd())
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        if found is not None:
+            env["PROJECTWRIGHT_PROJECT_DIR"] = str(found.parent)
     return subprocess.run([sys.executable, '-B', '-m', module, *fixed, *sys.argv[2:]],
-                          check=False).returncode
+                          check=False, env=env).returncode
 
 
 if __name__=='__main__':raise SystemExit(main())
