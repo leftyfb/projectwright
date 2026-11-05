@@ -113,50 +113,46 @@ def initialize(path: Path, *, shared: bool = False) -> Path:
     if top is None:
         subprocess.run(["git", "-C", str(target), "init", "-b", "main"],
                        check=True, capture_output=True, text=True)
+    branch = subprocess.run(
+        ["git", "-C", str(target), "branch", "--show-current"],
+        text=True, capture_output=True, check=True,
+    ).stdout.strip()
+    if not branch:
+        raise ValueError("Detached Git HEAD is not supported")
+    # Install Git protection before creating any potentially sensitive state.
+    entries = SHARED_EXCLUDE if shared else EXCLUDE
+    with ignore.open("a", encoding="utf-8") as handle:
+        if previous and not previous.endswith("\n"):
+            handle.write("\n")
+        for line in entries:
+            if line.strip() not in previous.splitlines():
+                handle.write(line)
     marker = target / ".pw"
     marker.mkdir(mode=0o700)
-    try:
-        branch = subprocess.run(
-            ["git", "-C", str(target), "branch", "--show-current"],
-            text=True, capture_output=True, check=True,
-        ).stdout.strip()
-        if not branch:
-            raise ValueError("Detached Git HEAD is not supported")
-        for name in ("state", "logs", "results"):
-            (marker / name).mkdir(mode=0o700)
-        config = {
-            "id": project, "layout": "embedded", "projectwright_initialized": 1,
-            "branch": branch,
-            "base": ".", "queue": "queue.md", "work_log": "work_log.md",
-            "worktree": "..", "lock": "state/worker.lock",
-            "run_log": "logs/worker.log", "result_dir": "results",
-            "cycle_file": "state/git_cycle.json",
-            "worker_journal_file": "state/worker_journal.json",
-            "planning": {"enabled": False, "requirements_file": "requirements.md"},
-            "execution": {"enabled": False}, "notes": {"enabled": False},
-            "quota": {"enabled": False},
-        }
-        for name, contents in {
-            "README.md": README, "config.json": json.dumps(config, indent=2, sort_keys=True) + "\n",
-            "requirements.md": "", "queue.md": "", "work_log.md": "",
-        }.items():
-            file = marker / name
-            fd = os.open(file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                handle.write(contents)
-        entries = SHARED_EXCLUDE if shared else EXCLUDE
-        # Only append the requested policy, avoiding duplicate identical rules.
-        with ignore.open("a", encoding="utf-8") as handle:
-            if previous and not previous.endswith("\n"):
-                handle.write("\n")
-            for line in entries:
-                if line.strip() not in previous.splitlines():
-                    handle.write(line)
-    except BaseException:
-        # Do not remove a user's repository or pre-existing .gitignore.
-        # Leave the initialized .pw for investigation rather than risk deleting
-        # unexpected files created by concurrent operations.
-        raise
+    # A failed write leaves visible state for investigation, never deletes a
+    # user's worktree, and always retains the .pw ignore policy.
+    for name in ("state", "logs", "results"):
+        (marker / name).mkdir(mode=0o700)
+    config = {
+        "id": project, "layout": "embedded", "projectwright_initialized": 1,
+        "branch": branch,
+        "base": ".", "queue": "queue.md", "work_log": "work_log.md",
+        "worktree": "..", "lock": "state/worker.lock",
+        "run_log": "logs/worker.log", "result_dir": "results",
+        "cycle_file": "state/git_cycle.json",
+        "worker_journal_file": "state/worker_journal.json",
+        "planning": {"enabled": False, "requirements_file": "requirements.md"},
+        "execution": {"enabled": False}, "notes": {"enabled": False},
+        "quota": {"enabled": False},
+    }
+    for name, contents in {
+        "README.md": README, "config.json": json.dumps(config, indent=2, sort_keys=True) + "\n",
+        "requirements.md": "", "queue.md": "", "work_log.md": "",
+    }.items():
+        file = marker / name
+        fd = os.open(file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(contents)
     return marker / "config.json"
 
 def directory(project: str, root: Path) -> Path:
