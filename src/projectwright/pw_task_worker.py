@@ -436,9 +436,14 @@ def prompt_for(task: Task, result_path: Path) -> str:
 
     if task.kind == 'TEST':
         if cycle is not None and cycle.get('phase') == 'active':
-            paths = PROJECT.get('test_file_patterns', ['scripts/test_*.py'])
+            paths = PROJECT.get('test_file_patterns', ['scripts/test_*.py', 'tests/test_*.py'])
             if not isinstance(paths, list) or not paths or not all(isinstance(p, str) for p in paths):
                 raise ValueError('Invalid test_file_patterns')
+            scope = milestone_test_scope(task)
+            if scope is not None:
+                paths = [p for p in scope if any(fnmatch.fnmatchcase(p, pattern) for pattern in paths)]
+                if not paths:
+                    raise ValueError('No authorized test file path matches the milestone acceptance scope')
             test_instructions = (
                 "This TEST task belongs to an ACTIVE EDIT → TEST → COMMIT cycle. "
                 f"You may create or modify ONLY Python test files matching {paths!r}; "
