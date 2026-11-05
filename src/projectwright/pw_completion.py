@@ -23,8 +23,10 @@ from project_queue_manager import queue_summary
 def completion_details(directory: Path) -> dict | None:
     """Read-only gate for a fully accepted project; fail closed on ambiguity."""
     directory = Path(directory)
-    config_path, cfg = load_config(directory.name, directory.parent)
-    if not config_path.is_file() or cfg.get("id") != directory.name:
+    from pw_embedded import project_id
+    project = project_id(directory)
+    config_path, cfg = load_config(project, directory.parent, directory_override=directory)
+    if not config_path.is_file() or cfg.get("id") != project:
         return None
     if not cfg.get("planning", {}).get("enabled", False):
         return None
@@ -74,7 +76,7 @@ def completion_details(directory: Path) -> dict | None:
         milestone_lines.append(f"• …and {len(headings) - 8} more milestones")
     message = (
         "✅ Projectwright — project complete\n"
-        f"Project: {directory.name}\n"
+        f"Project: {project}\n"
         f"Milestones accepted: {len(milestones)}\n"
         f"Tasks completed: {summary['completed_count']}\n\n"
         "Work completed:\n" + "\n".join(milestone_lines) + "\n\n"
