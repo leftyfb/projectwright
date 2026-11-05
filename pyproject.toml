@@ -43,7 +43,6 @@ py-modules = [
     "pw_config",
     "pw_init",
     "pw_embedded",
-    "pw_migrate",
     "pw_onboarding",
     "pw_notify",
     "pw_completion",
