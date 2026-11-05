@@ -31,9 +31,10 @@ def path_of(value: str) -> Path:
 def project_config(project: str, root: Path) -> tuple[Path, dict]:
     if not ID_RE.fullmatch(project):
         raise ValueError('Invalid project ID')
-    directory = root / project
-    cfg = json.loads((directory / 'config.json').read_text())
-    if cfg.get('id') != project:
+    from pw_config import load as load_config
+    config_file, cfg = load_config(project, root)
+    directory = config_file.parent
+    if not config_file.is_file() or cfg.get('id') != project:
         raise ValueError('Project configuration ID mismatch')
     for k in ('queue', 'worktree', 'cycle_file', 'lock'):
         if not isinstance(cfg.get(k), str):
