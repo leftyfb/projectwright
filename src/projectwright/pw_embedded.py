@@ -5,7 +5,6 @@ Legacy external project state is intentionally not migrated here.
 from __future__ import annotations
 
 import fcntl
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -32,7 +31,7 @@ until explicitly authorized.
 EXCLUDE = ("/.pw/\n",)
 SHARED_EXCLUDE = (
     "/.pw/*\n", "!/.pw/README.md\n", "!/.pw/requirements.md\n",
-    "!/.pw/queue.md\n", "!/.pw/config.json\n", "!/.pw/work_log.md\n",
+    "!/.pw/queue.md\n", "!/.pw/config.json\n",
     "/.pw/state/\n", "/.pw/logs/\n", "/.pw/results/\n",
 )
 
@@ -86,22 +85,30 @@ def initialize(path: Path, *, shared: bool = False) -> Path:
         raise ValueError("Project destination is not a directory")
     if target.exists() and (target / ".pw").exists():
         raise FileExistsError("Projectwright project already exists")
-    if target.exists():
-        top = _git_root(target)
-        if top is not None and top != target:
-            raise ValueError("Must initialize at a Git repository root")
-    else:
+    existing_parent = next((parent for parent in (target, *target.parents)
+                            if parent.exists() and parent.is_dir()), None)
+    top = _git_root(existing_parent) if existing_parent else None
+    if top is not None and top != target:
+        raise ValueError("Must initialize at a Git repository root, not inside another repository")
+    if not target.exists():
         target.mkdir(parents=True)
-    if _git_root(target) is None:
+    if top is None:
         subprocess.run(["git", "-C", str(target), "init", "-b", "main"],
                        check=True, capture_output=True, text=True)
     marker = target / ".pw"
     marker.mkdir(mode=0o700)
     try:
+        branch = subprocess.run(
+            ["git", "-C", str(target), "branch", "--show-current"],
+            text=True, capture_output=True, check=True,
+        ).stdout.strip()
+        if not branch:
+            raise ValueError("Detached Git HEAD is not supported")
         for name in ("state", "logs", "results"):
             (marker / name).mkdir(mode=0o700)
         config = {
             "id": project, "layout": "embedded", "projectwright_initialized": 1,
+            "branch": branch,
             "base": ".", "queue": "queue.md", "work_log": "work_log.md",
             "worktree": "..", "lock": "state/worker.lock",
             "run_log": "logs/worker.log", "result_dir": "results",
@@ -151,7 +158,7 @@ def directory(project: str, root: Path) -> Path:
         if state.is_symlink() or not (state / "config.json").is_file():
             raise ValueError("Embedded project state missing or symlinked")
         return state
-    found = discover(Path.cwd())
+    found = discover(Path.cwd()) if root == (Path.home() / "projects") else None
     if found is not None:
         if found.parent.name != project:
             raise ValueError("Project ID does not match current repository")
