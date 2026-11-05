@@ -2,7 +2,7 @@
 
 ## Repository-local projects
 
-New projects can live entirely under `~/projects/task-tracker-example/` (or a selected repository location), with Projectwright state in `.pw/`. See [repository-local projects and manual legacy transition](docs/embedded-projects.md) for initialization, shared Git configuration, callback registration, and migration details. Existing external-state projects remain supported and are never automatically migrated.
+New projects can live entirely under `~/projects/task-tracker-example/` (or a selected repository location), with Projectwright state in `.pw/`. See [repository-local projects](docs/embedded-projects.md) for initialization, shared Git configuration, callback registration. Existing external-state projects remain supported.
 
 
 Projectwright turns your requirements into a reviewable queue of small development tasks, then coordinates Hermes to work through that queue in a Git repository. It tracks progress and Git changes, checks worker reports, and can pause for human milestone approval.
