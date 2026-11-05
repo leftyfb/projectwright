@@ -2,23 +2,13 @@
 
 The `pw` launcher preserves the existing service commands and adds a small onboarding path. Each command supports `--help`.
 
-## First project
+## Initialization and basic commands
 
-```sh
-pw init ~/projects/task-tracker-example
-cd ~/projects/task-tracker-example
-# Copy a starter README and commit it before beginning work.
-pw requirements --project task-tracker-example --edit
-pw plan --project task-tracker-example
-pw status --project task-tracker-example
-pw start --project task-tracker-example
-```
+`pw init PATH` initializes a Git repository at PATH if necessary and creates its local `.pw/` directory. Without a custom path, `pw init --project NAME` uses `~/projects/NAME`. To initialize an existing repository, use `pw init .` at its root. Initialization does not enable planning, execution, or timers.
 
-`pw init PATH` initializes a Git repository at PATH when needed and places Projectwright files inside `PATH/.pw/`. `pw init .` works inside an existing repository root. With `pw init --project NAME` and no path, the default location is `~/projects/NAME`. The Git repository basename and project ID must match.
+`pw init PATH --shared` allows selected human-readable `.pw/` definitions to be tracked; default mode ignores all of `.pw/`. Existing legacy installations using `--repo` and `--config-dir` remain compatible.
 
-Initialization leaves planning and execution disabled, installs no timer, and refuses to overwrite an existing `.pw/`. `/.pw/` is ignored by Git by default; `pw init PATH --shared` allows specific human-readable definitions to be tracked. Create an initial Git commit before worker operations when starting a new repository. `requirements.md` and `queue.md` live under `.pw/`, not a separate project-state directory.
-
-The legacy `pw init --project NAME --repo /path/to/git-worktree --config-dir /absolute/config/home` syntax remains supported for existing external-state installations.
+The primary commands are `pw requirements --project NAME --edit`, `pw plan --project NAME`, `pw status --project NAME`, and `pw start --project NAME`. For a complete runnable walkthrough and packaged requirements, use [the Task Tracker example](../examples/task_tracker/README.md).
 
 `pw requirements --edit` opens the configured requirements file, using `$VISUAL`, then `$EDITOR`, then an available `nano`, `vi`, `vim` or `editor`. Requirements are stored in the Projectwright project directory. Set `VISUAL` or `EDITOR` if no suitable editor is detected.
 
