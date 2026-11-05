@@ -80,8 +80,8 @@ def project_config(project: str, root: Path) -> tuple[Path, dict]:
     if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', project):
         raise ValueError('Invalid project ID')
     from pw_config import load as load_config
-    _, cfg = load_config(project, root)
-    directory = root / project
+    config_path, cfg = load_config(project, root)
+    directory = config_path.parent
     for k in ('queue', 'lock', 'worktree', 'branch', 'cycle_file'):
         if not cfg.get(k):
             raise ValueError(f'Missing configuration key: {k}')
@@ -316,9 +316,9 @@ def main() -> int:
                         else default_project_root())
     try:
         from pw_config import load as load_config
-        _, cfg = load_config(args.project, args.config_root)
         from pw_config import ready_for_config_free_worker
-        config_missing = not (args.config_root / args.project / 'config.json').is_file()
+        config_path, cfg = load_config(args.project, args.config_root)
+        config_missing = not config_path.is_file()
         req_file = Path(cfg['planning']['requirements_file'])
         manual_config_free = (args.once and config_missing and
                               req_file.is_file() and not req_file.is_symlink() and
