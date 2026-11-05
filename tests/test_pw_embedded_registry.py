@@ -33,6 +33,35 @@ class RegistryAndSafety(unittest.TestCase):
             self.assertEqual(embedded.registered_projects(registry), [new / ".pw"])
             self.assertEqual((new / ".pw/config.json").read_bytes(), before)
 
+    def test_shared_clone_registration_recreates_private_runtime_directories(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "origin" / "task-tracker-example"
+            source.parent.mkdir()
+            embedded.initialize(source, shared=True)
+            subprocess.run(["git", "-C", str(source), "config", "user.name", "Test"],
+                           check=True)
+            subprocess.run(["git", "-C", str(source), "config", "user.email",
+                            "test@example.invalid"], check=True)
+            subprocess.run(["git", "-C", str(source), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(source), "commit", "-qm", "shared config"],
+                           check=True)
+            clone = root / "elsewhere" / "task-tracker-example"
+            clone.parent.mkdir()
+            subprocess.run(["git", "clone", "-q", str(source), str(clone)], check=True)
+            for name in ("state", "logs", "results"):
+                self.assertFalse((clone / ".pw" / name).exists())
+            registry = root / "registry.json"
+            embedded.register(clone, registry)
+            for name in ("state", "logs", "results"):
+                folder = clone / ".pw" / name
+                self.assertTrue(folder.is_dir())
+                self.assertEqual(folder.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(embedded.registered_projects(registry), [clone / ".pw"])
+            self.assertEqual(subprocess.check_output(
+                ["git", "-C", str(clone), "status", "--porcelain=v1"],
+                text=True).strip(), "")
+
     def test_duplicate_names_do_not_cross_route_callback(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
