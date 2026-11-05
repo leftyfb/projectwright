@@ -85,7 +85,7 @@ class QuotaPolicyTests(unittest.TestCase):
                 }),
                 mock.patch.object(project_quota.urllib.request, "urlopen", side_effect=fetch),
             ):
-                decision = project_quota.evaluate({}, home=home)
+                decision = project_quota.evaluate({"enabled": True}, home=home)
         self.assertTrue(decision["allowed"])
         self.assertEqual(seen, [
             "sensor.codex_usage_weekly_remaining",
