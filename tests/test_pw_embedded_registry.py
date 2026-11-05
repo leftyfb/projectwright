@@ -124,7 +124,8 @@ class RegistryAndSafety(unittest.TestCase):
             dest.mkdir(parents=True)
             (dest / (unit + ".service")).write_text(
                 '[Service]\nExecStart=/bin/false\n')
-            (dest / (unit + ".timer")).write_text('[Timer]\nOnBootSec=1min\n')
+            _, valid_timer = unit_strings(repo.name, 30, Path(timer.__file__).resolve().parent / "pw_dispatch.py", repo=repo)
+            (dest / (unit + ".timer")).write_text(valid_timer)
             args = ["pw_project_timer.py", "enable", repo.name]
             with patch.object(timer.Path, "home", return_value=home), \
                  patch.object(sys, "argv", args), \
@@ -133,6 +134,33 @@ class RegistryAndSafety(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "differ"):
                     timer.main()
                 runner.assert_not_called()
+
+    def test_embedded_custom_interval_can_enable_and_disable_by_project_name(self):
+        import os
+        import sys
+        import pw_project_timer as timer
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            repo = home / "outside" / "task-tracker-example"
+            repo.parent.mkdir()
+            embedded.initialize(repo)
+            unit = unit_name(repo.name, repo)
+            dest = home / ".config/systemd/user"
+            dest.mkdir(parents=True)
+            script = Path(timer.__file__).resolve().parent / "pw_dispatch.py"
+            service, scheduled = unit_strings(repo.name, 15, script, repo=repo)
+            (dest / (unit + ".service")).write_text(service)
+            (dest / (unit + ".timer")).write_text(scheduled)
+            with patch.object(timer.Path, "home", return_value=home), \
+                 patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \
+                 patch.object(timer.subprocess, "run") as runner:
+                with patch.object(sys, "argv", ["pw_project_timer.py", "enable", repo.name]):
+                    self.assertEqual(timer.main(), 0)
+                    self.assertIn("enable", runner.call_args.args[0])
+                (dest / (unit + ".service")).write_text("unsafe modified service\n")
+                with patch.object(sys, "argv", ["pw_project_timer.py", "disable", repo.name]):
+                    self.assertEqual(timer.main(), 0)
+                    self.assertIn("disable", runner.call_args.args[0])
 
     def test_symlinked_embedded_timer_units_fail_closed(self):
         import os
