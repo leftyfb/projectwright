@@ -115,7 +115,8 @@ def notify_pending(root: Path, *, dry_run=False, transport=None, project=None):
     out=[]
     values = None
     users: tuple[str, ...] = ()
-    for directory, pinned in bridge.load_pending(root, project=project):
+    pending = bridge.load_pending(root) if project is None else bridge.load_pending(root, project=project)
+    for directory, pinned in pending:
         marker=directory/'telegram_approval_notified.json'
         current_id=request_id(pinned)
         rejected=directory/'telegram_approval_rejected.json'
@@ -183,8 +184,12 @@ def main():
             parser.error('--project must be a valid project ID')
         if not (a.root / a.project / 'config.json').is_file():
             parser.error(f'Project {a.project!r} is not initialized under {a.root}')
-    scan(a.root, project=a.project)
-    rows=notify_pending(a.root,dry_run=not a.send,project=a.project)
+    if a.project is None:
+        scan(a.root)
+        rows=notify_pending(a.root,dry_run=not a.send)
+    else:
+        scan(a.root, project=a.project)
+        rows=notify_pending(a.root,dry_run=not a.send,project=a.project)
     print('\n'.join(rows) if rows else 'No new notifications')
 
 if __name__=='__main__':
