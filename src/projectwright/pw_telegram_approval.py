@@ -145,10 +145,10 @@ def scan(root, project=None, milestone=None):
                     raise ValueError(f'{directory.name} / {milestone} is not the current milestone awaiting acceptance')
             else:
                 allowed = {milestone} if milestone is not None else set(policy['milestones'])
-            for milestone,spec in policy['milestones'].items():
-                if milestone not in allowed:
+            for candidate_milestone,spec in policy['milestones'].items():
+                if candidate_milestone not in allowed:
                     continue
-                record=evidence(directory,cfg,milestone,spec)
+                record=evidence(directory,cfg,candidate_milestone,spec)
                 if record: options.append(record)
             if len(options)==1:
                 pending_path = directory / 'telegram_approval_pending.json'
@@ -170,7 +170,26 @@ def scan(root, project=None, milestone=None):
                       f'never approved: {never_approved}. '
                       f'Use pw notify --project {directory.name} --milestone MILESTONE_ID to revalidate one explicitly')
             elif milestone is not None:
-                raise ValueError(f'No currently eligible approval for {directory.name} / {milestone}')
+                # An explicit request for an already-current milestone is a
+                # successful no-op, not an approval failure. Recheck against
+                # the same live Git/queue/receipt evidence used by the guard.
+                from project_milestone_guard import current_receipts
+                repo = Path(cfg['worktree']).expanduser()
+                reqdata = Path(cfg['planning']['requirements_file']).expanduser().read_bytes()
+                queuedata = Path(cfg['queue']).expanduser().read_text()
+                statepath = directory / 'planning_state.json'
+                state = json.loads(statepath.read_text()) if statepath.exists() else {}
+                journalpath = worker_journal_path(cfg, directory / 'config.json')
+                journal = json.loads(journalpath.read_text()) if journalpath.exists() else {}
+                receipts = current_receipts(
+                    state, reqdata, queuedata, git(repo, 'rev-parse', 'HEAD'),
+                    repo=repo, strict=cfg.get('planning', {}).get('milestone_sequence') == 'strict',
+                    policy=policy, journal=journal,
+                )
+                if milestone in receipts:
+                    print(f'{directory.name} / {milestone}: already accepted with current verified evidence; no new request')
+                else:
+                    raise ValueError(f'No currently eligible approval for {directory.name} / {milestone}')
     return found
 
 def approve_single(root):
