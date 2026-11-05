@@ -533,6 +533,10 @@ def cli():
     if config_dir:
         os.environ['PROJECTWRIGHT_CONFIG_DIR'] = config_dir
     env = os.environ.copy()
+    if config_dir is not None:
+        # An explicit legacy configuration home must not silently inherit a
+        # repository location from an unrelated shell or background service.
+        env.pop("PROJECTWRIGHT_PROJECT_DIR", None)
     if command != "init" and "--config-dir" not in sys.argv[2:]:
         from pw_embedded import discover
         try:
