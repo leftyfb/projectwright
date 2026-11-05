@@ -5,14 +5,20 @@ The `pw` launcher preserves the existing service commands and adds a small onboa
 ## First project
 
 ```sh
-pw init --project NAME --repo /path/to/existing/git-worktree
-pw requirements --project NAME --edit
-pw plan --project NAME
-pw status --project NAME
-pw start --project NAME
+pw init ~/projects/task-tracker-example
+cd ~/projects/task-tracker-example
+# Copy a starter README and commit it before beginning work.
+pw requirements --project task-tracker-example --edit
+pw plan --project task-tracker-example
+pw status --project task-tracker-example
+pw start --project task-tracker-example
 ```
 
-`pw init --repo` verifies that PATH is the root of an initialized Git worktree with a HEAD commit and a named current branch, then stores that path and branch in a new Projectwright config. It does not initialize, clone, checkout, clean, or otherwise modify the repository. Initialization refuses an existing Projectwright project directory. The new project has planning and execution disabled.
+`pw init PATH` initializes a Git repository at PATH when needed and places Projectwright files inside `PATH/.pw/`. `pw init .` works inside an existing repository root. With `pw init --project NAME` and no path, the default location is `~/projects/NAME`. The Git repository basename and project ID must match.
+
+Initialization leaves planning and execution disabled, installs no timer, and refuses to overwrite an existing `.pw/`. `/.pw/` is ignored by Git by default; `pw init PATH --shared` allows specific human-readable definitions to be tracked. Create an initial Git commit before worker operations when starting a new repository. `requirements.md` and `queue.md` live under `.pw/`, not a separate project-state directory.
+
+The legacy `pw init --project NAME --repo /path/to/git-worktree --config-dir /absolute/config/home` syntax remains supported for existing external-state installations.
 
 `pw requirements --edit` opens the configured requirements file, using `$VISUAL`, then `$EDITOR`, then an available `nano`, `vi`, `vim` or `editor`. Requirements are stored in the Projectwright project directory. Set `VISUAL` or `EDITOR` if no suitable editor is detected.
 
@@ -38,7 +44,11 @@ Home Assistant-backed quota checks are **off by default** for every project. To 
 
 ## Project paths
 
-The default project root is `~/projects`. Existing project state in older `$XDG_CONFIG_HOME/projects`, `$XDG_CONFIG_HOME/projectwright/projects` or `~/.hermes/projects` roots is not moved or automatically selected. Specify an old root explicitly with `HERMES_PROJECT_CONFIG_DIR` to access it. Use `--config-dir /absolute/config/home` consistently to select a config home; the project directory is `config-home/projects/NAME`. `PROJECTWRIGHT_CONFIG_DIR` has the same config-home meaning. The legacy `HERMES_PROJECT_CONFIG_DIR` remains a direct project-root override.
+The default deliverable repository is `~/projects/NAME/`, with Projectwright state under `~/projects/NAME/.pw/`. You may choose any other directory using `pw init /other/parent/NAME`. Internal embedded configuration paths are relative to `.pw/`, independent of the shell's working directory.
+
+The CLI discovers `.pw/` by walking upward inside the current repository. Background callbacks and timers use an external registry; run `pw register .` after moving or cloning an initialized repository. If multiple repositories have the same name, run the command from the intended repository rather than relying on an ambiguous name.
+
+Existing installations with external state remain supported. `--config-dir /absolute/config/home` selects the legacy `config-home/projects/NAME` layout, and `HERMES_PROJECT_CONFIG_DIR` is a legacy direct-root override.
 
 ## Existing commands
 
