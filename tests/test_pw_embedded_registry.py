@@ -81,6 +81,52 @@ class RegistryAndSafety(unittest.TestCase):
         with self.assertRaises(ValueError):
             _systemd_argument("/tmp/script\nExecStart=/bin/false")
 
+    def test_existing_embedded_timer_content_must_match_before_enable(self):
+        import os
+        import sys
+        import pw_project_timer as timer
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            repo = home / "other" / "task-tracker-example"
+            repo.parent.mkdir()
+            embedded.initialize(repo)
+            unit = unit_name(repo.name, repo)
+            dest = home / ".config/systemd/user"
+            dest.mkdir(parents=True)
+            (dest / (unit + ".service")).write_text(
+                '[Service]\nExecStart=/bin/false\n')
+            (dest / (unit + ".timer")).write_text('[Timer]\nOnBootSec=1min\n')
+            args = ["pw_project_timer.py", "enable", repo.name]
+            with patch.object(timer.Path, "home", return_value=home), \
+                 patch.object(sys, "argv", args), \
+                 patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \
+                 patch.object(timer.subprocess, "run") as runner:
+                with self.assertRaisesRegex(ValueError, "differ"):
+                    timer.main()
+                runner.assert_not_called()
+
+    def test_symlinked_embedded_timer_units_fail_closed(self):
+        import os
+        import sys
+        import pw_project_timer as timer
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            repo = home / "other" / "task-tracker-example"
+            repo.parent.mkdir()
+            embedded.initialize(repo)
+            unit = unit_name(repo.name, repo)
+            dest = home / ".config/systemd/user"
+            dest.mkdir(parents=True)
+            (dest / (unit + ".service")).symlink_to(home / "elsewhere")
+            args = ["pw_project_timer.py", "enable", repo.name]
+            with patch.object(timer.Path, "home", return_value=home), \
+                 patch.object(sys, "argv", args), \
+                 patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \
+                 patch.object(timer.subprocess, "run") as runner:
+                with self.assertRaisesRegex(ValueError, "symlinked"):
+                    timer.main()
+                runner.assert_not_called()
+
     def test_git_runtime_state_must_not_be_in_index(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "task-tracker-example"
