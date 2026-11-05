@@ -637,7 +637,13 @@ class RealSubprocessChain(unittest.TestCase):
              "--scripts", str(self.scripts), "--one-shot", "--no-telegram"],
             env=env, capture_output=True, text=True, timeout=35,
         )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        if result.returncode != 0:
+            manager = subprocess.run(
+                [sys.executable, "-B", str(self.scripts / "pw_queue_manager.py"),
+                 "--project", "task-tracker-example", "--status"],
+                env=env, capture_output=True, text=True, timeout=10)
+            self.fail("Embedded dispatcher failed: " + result.stdout + result.stderr +
+                      "\\nmanager stdout: " + manager.stdout + "\\nmanager stderr: " + manager.stderr)
         self.assertIn("WORKER rc=0", result.stdout)
         self.assertIn("[x] **P101", (repo / ".pw/queue.md").read_text())
         self.assertTrue((repo / ".pw/state/worker_journal.json").exists())
