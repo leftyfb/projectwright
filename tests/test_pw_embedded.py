@@ -74,6 +74,26 @@ class EmbeddedLayoutTests(unittest.TestCase):
             self.assertFalse((repo / ".pw").exists())
             self.assertEqual(ignore.read_text(), "/.pw/\n")
 
+    def test_detached_head_refused_before_creating_state_or_gitignore(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "task-tracker-example"
+            repo.mkdir()
+            subprocess.run(["git", "-C", str(repo), "init", "-b", "main"],
+                           capture_output=True, check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.email",
+                            "test@example.invalid"], check=True)
+            (repo / "README.md").write_text("source")
+            subprocess.run(["git", "-C", str(repo), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(repo), "commit", "-qm", "baseline"],
+                           check=True)
+            subprocess.run(["git", "-C", str(repo), "checkout", "--detach"],
+                           check=True, capture_output=True)
+            with self.assertRaisesRegex(ValueError, "Detached"):
+                initialize(repo)
+            self.assertFalse((repo / ".pw").exists())
+            self.assertFalse((repo / ".gitignore").exists())
+
     def test_preexisting_tracked_state_is_rejected_before_creation(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "task-tracker-example"
