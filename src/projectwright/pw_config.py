@@ -17,6 +17,23 @@ def load(project: str, root: Path | None = None) -> tuple[Path, dict]:
     root = Path(root) if root is not None else default_project_root()
     directory = root / project
     path = directory / "config.json"
+    # The embedded layout is discovered independently of cwd in child processes
+    # using an explicitly propagated absolute project directory.
+    selected_dir = os.environ.get("PROJECTWRIGHT_PROJECT_DIR")
+    if selected_dir is not None:
+        candidate = Path(selected_dir).expanduser()
+        if not candidate.is_absolute() or candidate.name != project:
+            raise ValueError("PROJECTWRIGHT_PROJECT_DIR must be an absolute matching repository path")
+        directory, path = candidate / ".pw", candidate / ".pw" / "config.json"
+        if not path.is_file() or directory.is_symlink():
+            raise ValueError("Embedded project configuration is missing or symlinked")
+    elif root == default_project_root():
+        from pw_embedded import discover
+        found = discover(Path.cwd())
+        if found is not None:
+            directory, path = found, found / "config.json"
+            if found.parent.name != project:
+                raise ValueError("Project name does not match discovered repository")
     overrides = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
     if not isinstance(overrides, dict):
         raise ValueError("Project configuration must be an object")
@@ -48,6 +65,21 @@ def load(project: str, root: Path | None = None) -> tuple[Path, dict]:
             raise ValueError(f"{section} configuration must be an object")
         if isinstance(supplied, dict) and "enabled" in supplied and type(supplied["enabled"]) is not bool:
             raise ValueError(f"{section}.enabled must be boolean")
+    if overrides.get("layout") == "embedded":
+        if directory.name != ".pw" or not path.is_file():
+            raise ValueError("Embedded project must use a .pw directory")
+        # Resolve paths against .pw; never against process cwd.
+        embedded = dict(overrides)
+        for key in ("base", "queue", "work_log", "worktree", "lock", "run_log",
+                    "result_dir", "cycle_file", "worker_journal_file"):
+            if key in embedded:
+                value = Path(embedded[key])
+                embedded[key] = str((directory / value).resolve()) if not value.is_absolute() else str(value)
+        if "planning" in embedded and "requirements_file" in embedded["planning"]:
+            embedded["planning"] = dict(embedded["planning"])
+            value = Path(embedded["planning"]["requirements_file"])
+            embedded["planning"]["requirements_file"] = str((directory / value).resolve()) if not value.is_absolute() else str(value)
+        overrides = embedded
     result = {**defaults, **overrides}
     for section in ("planning", "notes", "execution"):
         if isinstance(overrides.get(section), dict):
