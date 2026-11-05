@@ -8,7 +8,7 @@ The `pw` launcher preserves the existing service commands and adds a small onboa
 
 `pw init PATH --shared` allows selected human-readable `.pw/` definitions to be tracked; default mode ignores all of `.pw/`. Existing legacy installations using `--repo` and `--config-dir` remain compatible.
 
-The primary commands are `pw requirements --project NAME --edit`, `pw plan --project NAME`, `pw status --project NAME`, and `pw start --project NAME`. For a complete runnable walkthrough and packaged requirements, use [the Task Tracker example](../examples/task_tracker/README.md).
+The primary commands are `pw requirements --project NAME --edit`, `pw plan --project NAME`, `pw status --project NAME`, and `pw start --project NAME`. For a complete runnable walkthrough and packaged requirements, use [the Task Tracker example](../examples/task-tracker/README.md).
 
 `pw requirements --edit` opens the configured requirements file, using `$VISUAL`, then `$EDITOR`, then an available `nano`, `vi`, `vim` or `editor`. Requirements are stored in the Projectwright project directory. Set `VISUAL` or `EDITOR` if no suitable editor is detected.
 

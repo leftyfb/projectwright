@@ -27,12 +27,12 @@ Do not run `pw setup` with sudo. Hermes CLI must already be installed and config
 
 ## Try the Task Tracker example
 
-A disposable, beginner-friendly [Task Tracker walkthrough](examples/task_tracker/README.md) demonstrates `pw init`, requirements, planning, a one-task Hermes run, and review. The task tracker is **not prebuilt**: Projectwright generates it from the example requirements.
+A disposable, beginner-friendly [Task Tracker walkthrough](examples/task-tracker/README.md) demonstrates `pw init`, requirements, planning, a one-task Hermes run, and review. The task tracker is **not prebuilt**: Projectwright generates it from the example requirements.
 
-The Debian package installs the walkthrough, starter README, and ready-to-copy `requirements.md` under `/usr/share/doc/projectwright/examples/task_tracker/`. Open the walkthrough after `sudo apt install projectwright`:
+The Debian package installs the walkthrough, starter README, and ready-to-copy `requirements.md` under `/usr/share/doc/projectwright/examples/task-tracker/`. Open the walkthrough after `sudo apt install projectwright`:
 
 ```sh
-less /usr/share/doc/projectwright/examples/task_tracker/README.md
+less /usr/share/doc/projectwright/examples/task-tracker/README.md
 ```
 
 The initial milestone can be worked and reviewed without Telegram. Advancing to the next milestone requires a real Telegram approval callback; the demo does not silently bypass the approval gate.
@@ -48,7 +48,7 @@ cd ~/projects/myproject
 
 Projectwright keeps its state in `.pw/` inside the repository. Commit your starting application files before running worker tasks. Use `pw requirements --project myproject --edit` for requirements, `pw plan --project myproject` to propose a queue, and `pw start --project myproject` to authorize one task.
 
-For the **complete step-by-step example**, follow [examples/task_tracker/README.md](examples/task_tracker/README.md). The [CLI reference](docs/cli.md) describes available commands rather than duplicating the tutorial.
+For the **complete step-by-step example**, follow [examples/task-tracker/README.md](examples/task-tracker/README.md). The [CLI reference](docs/cli.md) describes available commands rather than duplicating the tutorial.
 
 ## Documentation
 

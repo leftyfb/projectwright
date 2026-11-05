@@ -16,7 +16,7 @@ from pw_config import load
 class EmbeddedLayoutTests(unittest.TestCase):
     def test_new_repository_inert_and_private(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "task-tracker-example"
+            repo = Path(tmp) / "task-tracker"
             config_path = initialize(repo)
             self.assertEqual(config_path, repo / ".pw/config.json")
             self.assertTrue((repo / ".git").exists())
@@ -36,7 +36,7 @@ class EmbeddedLayoutTests(unittest.TestCase):
 
     def test_shared_mode_excludes_operational_state(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "task-tracker-example"
+            repo = Path(tmp) / "task-tracker"
             initialize(repo, shared=True)
             subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
             files = subprocess.check_output(
@@ -52,7 +52,7 @@ class EmbeddedLayoutTests(unittest.TestCase):
 
     def test_existing_repository_and_duplicate_refusal(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "task-tracker-example"
+            repo = Path(tmp) / "task-tracker"
             repo.mkdir()
             subprocess.run(["git", "-C", str(repo), "init", "-b", "main"], check=True, capture_output=True)
             (repo / "README.md").write_text("existing\n")
@@ -63,7 +63,7 @@ class EmbeddedLayoutTests(unittest.TestCase):
 
     def test_shared_ignore_conflict_is_preflight_and_does_not_create_state(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "task-tracker-example"
+            repo = Path(tmp) / "task-tracker"
             repo.mkdir()
             subprocess.run(["git", "-C", str(repo), "init", "-b", "main"],
                            check=True, capture_output=True)
@@ -76,7 +76,7 @@ class EmbeddedLayoutTests(unittest.TestCase):
 
     def test_detached_head_refused_before_creating_state_or_gitignore(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "task-tracker-example"
+            repo = Path(tmp) / "task-tracker"
             repo.mkdir()
             subprocess.run(["git", "-C", str(repo), "init", "-b", "main"],
                            capture_output=True, check=True)
@@ -96,7 +96,7 @@ class EmbeddedLayoutTests(unittest.TestCase):
 
     def test_preexisting_tracked_state_is_rejected_before_creation(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "task-tracker-example"
+            repo = Path(tmp) / "task-tracker"
             repo.mkdir()
             subprocess.run(["git", "-C", str(repo), "init", "-b", "main"],
                            check=True, capture_output=True)
@@ -114,7 +114,7 @@ class EmbeddedLayoutTests(unittest.TestCase):
 
     def test_arbitrary_location_and_name_check(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "custom" / "task-tracker-example"
+            repo = Path(tmp) / "custom" / "task-tracker"
             initialize(repo)
             self.assertEqual(discover(repo), repo / ".pw")
             with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}):
@@ -133,7 +133,7 @@ class EmbeddedLayoutTests(unittest.TestCase):
 
     def test_embedded_config_rejects_secrets_and_absolute_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "task-tracker-example"
+            repo = Path(tmp) / "task-tracker"
             config = initialize(repo)
             original = json.loads(config.read_text())
             with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}):
@@ -151,7 +151,7 @@ class EmbeddedLayoutTests(unittest.TestCase):
     def test_onboarding_preserves_relative_paths_and_ignores_temp_symlink(self):
         from pw_onboarding import _config, _write
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "task-tracker-example"
+            repo = Path(tmp) / "task-tracker"
             config_path = initialize(repo)
             with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}):
                 raw_path, raw = _config(repo.name)
@@ -173,7 +173,7 @@ class EmbeddedLayoutTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             names = []
             for folder in ("first", "second"):
-                repo = Path(tmp) / folder / "task-tracker-example"
+                repo = Path(tmp) / folder / "task-tracker"
                 repo.parent.mkdir()
                 initialize(repo)
                 names.append(repo / ".pw")
@@ -182,7 +182,7 @@ class EmbeddedLayoutTests(unittest.TestCase):
                  patch.object(Path, "home", return_value=Path(tmp)):
                 from pw_embedded import directory
                 with self.assertRaisesRegex(ValueError, "Ambiguous"):
-                    directory("task-tracker-example", Path(tmp) / "projects")
+                    directory("task-tracker", Path(tmp) / "projects")
 
 if __name__ == "__main__":
     unittest.main()

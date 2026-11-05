@@ -22,13 +22,13 @@ rm -rf "$stage/usr/lib/python3/dist-packages/bin"
 # from the privileged Debian installation context.
 mkdir -p "$stage/usr/share/projectwright/hermes"
 # Install the runnable starter and its walkthrough for APT users, without requiring a source checkout.
-mkdir -p "$stage/usr/share/doc/projectwright/examples/task_tracker/starter"
-install -m 0644 "$(dirname "$0")/../examples/task_tracker/README.md" \
-  "$stage/usr/share/doc/projectwright/examples/task_tracker/README.md"
-install -m 0644 "$(dirname "$0")/../examples/task_tracker/starter/README.md" \
-  "$stage/usr/share/doc/projectwright/examples/task_tracker/starter/README.md"
-install -m 0644 "$(dirname "$0")/../examples/task_tracker/requirements.md" \
-  "$stage/usr/share/doc/projectwright/examples/task_tracker/requirements.md"
+mkdir -p "$stage/usr/share/doc/projectwright/examples/task-tracker/starter"
+install -m 0644 "$(dirname "$0")/../examples/task-tracker/README.md" \
+  "$stage/usr/share/doc/projectwright/examples/task-tracker/README.md"
+install -m 0644 "$(dirname "$0")/../examples/task-tracker/starter/README.md" \
+  "$stage/usr/share/doc/projectwright/examples/task-tracker/starter/README.md"
+install -m 0644 "$(dirname "$0")/../examples/task-tracker/requirements.md" \
+  "$stage/usr/share/doc/projectwright/examples/task-tracker/requirements.md"
 install -m 0644 "$(dirname "$0")/../src/projectwright/pw_plugin.py" \
   "$stage/usr/share/projectwright/hermes/projectwright-approvals.py"
 mkdir -p "$stage/usr/share/projectwright/hermes/projectwright-approvals"

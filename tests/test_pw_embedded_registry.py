@@ -18,14 +18,14 @@ class RegistryAndSafety(unittest.TestCase):
     def test_registry_survives_move_without_mutating_project_configuration(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            old = root / "first" / "task-tracker-example"
+            old = root / "first" / "task-tracker"
             old.parent.mkdir()
             embedded.initialize(old)
             before = (old / ".pw/config.json").read_bytes()
             registry = root / "registry.json"
             embedded.register(old, registry)
             self.assertEqual(embedded.registered_projects(registry), [old / ".pw"])
-            new = root / "elsewhere" / "task-tracker-example"
+            new = root / "elsewhere" / "task-tracker"
             new.parent.mkdir()
             old.rename(new)
             self.assertEqual(embedded.registered_projects(registry), [])
@@ -36,7 +36,7 @@ class RegistryAndSafety(unittest.TestCase):
     def test_shared_clone_registration_recreates_private_runtime_directories(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            source = root / "origin" / "task-tracker-example"
+            source = root / "origin" / "task-tracker"
             source.parent.mkdir()
             embedded.initialize(source, shared=True)
             subprocess.run(["git", "-C", str(source), "config", "user.name", "Test"],
@@ -46,7 +46,7 @@ class RegistryAndSafety(unittest.TestCase):
             subprocess.run(["git", "-C", str(source), "add", "."], check=True)
             subprocess.run(["git", "-C", str(source), "commit", "-qm", "shared config"],
                            check=True)
-            clone = root / "elsewhere" / "task-tracker-example"
+            clone = root / "elsewhere" / "task-tracker"
             clone.parent.mkdir()
             subprocess.run(["git", "clone", "-q", str(source), str(clone)], check=True)
             for name in ("state", "logs", "results"):
@@ -68,28 +68,28 @@ class RegistryAndSafety(unittest.TestCase):
             registry = root / "registry.json"
             markers = []
             for parent in ("one", "two"):
-                repo = root / parent / "task-tracker-example"
+                repo = root / parent / "task-tracker"
                 repo.parent.mkdir()
                 embedded.initialize(repo)
                 embedded.register(repo, registry)
                 markers.append(repo / ".pw")
-            record = {"project": "task-tracker-example", "head": "a" * 40}
+            record = {"project": "task-tracker", "head": "a" * 40}
             rid = hashlib.sha256(json.dumps(record, sort_keys=True,
                 separators=(",", ":"), ensure_ascii=True).encode()).hexdigest()[:20]
             (markers[0] / "telegram_approval_pending.json").write_text(json.dumps(record))
             with patch.object(embedded, "registry_path", return_value=registry):
-                self.assertEqual(embedded.callback_project(root / "legacy", "task-tracker-example", rid), markers[0])
+                self.assertEqual(embedded.callback_project(root / "legacy", "task-tracker", rid), markers[0])
                 (markers[1] / "telegram_approval_pending.json").write_text(json.dumps(record))
                 with self.assertRaisesRegex(ValueError, "ambiguous"):
-                    embedded.callback_project(root / "legacy", "task-tracker-example", rid)
+                    embedded.callback_project(root / "legacy", "task-tracker", rid)
 
     def test_timers_bind_unique_repo_and_remain_inert(self):
         with tempfile.TemporaryDirectory() as tmp:
-            first = Path(tmp) / "one/task-tracker-example"
-            second = Path(tmp) / "two/task-tracker-example"
-            self.assertNotEqual(unit_name("task-tracker-example", first),
-                                unit_name("task-tracker-example", second))
-            service, timer = unit_strings("task-tracker-example", 20, Path("/usr/bin/pw_dispatch.py"), repo=first)
+            first = Path(tmp) / "one/task-tracker"
+            second = Path(tmp) / "two/task-tracker"
+            self.assertNotEqual(unit_name("task-tracker", first),
+                                unit_name("task-tracker", second))
+            service, timer = unit_strings("task-tracker", 20, Path("/usr/bin/pw_dispatch.py"), repo=first)
             self.assertIn("PROJECTWRIGHT_PROJECT_DIR=", service)
             self.assertIn(str(first.resolve()), service)
             self.assertNotIn("WantedBy=", service)
@@ -99,8 +99,8 @@ class RegistryAndSafety(unittest.TestCase):
     def test_systemd_escapes_paths_with_spaces_and_specifiers(self):
         from pw_project_timer import _systemd_argument, approval_notify_units
         script = Path("/opt/project wright/dispatcher%demo.py")
-        service, _ = unit_strings("task-tracker-example", 20, script,
-                                  repo=Path("/home/fixture/projects with spaces/task-tracker-example"))
+        service, _ = unit_strings("task-tracker", 20, script,
+                                  repo=Path("/home/fixture/projects with spaces/task-tracker"))
         self.assertIn('"/opt/project wright/dispatcher%%demo.py"', service)
         self.assertIn("PROJECTWRIGHT_PROJECT_DIR=", service)
         self.assertIn("projects with spaces", service)
@@ -116,7 +116,7 @@ class RegistryAndSafety(unittest.TestCase):
         import pw_project_timer as timer
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
-            repo = home / "other" / "task-tracker-example"
+            repo = home / "other" / "task-tracker"
             repo.parent.mkdir()
             embedded.initialize(repo)
             unit = unit_name(repo.name, repo)
@@ -141,7 +141,7 @@ class RegistryAndSafety(unittest.TestCase):
         import pw_project_timer as timer
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
-            repo = home / "outside" / "task-tracker-example"
+            repo = home / "outside" / "task-tracker"
             repo.parent.mkdir()
             embedded.initialize(repo)
             unit = unit_name(repo.name, repo)
@@ -168,7 +168,7 @@ class RegistryAndSafety(unittest.TestCase):
         import pw_project_timer as timer
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
-            repo = home / "other" / "task-tracker-example"
+            repo = home / "other" / "task-tracker"
             repo.parent.mkdir()
             embedded.initialize(repo)
             unit = unit_name(repo.name, repo)
@@ -186,7 +186,7 @@ class RegistryAndSafety(unittest.TestCase):
 
     def test_git_runtime_state_must_not_be_in_index(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "task-tracker-example"
+            repo = Path(tmp) / "task-tracker"
             embedded.initialize(repo)
             secret = repo / ".pw/state/worker.lock"
             secret.write_text("not for Git")

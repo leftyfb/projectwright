@@ -47,7 +47,7 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
 
     def repository(self, parent="outside", contents="VALUE = 1\n", *,
                    strict=True, shared=False) -> Path:
-        repo = self.base / parent / "task-tracker-example"
+        repo = self.base / parent / "task-tracker"
         repo.parent.mkdir(parents=True, exist_ok=True)
         config_file = embedded.initialize(repo, shared=shared)
         git(repo, "config", "user.name", "Fixture")
@@ -105,7 +105,7 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         result, verified_dir = pw_buttons.approve(
             self.root, pw_buttons.callback_data("a", record), True)
         self.assertEqual(verified_dir, marker)
-        self.assertIn("APPROVED task-tracker-example / DEMO-1-M1", result)
+        self.assertIn("APPROVED task-tracker / DEMO-1-M1", result)
         state = json.loads((marker / "planning_state.json").read_text())
         self.assertEqual(state["verified_milestones"]["DEMO-1-M1"]["completed_task_ids"],
                          ["P1", "P2"])

@@ -603,7 +603,7 @@ class RealSubprocessChain(unittest.TestCase):
         """Exercise the actual dispatcher/manager/worker chain against .pw."""
         sys.path.insert(0, str(SRC))
         from pw_embedded import initialize as embedded_init
-        repo = self.base / "custom-repositories" / "task-tracker-example"
+        repo = self.base / "custom-repositories" / "task-tracker"
         repo.parent.mkdir(parents=True)
         repo.mkdir()
         git(repo, "init", "-q", "-b", "main")
@@ -633,14 +633,14 @@ class RealSubprocessChain(unittest.TestCase):
                     [sys.executable, "-B", str(self.scripts / "pw_dispatch.py")])
         env = {**self.env, "PROJECTWRIGHT_PROJECT_DIR": str(repo)}
         result = subprocess.run(
-            [*launcher, "--project", "task-tracker-example",
+            [*launcher, "--project", "task-tracker",
              "--scripts", str(self.scripts), "--one-shot", "--no-telegram"],
             env=env, capture_output=True, text=True, timeout=35,
         )
         if result.returncode != 0:
             manager = subprocess.run(
                 [sys.executable, "-B", str(self.scripts / "pw_queue_manager.py"),
-                 "--project", "task-tracker-example", "--status"],
+                 "--project", "task-tracker", "--status"],
                 env=env, capture_output=True, text=True, timeout=10)
             self.fail("Embedded dispatcher failed: " + result.stdout + result.stderr +
                       "\nmanager stdout: " + manager.stdout + "\nmanager stderr: " + manager.stderr)

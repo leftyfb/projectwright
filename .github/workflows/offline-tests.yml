@@ -112,9 +112,9 @@ jobs:
           done
           PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" \
             "$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw" --help > /dev/null
-          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/doc/projectwright/examples/task_tracker/README.md"
-          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/doc/projectwright/examples/task_tracker/starter/README.md"
-          cmp examples/task_tracker/requirements.md "$RUNNER_TEMP/projectwright-deb-extract/usr/share/doc/projectwright/examples/task_tracker/requirements.md"
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/doc/projectwright/examples/task-tracker/README.md"
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/doc/projectwright/examples/task-tracker/starter/README.md"
+          cmp examples/task-tracker/requirements.md "$RUNNER_TEMP/projectwright-deb-extract/usr/share/doc/projectwright/examples/task-tracker/requirements.md"
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals.py"
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals/plugin.yaml"
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals/__init__.py"

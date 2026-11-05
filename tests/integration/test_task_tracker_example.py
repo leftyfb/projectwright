@@ -4,7 +4,7 @@ import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-EXAMPLE = ROOT / "examples" / "task_tracker"
+EXAMPLE = ROOT / "examples" / "task-tracker"
 GUIDE = EXAMPLE / "README.md"
 STARTER = EXAMPLE / "starter" / "README.md"
 REQUIREMENTS = EXAMPLE / "requirements.md"
@@ -35,20 +35,23 @@ class TaskTrackerExampleTests(unittest.TestCase):
     def test_walkthrough_uses_one_project_and_copies_packaged_requirements(self):
         text = GUIDE.read_text(encoding="utf-8")
         starter = STARTER.read_text(encoding="utf-8")
-        self.assertIn("pw init ~/projects/task-tracker-example", text)
-        self.assertIn("cd ~/projects/task-tracker-example", text)
-        self.assertIn("cp /usr/share/doc/projectwright/examples/task_tracker/starter/README.md README.md", text)
-        self.assertIn("cp /usr/share/doc/projectwright/examples/task_tracker/requirements.md .pw/requirements.md", text)
+        self.assertIn("pw init ~/projects/task-tracker", text)
+        self.assertIn("cd ~/projects/task-tracker", text)
+        self.assertIn("cp /usr/share/doc/projectwright/examples/task-tracker/starter/README.md README.md", text)
+        self.assertIn("cp /usr/share/doc/projectwright/examples/task-tracker/requirements.md .pw/requirements.md", text)
         self.assertIn(".pw/queue.md", text)
         self.assertIn(".pw/work_log.md", text)
-        self.assertIn("task-tracker-example", starter)
-        self.assertNotIn("pw init --project task-tracker-example --repo", text)
-        self.assertNotIn("~/projects/task-tracker/", text)
-        self.assertNotIn("~/.hermes/projects/task-tracker-example", text)
+        self.assertIn("task-tracker", starter)
+        self.assertNotIn("pw init --project task-tracker --repo", text)
+        self.assertNotIn("~/.hermes/projects/task-tracker", text)
         self.assertNotIn("paste the entire requirements block", text.lower())
         self.assertNotIn("#### Acceptance", text, "Keep the specifications in requirements.md, not README.md")
         self.assertIn("pw init PATH", (ROOT / "docs/cli.md").read_text(encoding="utf-8"))
         self.assertFalse((ROOT / "docs/embedded-projects.md").exists())
+        forbidden = "task-tracker" + "-example"
+        for source in ROOT.rglob("*"):
+            if source.is_file() and ".git" not in source.parts and "__pycache__" not in source.parts:
+                self.assertNotIn(forbidden, source.read_text(encoding="utf-8", errors="ignore"), str(source))
 
     def test_walkthrough_covers_approvals_and_local_only_limits(self):
         text = GUIDE.read_text(encoding="utf-8").lower()
