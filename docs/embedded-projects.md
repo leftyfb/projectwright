@@ -2,7 +2,7 @@
 
 New Projectwright projects keep their definitions and operational files under the
 repository's `.pw/` directory. Existing projects using external state directories
-continue to work without automatic migration.
+continue to work with their existing configuration.
 
 ## Initialize
 
@@ -68,28 +68,6 @@ contain a location-specific project binding; after a move, disable/remove the
 old timer and explicitly install a new one. Timer installation is disabled by
 default; enabling recurring execution requires separate authorization.
 
-## Legacy migration
-
-Nothing is migrated on an APT upgrade. To inspect and explicitly copy legacy
-external state into an existing clean repository:
-
-```sh
-pw migrate --project task-tracker-example --repo ~/projects/task-tracker-example
-pw migrate --project task-tracker-example --repo ~/projects/task-tracker-example --apply
-```
-
-Use `--legacy-root /path/to/existing/projects` when the original state is
-outside the default project directory. The first command is a read-only dry-run.
-The second refuses active Git cycles, unfinished journals, pending Telegram
-approvals, dirty repositories, mismatched Git roots/branches, symlinks and
-unexpected custom paths. Original state is left intact for rollback, and the
-new project's execution and planning are **disabled**. Review the generated
-configuration and copied files before authorizing any new tasks.
-
-Migration does **not** deactivate legacy scheduled units or modify Hermes.
-Those changes require separate deliberate administrator action to prevent two
-instances acting on the same worktree. No release is performed by migration.
-
 ## Compatibility and limitations
 
 Existing `pw init --project NAME --config-dir CONFIG_HOME` continues to
@@ -97,7 +75,7 @@ initialize the legacy external layout. `--config-dir` selects the old
 configuration home explicitly. `PROJECTWRIGHT_PROJECT_DIR` is an internal
 absolute path handoff to child processes and timers, not stored in a project.
 
-Shared mode and migration require a clean Git worktree before normal
+Shared mode requires a clean Git worktree before normal
 execution; metadata changes should be reviewed by a human. The worker fails
 closed when runtime files appear in the Git index. Automated tasks still
 require normal Git verification, guard checks and milestone acceptance.
