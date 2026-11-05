@@ -1,63 +1,63 @@
-# Task Tracker CLI — guided build-it-yourself walkthrough
+# Task Tracker CLI — Projectwright guided walkthrough
 
-This is a **build-it-yourself walkthrough**, not the separate [preconfigured runnable demo](../ready_demo/README.md). The Task Tracker repository is intentionally a starter, not a finished application. It contains this walkthrough only; Projectwright and Hermes should implement the Python CLI in the milestones below. The project uses Python's standard library and a local JSON file. It needs no Telegram, cloud service, network access, credentials, or extra package.
+This is the **build-it-yourself** example for Projectwright's repository-local `.pw/` layout, not a prebuilt application. Projectwright plans the work and Hermes implements the tracker. For a separate runnable demo, see the [ready demo](../ready_demo/README.md).
 
-## Before you begin
+The **project ID, Git repository directory, and all examples use one name**: `task-tracker-example`. The default home is `~/projects`, but you can initialize a repository in any directory you choose.
 
-Install Projectwright and configure Hermes with your normal AI provider as described in the [signed APT installation guide](https://github.com/leftyfb/projectwright/blob/main/docs/apt-repository.md). Projectwright's supported Ubuntu releases are 24.04 LTS and 26.04 LTS; the hosted package-install matrix covers both, while manual APT-repository installation was verified on 26.04 only and remains deferred on 24.04. This example does not ask you to configure Telegram. M1 can be planned, executed, tested, and reviewed without Telegram, but completing M1 acceptance and advancing to M2 require a real Telegram approval callback. The example is therefore not an offline-testable end-to-end M1-to-M2 lifecycle.
+## Prerequisites
 
-Commands below assume the Projectwright CLI is `pw`, Python 3 is `python3`, and the example repository is `~/projects/task-tracker`. The Debian package includes the starter file at `/usr/share/doc/projectwright/examples/task_tracker/starter/README.md`; you do **not** need to clone the Projectwright source. If you are running from a source checkout instead of the Debian package, set `PROJECTWRIGHT_CHECKOUT` to your checkout path and use the fallback copy command below. Run commands in the example repository unless indicated otherwise. Avoid using a real project directory: this walkthrough creates a disposable Git repository and its own Projectwright state.
+Install the development Projectwright Debian package or an equivalent source version with embedded `.pw/` support. Hermes must be configured with your chosen provider. Python 3 and Git are required. The tracker itself uses only the Python standard library, local JSON storage, and no cloud services or extra packages.
 
-## 1. Create a disposable starter Git repository
+The installed walkthrough is at `/usr/share/doc/projectwright/examples/task_tracker/README.md`, and its starter README is at `/usr/share/doc/projectwright/examples/task_tracker/starter/README.md`. These commands assume `pw` is on `PATH`. Do not use an existing repository or project containing work you want to keep.
+
+## 1. Initialize one repository-local project
+
+Run this from any directory:
 
 ```sh
-mkdir -p ~/projects/task-tracker
-cd ~/projects/task-tracker
-git init -b main
+pw init ~/projects/task-tracker-example
+cd ~/projects/task-tracker-example
 ```
 
-Copy the starter README **once**, using the method that matches your installation.
+This creates the Git repository, `.pw/` state directory, `.pw/README.md`, `.pw/config.json`, requirements and queue files, and the default `/.pw/` Git ignore rule. It does **not** enable unattended execution, configure a timer, or run an agent.
 
-**APT package (recommended):**
+If you prefer another parent directory, substitute your path in the `pw init` command. To initialize an existing repository, go to its root and use `pw init .` instead. Its directory basename must match the Projectwright project ID.
+
+Copy the starter application README **once**, based on your installation.
+
+**Debian installation:**
 
 ```sh
 cp /usr/share/doc/projectwright/examples/task_tracker/starter/README.md README.md
 ```
 
-**Source checkout only (alternative, not an additional step):**
+**Source checkout alternative:**
 
 ```sh
-cp "$HOME/repos/projectwright/examples/task_tracker/starter/README.md" README.md
+cp ~/repos/projectwright/examples/task_tracker/starter/README.md README.md
 ```
 
-If your source checkout is elsewhere, replace `$HOME/repos/projectwright` with its actual path. **Do not run both copy commands.** The installed starter README contains only the project introduction; it is not the requirements document.
+Do not run both commands. The starter is only an introduction; it is not the full requirements specification. If your source checkout is elsewhere, change the source path.
 
-Confirm that `README.md` exists, then commit it:
+Create the first Git commit before planning:
 
 ```sh
-git add README.md
-git -c user.name='Example User' -c user.email='example@example.invalid' commit -m 'docs: start task tracker example'
+git add .gitignore README.md
+git -c user.name='Example User' -c user.email='example@example.invalid' commit -m 'docs: initialize task-tracker-example'
+git status --short
 ```
 
-The source and tests do not exist yet. That is intentional: the planner is being asked to develop a scaffold, not rubber-stamp a prebuilt application. If this directory already contains files or work you care about, stop and choose a new empty directory.
+If you have your normal Git identity configured, you may omit the temporary `-c` options. The Git status should be clean. Do not force-add `.pw/` or commit operational files.
 
-## 2. Initialize a separate Projectwright project and add requirements
+## 2. Save the requirements inside `.pw/`
 
-Use the **same project ID**, `task-tracker-example`, in **every** `pw` command. The directory `~/projects/task-tracker` is the *application Git repository*, not the Projectwright project ID.
-
-```sh
-pw init --project task-tracker-example --repo ~/projects/task-tracker
-```
-
-Read the JSON returned by `pw init`: its `project_directory` field is the **actual** Projectwright state directory. With the corrected default it is `~/projects/task-tracker-example`. Older installed packages might still select legacy directories; consult the path printed by your actual installed version and do not automatically move existing state.
-
-Now open the requirements editor:
+From the repository root, run:
 
 ```sh
 pw requirements --project task-tracker-example --edit
 ```
 
-**Important: the editor starts with a blank file.** Copy **the entire Markdown requirements block directly below**, from `# Task Tracker CLI requirements` through the final `README.md` Scope line, **into the editor**, then save and exit. Running `pw requirements --edit` alone does *not* populate requirements, and the starter repository's `README.md` is not a substitute. If no editor opens, set `EDITOR=nano` (or another installed editor) and rerun the command.
+The editor opens `~/projects/task-tracker-example/.pw/requirements.md`. The file starts blank. Paste **the entire requirements block below**, save, and exit. Set `EDITOR=nano` if your editor does not open.
 
 ```markdown
 # Task Tracker CLI requirements
@@ -94,82 +94,104 @@ Non-goals: synchronization, accounts, network access, GUI, due dates, priorities
 - **Scope:** `README.md`
 ```
 
-The commands and future source/test paths above are proposed deliverables, not claims that the files or tests already exist. After each milestone is implemented, inspect its exact command, paths, test safety, and Git tracking before requesting acceptance. Do not broaden scope just to make a command pass.
+Those acceptance commands describe future deliverables, **not files or tests that already exist**. They should be verified after Hermes implements them.
 
-**Verify the file was actually saved before planning.** Run the following using the `project_directory` path reported by `pw init` (replace the example path if your initialization printed something different):
+Check that the requirements actually saved:
 
 ```sh
-PROJECT_STATE="$HOME/.hermes/projects/task-tracker-example" # replace with pw init's project_directory
-test -s "$PROJECT_STATE/requirements.md" && echo "Requirements file is nonempty"
-sed -n '1,18p' "$PROJECT_STATE/requirements.md"
+test -s .pw/requirements.md && echo "Requirements saved"
+sed -n '1,18p' .pw/requirements.md
+grep '^### TRACK-1-M' .pw/requirements.md
 ```
 
-The first line should be `# Task Tracker CLI requirements` and the document should contain both `TRACK-1-M1` and `TRACK-1-M2`. If the file is empty or missing, rerun the editor and save the full requirements block. These checks read only the Projectwright state; they do not execute tasks.
+You should see both `TRACK-1-M1` and `TRACK-1-M2`. If the file is empty, reopen the editor. Do not begin planning with missing requirements.
 
-## 3. Plan, then inspect before authorizing work
-
-Home Assistant quota checking is **disabled by default**. This tutorial does not require an HA instance, HA token or quota sensor. If upgrading from an older version and planning is blocked by an optional quota gate, verify `quota.enabled` is explicitly `false` in `~/projects/task-tracker-example/config.json`.
-
-
+## 3. Plan and review the queue
 
 ```sh
 pw plan --project task-tracker-example
 pw status --project task-tracker-example
+cat .pw/queue.md
 ```
 
-Read `queue.md` in the **actual `project_directory` printed by `pw init`**, normally `~/projects/task-tracker-example/`. If `pw plan` is blocked, do not execute tasks; use the troubleshooting section below and inspect `pw status --project task-tracker-example --json`. Check that the queue has small tasks for M1 first, the requested paths are the only project files in scope, and no task introduces a dependency or external service. Planning is not execution authorization. Fix requirements and re-plan if the proposal is unsafe or out of scope.
+Explicit `pw plan` authorizes planning, but not execution. Review M1's proposed task descriptions and file scopes. Projectwright should not begin M2 until M1 has passed its tests and the human approval gate. If planning is blocked, inspect:
 
-## 4. Run one task at a time
+```sh
+pw status --project task-tracker-example --json
+cat .pw/config.json
+```
 
-When the plan is acceptable, authorize one manual dispatcher cycle:
+The default Home Assistant quota integration is disabled; this walkthrough requires no HA token or quota sensor. Never add secrets to `.pw/config.json`, and do not enable `execution.enabled` to work around blockers.
+
+## 4. Execute and inspect one task at a time
 
 ```sh
 pw start --project task-tracker-example
 ```
 
-Confirm the prompt. This is a one-shot run, not a recurring timer. Then review status and the repository diff:
+Confirm the prompt to authorize **one** dispatcher cycle. A one-shot start does not enable persistent execution or recurring timers. After each task:
 
 ```sh
 pw status --project task-tracker-example
-git -C ~/projects/task-tracker status --short
-git -C ~/projects/task-tracker diff --check
-git -C ~/projects/task-tracker diff
+git status --short
+git diff --check
+git diff
+cat .pw/work_log.md
 ```
 
-Repeat planning/review and one-shot starts only as appropriate for the remaining queue. Do not use `pw authorize-execution` or enable timers for this tutorial. Run the milestone's exact acceptance command yourself as a test, and inspect every changed file.
+Review and repeat `pw start --project task-tracker-example` as appropriate for the remaining M1 tasks. Projectwright/Hermes should create `task_tracker.py` and `tests/` during this work. Do not add or edit `.pw` approval records, operational state, or locks.
 
-## 5. Human acceptance and next milestone
+After M1 is implemented, independently run its proposed acceptance test:
 
-A passing test, completed queue, or commit is not milestone approval. Projectwright records human acceptance through its configured Telegram approval callback. If Telegram is not configured, review is still useful, but the acceptance gate is intentionally blocked: do not edit receipts, check queue boxes, or otherwise bypass it. Set up Telegram only if you want to exercise the real approval callback, following [Projectwright's Telegram approval setup](https://github.com/leftyfb/projectwright/blob/main/docs/user-approval-setup.md) and authorized-user safeguards.
+```sh
+python3 -B -m unittest discover -s tests -p test_task_tracker_m1.py
+```
 
-After M1's work has been reviewed and accepted through the supported Telegram callback, refresh the plan and status, verify that M2 is now the active milestone, then use `pw start --project task-tracker-example` for one task at a time. Repeat review, validation, and human acceptance. Without Telegram acceptance, stop at the gate rather than claiming progression; M2 execution is not available through this offline walkthrough.
+An absent test before M1 is implemented is expected. A passing test is **not** human milestone acceptance.
 
-## What automated and live testing cover
+## 5. Approve the milestone through Telegram
 
-The repository's automated `tests/integration/test_task_tracker_projectwright_e2e.py` uses a disposable Git repository, isolated Projectwright state, the installed-style `pw` entrypoint, and a controlled fake Hermes provider. It covers initialization, requirements, planning/queue creation, a one-shot run, the separate execution-authorization state, a manually driven task cycle, and the M1 acceptance block without Telegram. It does not test a real Hermes provider, Telegram delivery/callbacks, or M2 progression.
+Projectwright's configured Telegram integration is the supported human acceptance path. Once all M1 tasks, Git commits, and tests are verified, Projectwright should present an approval request through Telegram. Approve or reject the pinned milestone using its real callback buttons.
 
-A separate live-Hermes smoke test performed initialization, planning, and one one-shot task, then stopped at the genuine M1 human-acceptance gate. It did not record approval, test Telegram, or advance to M2. The automated fake-provider test and that limited live smoke test are distinct evidence; neither claims the full lifecycle was completed.
+If you have not configured authorized Telegram recipients, Projectwright must remain at `awaiting_acceptance`. Do not manually create an approval receipt or mark tasks complete to bypass this gate. See the [Telegram approval setup](https://github.com/leftyfb/projectwright/blob/main/docs/user-approval-setup.md).
+
+After approval, verify the next milestone is available:
+
+```sh
+pw status --project task-tracker-example
+pw plan --project task-tracker-example
+cat .pw/queue.md
+```
+
+Use repeated `pw start --project task-tracker-example` one-shot runs to work through M2, then run:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_task_tracker_m2.py
+```
+
+Review and approve M2 in Telegram. The task tracker is finished only after verified work and the required human milestone acceptance.
 
 ## Expected outcomes
 
-- Initialization creates Projectwright state separately from the disposable Git repository.
-- Planning produces a reviewable queue; it does not run code.
-- Each confirmed `pw start` authorizes only one manual dispatcher cycle; execution remains non-recurring.
-- The starter repository contains no completed tracker. Its source and tests appear only as Projectwright executes approved tasks.
-- When built, `python3 -B -m unittest discover -s tests -p test_task_tracker_m1.py` and the corresponding M2 command should pass. Initially they are expected to fail because the example is deliberately unimplemented.
-- With Telegram approval unavailable, the workflow is verified only through task completion/review, not through milestone acceptance or progression.
-- Reaching M2 requires a real human acceptance through Telegram; do not treat the fake-provider integration test as evidence of Telegram or M2 behavior.
+- One Git repository named `task-tracker-example` contains both application deliverables and ignored Projectwright state under `.pw/`.
+- `.pw/config.json` uses portable relative paths; moving the repository does not require rewriting them.
+- Planning creates `.pw/queue.md`; it does not run Hermes tasks.
+- Each confirmed `pw start` runs no more than one task and does not install a timer.
+- The tracker source and tests are generated during development, not provided in the starter.
+- Approval requires a genuine authorized Telegram callback. Without it, M2 remains blocked.
+- Git operations never stage runtime `.pw` logs, approvals, journals, results, or credentials.
 
 ## Troubleshooting
 
-- **`pw status --project task-tracker` says the project is not initialized:** you initialized `task-tracker-example`, not `task-tracker`. Use `pw status --project task-tracker-example` consistently. **Do not rerun `pw init`** on an already initialized project.
-- **`pw plan: Planning was blocked`:** first confirm the complete requirements were saved (Step 2). Then run `pw status --project task-tracker-example --json` to inspect `reason`, `blockers`, and `diagnostics`. A blank requirements file, Git worktree problem, or provider problem requires different fixes. Do not infer which one from this generic message alone.
-- **`pw init` returned a `~/.hermes/projects/...` path rather than `~/.config/projects/...`:** Projectwright retains a backwards-compatible legacy project root. Use the `project_directory` reported by initialization. It is separate from your application Git repository; no migration or reinitialization is required.
-- **I ran both `cp` commands:** they are alternatives, not sequential steps. If the file was copied before your initial Git commit, no harm; only one command is necessary.
-- `pw: command not found`: install Projectwright and verify `pw --help` works.
-- An empty queue with a `no_actionable_work` marker in `planning_state.json`: older versions can suppress subsequent planning attempts based on the requirements hash. Upgrade to a version with the greenfield planner fix; the requirements must still contain actionable milestones and the model must return a valid task proposal. Do not delete project files to work around this.\n- Hermes/provider errors during `pw plan` or `pw start`: configure the normal Hermes provider and retry; this example does not supply credentials or an alternate provider.
-- Planning reports invalid requirements: preserve the exact heading IDs, `#### Acceptance` heading, one literal executable command and one or more repository-relative scope entries per milestone. Keep other criteria outside the acceptance block.
-- An acceptance command cannot find a test before implementation: expected for a greenfield milestone; do not treat the proposal as verified. Ask Projectwright to implement the milestone first, then inspect and run the command.
-- Acceptance is pending without Telegram: expected. Do not claim approval or manually create acceptance evidence. Follow `docs/user-approval-setup.md` if you choose to enable the supported callback.
-- Git reports unexpected changed paths: stop, inspect `git status` and the full diff, and do not authorize more work until the scope is understood.
-- JSON database corruption: preserve a copy for inspection; do not delete or overwrite it automatically.
+- **Wrong project name:** Use `task-tracker-example` in the repository directory and every explicit `--project` option. Do not use `task-tracker`.
+- **Already initialized:** `pw init` refuses to overwrite an existing `.pw/`. Do not rerun initialization for a project you already started.
+- **Planning blocked:** Confirm `.pw/requirements.md` is nonempty, the requirements parse correctly, the Git repository has an initial commit on its configured branch, and the Hermes provider is available. Inspect `pw status --project task-tracker-example --json`.
+- **Missing tests before implementation:** Expected for a greenfield project. Run the milestone tests after its code is created.
+- **Approval pending:** Configure the supported Telegram integration and authorized users, or stop at the approval gate.
+- **Unexpected Git changes:** Stop and inspect `git status` and `git diff` before executing further tasks.
+- **Invalid requirements:** Preserve exact milestone IDs, each `#### Acceptance` heading, one literal executable acceptance command, and one or more repository-relative scope paths.
+- **Database corruption:** Preserve a copy for inspection; do not delete or overwrite user data automatically.
+
+## Automated test coverage
+
+The repository has disposable end-to-end tests using a fake Hermes provider and separate tests for embedded `.pw/` project execution and Telegram approval callbacks. These are not claims that your real Hermes provider or live Telegram delivery was exercised by CI. This walkthrough is intended to validate those integrations on your test installation.
