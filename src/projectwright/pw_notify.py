@@ -178,9 +178,9 @@ def main():
     parser.add_argument('--project', help='Scan and notify only this initialized Projectwright project')
     a=parser.parse_args()
     # Scan first, under per-project locks. A failed scan is reported, never silently bypassed.
-    from project_telegram_approval import scan, PROJECT_RE
+    from project_telegram_approval import scan
     if a.project is not None:
-        if not PROJECT_RE.fullmatch(a.project):
+        if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', a.project):
             parser.error('--project must be a valid project ID')
         if not (a.root / a.project / 'config.json').is_file():
             parser.error(f'Project {a.project!r} is not initialized under {a.root}')
