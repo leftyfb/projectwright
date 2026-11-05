@@ -55,7 +55,7 @@ class ManualCycleContinuationTests(unittest.TestCase):
             patch("pw_dispatch.default_project_root", return_value=Path("/tmp/pw-cycle-test")),
         ):
             result = run_tick("demo", Path("/tmp/pw-cycle-code"), runner=runner, one_shot=True, no_telegram=True)
-        self.assertEqual(result, 1)
+        self.assertEqual(result, 23)
         authorized.assert_called_once()
         self.assertEqual(len(calls), 2)
         self.assertEqual(calls[1][0][-1], "--no-telegram")
