@@ -106,6 +106,10 @@ def main() -> int:
     parser.add_argument("--no-config", action="store_true", help="Create empty queue and work log without config.json")
     parser.add_argument("--repo", type=Path, help="Existing Git worktree to connect (never initialized or modified)")
     args = parser.parse_args()
+    if args.directory is not None and (args.config_dir is not None or args.repo is not None or args.no_config):
+        parser.error("Repository path cannot be combined with --config-dir, --repo, or --no-config")
+    if args.shared and (args.config_dir is not None or args.repo is not None or args.no_config):
+        parser.error("--shared is only supported for repository-local initialization")
     if args.directory is not None or args.shared or (args.project and args.config_dir is None and args.repo is None and not args.no_config):
         from pw_embedded import initialize as initialize_embedded
         directory = args.directory or (Path.home() / "projects" / args.project)
