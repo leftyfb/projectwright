@@ -162,7 +162,10 @@ def authorize_persistent_execution(project: str, confirmed: bool) -> int:
 
 
 def _recurring_state(project: str) -> tuple[bool | None, bool | None]:
-    unit = f"projectwright-worker-{project}.timer"
+    from pw_project_timer import unit_name
+    directory = _project_dir(project)
+    repo = directory.parent if directory.name == ".pw" else None
+    unit = unit_name(project, repo) + ".timer"
     unit_path = Path.home() / ".config/systemd/user" / unit
     if unit_path.is_symlink():
         return None, None
