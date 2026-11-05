@@ -279,7 +279,7 @@ def authorized_cycle_task(project, scripts, report):
         # A current journal or recovery incident cannot authorize dispatch.
         journal_file = manager_helpers['worker_journal_path'](cfg, config_path)
         journal = manager_helpers['read_json_optional'](journal_file)
-        incidents = manager_helpers['read_json_optional'](root / project / 'recovery_incidents.json')
+        incidents = manager_helpers['read_json_optional'](config_path.parent / 'recovery_incidents.json')
         if journal.get('current_task') is not None or incidents and (
             not isinstance(incidents.get('incidents'), list) or
             any(not isinstance(i, dict) or i.get('status') not in ('resolved', 'closed') for i in incidents['incidents'])
@@ -374,7 +374,7 @@ def _manual_handoff(project, report):
         'git_branch': branch,
         'head': head,
     }
-    return create_handoff(root / project, claims)
+    return create_handoff(config_path.parent, claims)
 
 
 def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False, one_shot=False):
@@ -541,7 +541,12 @@ def cli():
             return 2
         if found is not None:
             env["PROJECTWRIGHT_PROJECT_DIR"] = str(found.parent)
-    return subprocess.run([sys.executable, '-B', '-m', module, *fixed, *sys.argv[2:]],
+    arguments = list(sys.argv[2:])
+    if (command in {'tick', 'status', 'plan', 'worker', 'notify', 'requirements',
+                    'start', 'authorize-execution'} and
+            '--project' not in arguments and env.get('PROJECTWRIGHT_PROJECT_DIR')):
+        arguments.extend(['--project', Path(env['PROJECTWRIGHT_PROJECT_DIR']).name])
+    return subprocess.run([sys.executable, '-B', '-m', module, *fixed, *arguments],
                           check=False, env=env).returncode
 
 
