@@ -146,7 +146,7 @@ def notify_pending(root: Path, *, dry_run=False, transport=None, project=None):
         if rejected.exists() and json.loads(rejected.read_text())==pinned:
             continue
         if dry_run:
-            out.append(f'PREVIEW {directory.name} / {pinned["milestone"]}')
+            out.append(f'PREVIEW {pinned["project"]} / {pinned["milestone"]}')
             continue
         if values is None:
             values = config_values(Path.home() / '.hermes' / '.env')
@@ -190,7 +190,7 @@ def notify_pending(root: Path, *, dry_run=False, transport=None, project=None):
             if failures:
                 kinds = ', '.join(sorted(set(failures)))
                 raise RuntimeError(f'Telegram delivery failed for {len(failures)} recipient(s) ({kinds})')
-            out.append(f'NOTIFIED {directory.name} / {pinned["milestone"]}')
+            out.append(f'NOTIFIED {pinned["project"]} / {pinned["milestone"]}')
     return out
 
 
@@ -211,8 +211,9 @@ def main():
     if a.project is not None:
         if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', a.project):
             parser.error('--project must be a valid project ID')
-        if not (a.root / a.project / 'config.json').is_file():
-            parser.error(f'Project {a.project!r} is not initialized under {a.root}')
+        from pw_embedded import projects_for_name
+        if not projects_for_name(a.project, a.root):
+            parser.error(f'Project {a.project!r} is not initialized')
     if a.project is None:
         scan(a.root)
         rows=notify_pending(a.root,dry_run=not a.send)
@@ -226,13 +227,13 @@ def main():
     # per-user notifier timer also retries interrupted or failed delivery.
     if a.send:
         from pw_completion import notify_completion
-        directories = ([a.root / a.project] if a.project is not None else
-                       sorted(d for d in a.root.iterdir() if d.is_dir() and
-                              (d / 'config.json').is_file()) if a.root.is_dir() else [])
+        from pw_embedded import state_directories, project_id
+        directories = [d for d in state_directories(a.root)
+                       if a.project is None or project_id(d) == a.project]
         for directory in directories:
             delivered = notify_completion(directory)
             if delivered:
-                rows.append(f'COMPLETED {directory.name}: notified {len(delivered)} recipient(s)')
+                rows.append(f'COMPLETED {project_id(directory)}: notified {len(delivered)} recipient(s)')
     print('\n'.join(rows) if rows else 'No new notifications')
 
 if __name__=='__main__':
