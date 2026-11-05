@@ -23,7 +23,8 @@ RESERVED_REQUIREMENTS_NAMES = {
 def _project_dir(project: str) -> Path:
     if not PROJECT_ID.fullmatch(project):
         raise ValueError("Invalid project ID")
-    return default_project_root() / project
+    from pw_embedded import directory
+    return directory(project, default_project_root())
 
 
 def _config(project: str) -> tuple[Path, dict]:
@@ -32,7 +33,7 @@ def _config(project: str) -> tuple[Path, dict]:
     if directory.is_symlink() or path.is_symlink():
         raise ValueError("Refusing symlink project state")
     if not path.is_file():
-        raise ValueError(f"Project {project!r} is not initialized. Run: pw init --project {project}")
+        raise ValueError(f"Project {project!r} is not initialized. Run: pw init PATH")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
