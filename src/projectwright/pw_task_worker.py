@@ -410,7 +410,7 @@ def explicit_commit_paths(description: str) -> set[str] | None:
     if match is None:
         return None
     raw = match.group(1)
-    parts = re.split(r',\s*|\s+and\s+', raw)
+    parts = re.split(r',\s*(?:and\s+)?|\s+and\s+', raw)
     paths = {p.strip().strip('\x60') for p in parts}
     if (not paths or any(not p or not re.fullmatch(r'[A-Za-z0-9_./-]+', p)
                          or p.startswith('/') or '..' in Path(p).parts
