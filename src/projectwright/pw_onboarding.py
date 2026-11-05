@@ -9,6 +9,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 
 from pw_dispatch import default_project_root
 
@@ -43,6 +44,10 @@ def _config(project: str) -> tuple[Path, dict]:
     for section in ("planning", "execution"):
         if section in data and not isinstance(data[section], dict):
             raise ValueError(f"Malformed configuration: {section} must be an object")
+    # Read the effective configuration for validation, but return the raw
+    # document so relative paths are never rewritten as machine-specific ones.
+    from pw_config import load as validate_config
+    validate_config(project, directory_override=directory)
     return path, data
 
 
@@ -61,11 +66,19 @@ def _requirements_path(project: str, config: dict) -> Path:
 
 
 def _write(path: Path, config: dict) -> None:
-    # Preserve file permissions and avoid truncating a config on serialization failure.
-    temp = path.with_name(path.name + ".tmp")
-    temp.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    temp.chmod(path.stat().st_mode & 0o777)
-    os.replace(temp, path)
+    # Use an unpredictable private sibling, never a deterministic config.json.tmp.
+    # Serialize before opening the temporary file to preserve the original.
+    contents = json.dumps(config, indent=2, sort_keys=True) + "\n"
+    fd, name = tempfile.mkstemp(prefix=".pw-config-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(contents)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(name, path.stat().st_mode & 0o777)
+        os.replace(name, path)
+    finally:
+        Path(name).unlink(missing_ok=True)
 
 
 def requirements(project: str) -> int:
