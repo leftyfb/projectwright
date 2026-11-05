@@ -1,5 +1,6 @@
 """Unified pw command routing without executing user services."""
 import io
+import os
 import subprocess
 import sys
 import unittest
@@ -55,6 +56,22 @@ class UnifiedCommandTests(unittest.TestCase):
                 sys.executable, "-B", "-m", "pw_project_timer", "setup-user",
                 "--minutes", "15", "--enable-hermes-plugin",
             ])
+
+    def test_explicit_legacy_config_home_ignores_inherited_embedded_location(self):
+        with patch.dict(os.environ,
+                        {"PROJECTWRIGHT_PROJECT_DIR": "/tmp/unrelated/example"},
+                        clear=True), patch.object(
+            sys, "argv", ["pw", "status", "--project", "demo",
+                          "--config-dir", "/tmp/legacy-home"]
+        ), patch.object(
+            pw_dispatch.subprocess, "run",
+            return_value=subprocess.CompletedProcess([], 0)
+        ) as run:
+            self.assertEqual(pw_dispatch.cli(), 0)
+            environment = run.call_args.kwargs["env"]
+            self.assertNotIn("PROJECTWRIGHT_PROJECT_DIR", environment)
+            self.assertEqual(environment["PROJECTWRIGHT_CONFIG_DIR"],
+                             "/tmp/legacy-home")
 
     def test_unknown_command_refuses_without_execution(self):
         with patch.object(sys, "argv", ["pw", "bad"]), patch.object(
