@@ -2,7 +2,7 @@
 
 ## Repository-local projects
 
-New projects can live entirely under `~/projects/task-tracker-example/` (or a selected repository location), with Projectwright state in `.pw/`. See [repository-local projects](docs/embedded-projects.md) for initialization, shared Git configuration, callback registration. Existing external-state projects remain supported.
+New projects keep their Git repository and Projectwright state together, with configuration and operational files in `.pw/`. The default repository parent is `~/projects`, and you can choose another location during initialization. Existing external-state projects remain supported.
 
 
 Projectwright turns your requirements into a reviewable queue of small development tasks, then coordinates Hermes to work through that queue in a Git repository. It tracks progress and Git changes, checks worker reports, and can pause for human milestone approval.
@@ -29,7 +29,7 @@ Do not run `pw setup` with sudo. Hermes CLI must already be installed and config
 
 A disposable, beginner-friendly [Task Tracker walkthrough](examples/task_tracker/README.md) demonstrates `pw init`, requirements, planning, a one-task Hermes run, and review. The task tracker is **not prebuilt**: Projectwright generates it from the example requirements.
 
-The Debian package also installs this walkthrough and the starter README under `/usr/share/doc/projectwright/examples/task_tracker/`. Open the walkthrough after `sudo apt install projectwright`:
+The Debian package installs the walkthrough, starter README, and ready-to-copy `requirements.md` under `/usr/share/doc/projectwright/examples/task_tracker/`. Open the walkthrough after `sudo apt install projectwright`:
 
 ```sh
 less /usr/share/doc/projectwright/examples/task_tracker/README.md
@@ -39,38 +39,16 @@ The initial milestone can be worked and reviewed without Telegram. Advancing to 
 
 ## Quick start
 
-1. Draft and review project requirements using Hermes or another LLM. See the [requirements onboarding guide](docs/llm-requirements-onboarding.md).
-2. Initialize the Git repository and its embedded Projectwright state:
+Initialize a repository at a location of your choice, then provide requirements and review the proposed work:
 
-   ```sh
-   pw init ~/projects/myproject
-   cd ~/projects/myproject
-   ```
+```sh
+pw init ~/projects/myproject
+cd ~/projects/myproject
+```
 
-   For an existing Git repository, run `pw init .` at its root. The repository name is also the Projectwright project ID. Initialization creates `.pw/` but leaves planning, execution, and timers disabled.
-3. Create a baseline Git commit (skip this if the existing repository already has one), then save the reviewed requirements:
+Projectwright keeps its state in `.pw/` inside the repository. Commit your starting application files before running worker tasks. Use `pw requirements --project myproject --edit` for requirements, `pw plan --project myproject` to propose a queue, and `pw start --project myproject` to authorize one task.
 
-   ```sh
-   printf '# My project\n' > README.md
-   git add README.md .gitignore
-   git commit -m "Initialize myproject"
-   pw requirements --project myproject --edit
-   ```
-
-   The requirements belong in `.pw/requirements.md`, not in a separate Projectwright state tree.
-4. Review planning and authorize one task at a time:
-
-   ```sh
-   pw plan --project myproject
-   pw status --project myproject
-   cat .pw/queue.md
-   pw start --project myproject
-   ```
-
-   Confirm the one-shot execution prompt. It does not enable unattended execution.
-5. Inspect Git changes and run tests. Human milestone acceptance is through the configured Telegram callback; without Telegram the gate remains blocked. Never manually create approval records.
-
-For the complete working example, including starter files and requirements, follow the [Task Tracker walkthrough](examples/task_tracker/README.md). See [repository-local projects](docs/embedded-projects.md) and the [CLI reference](docs/cli.md).
+For the **complete step-by-step example**, follow [examples/task_tracker/README.md](examples/task_tracker/README.md). The [CLI reference](docs/cli.md) describes available commands rather than duplicating the tutorial.
 
 ## Documentation
 
