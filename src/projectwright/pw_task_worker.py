@@ -262,6 +262,21 @@ def stash_ref(oid: str) -> str:
     return refs[0]
 
 
+def _ensure_embedded_git_safe() -> None:
+    """Reject any staged/tracked operational state before a Git mutation."""
+    if PROJECT.get('layout') != 'embedded':
+        return
+    paths = git('ls-files', '--cached', '--', '.pw').splitlines()
+    forbidden = [p for p in paths if p.startswith(('.pw/state/', '.pw/logs/', '.pw/results/')) or
+                 p not in {'.pw/README.md', '.pw/requirements.md',
+                           '.pw/queue.md', '.pw/config.json', '.pw/work_log.md'}]
+    if forbidden:
+        raise RuntimeError('Operational .pw state is tracked by Git; refuse: ' + ', '.join(forbidden[:6]))
+    status = git('status', '--porcelain=v1', '--untracked-files=all')
+    if any(line[3:].startswith('.pw/') for line in status.splitlines()):
+        raise RuntimeError('Projectwright metadata has Git changes; review manually before worker cycle')
+
+
 def cycle_begin(task: Task) -> None:
     state = cycle_read()
     if state:
@@ -274,6 +289,8 @@ def cycle_begin(task: Task) -> None:
         if tracked_state() != state['snapshot']:
             raise RuntimeError('Repository changed outside prior completed task; refusing to continue')
         return
+    if PROJECT.get("layout") == "embedded":
+        _ensure_embedded_git_safe()
     if task.kind != 'EDIT':
         # READ/VERIFY before the first EDIT is okay, but TEST/COMMIT without an
         # established EDIT cycle is not safe to recover automatically.
@@ -290,6 +307,10 @@ def cycle_begin(task: Task) -> None:
     cycle_write(record)   # journal before mutating Git
     try:
         if git('status', '--porcelain=v1', '--untracked-files=all'):
+            if PROJECT.get('layout') == 'embedded':
+                # Shared project definitions are never stashed by an automated cycle.
+                # Private state must also remain absent from the index.
+                _ensure_embedded_git_safe()
             subprocess.run(['git', '-C', str(WORKTREE), 'stash', 'push', '-u', '-m', message], check=True)
             entries = git('stash', 'list', '--format=%H %s').splitlines()
             candidates = [entry.split(' ', 1)[0] for entry in entries if message in entry]
@@ -559,6 +580,11 @@ def verify(task: Task, response: dict, before: tuple, after: tuple) -> tuple[boo
             return False, f'TEST scope violation: commit or non-test-file changes: {sorted(files)}'
     if task.kind == 'EDIT' and committed:
         return False, 'EDIT scope violation: created commit'
+    if PROJECT.get('layout') == 'embedded':
+        try:
+            _ensure_embedded_git_safe()
+        except RuntimeError as exc:
+            return False, str(exc)
     if task.kind == 'COMMIT' and response['status'] == 'completed' and not committed:
         return False, 'COMMIT task reported completed without a new commit'
     if task.kind == 'EDIT' and response['status'] == 'completed' and not files:
