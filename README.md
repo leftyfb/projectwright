@@ -1,5 +1,10 @@
 # Projectwright
 
+## Repository-local projects
+
+New projects can live entirely under `~/projects/task-tracker-example/` (or a selected repository location), with Projectwright state in `.pw/`. See [repository-local projects and explicit legacy migration](docs/embedded-projects.md) for initialization, shared Git configuration, callback registration, and migration details. Existing external-state projects remain supported and are never automatically migrated.
+
+
 Projectwright turns your requirements into a reviewable queue of small development tasks, then coordinates Hermes to work through that queue in a Git repository. It tracks progress and Git changes, checks worker reports, and can pause for human milestone approval.
 
 Hermes is the AI developer: it plans and edits using your configured model and tools. Projectwright manages the requirements, queue, safety checks, progress and approval gates. Planning proposes work; it does not authorize execution. Execution is a separate, explicit action.
