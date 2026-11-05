@@ -28,6 +28,7 @@ import project_telegram_approval as bridge
 import pw_buttons
 import pw_notify
 import pw_plugin
+import pw_completion
 
 
 REQUIREMENTS = (
@@ -302,6 +303,37 @@ class TelegramApprovalAndButtonTests(unittest.TestCase):
             "fixture / DEMO-1-M1: already accepted with current verified evidence; no new request"
         )
         self.assertFalse((self.project / "telegram_approval_pending.json").exists())
+
+    def test_completion_notice_is_final_only_and_deduplicated(self) -> None:
+        self.assertIsNone(pw_completion.completion_details(self.project))
+        self.scan_one()
+        bridge.approve_single(self.root)
+        details = pw_completion.completion_details(self.project)
+        self.assertIsNotNone(details)
+        self.assertIn("project complete", details["message"])
+        self.assertIn("DEMO-1-M1", details["message"])
+        self.assertIn("Tasks completed: 2", details["message"])
+        payloads = []
+        vals = {
+            "TELEGRAM_BOT_TOKEN": "fixture-token",
+            "TELEGRAM_ALLOWED_USERS": "123,456",
+        }
+        with patch.object(pw_completion, "config_values", return_value=vals):
+            send = lambda payload: payloads.append(payload) or len(payloads) + 50
+            self.assertEqual(pw_completion.notify_completion(self.project, transport=send),
+                             ["123", "456"])
+            self.assertEqual(pw_completion.notify_completion(self.project, transport=send), [])
+        self.assertEqual(len(payloads), 2)
+        self.assertNotIn("reply_markup", payloads[0])
+        self.assertEqual(payloads[0]["text"], details["message"])
+        marker = json.loads((self.project / "telegram_completion_notified.json").read_text())
+        self.assertEqual(set(marker["recipients"]), {"123", "456"})
+
+    def test_completion_refuses_unaccepted_additional_milestone(self) -> None:
+        self.scan_one()
+        bridge.approve_single(self.root)
+        self.req.write_text(self.req.read_text() + "\\n### DEMO-1-M2 — Next work\\n")
+        self.assertIsNone(pw_completion.completion_details(self.project))
 
     def test_stale_approval_fails_closed_without_receipt(self) -> None:
         self.scan_one()
