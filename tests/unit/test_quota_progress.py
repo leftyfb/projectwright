@@ -49,7 +49,7 @@ class QuotaPolicyTests(unittest.TestCase):
                 }),
                 mock.patch.object(project_quota.urllib.request, "urlopen", side_effect=fetch),
             ):
-                decision = project_quota.evaluate({}, home=home)
+                decision = project_quota.evaluate({"enabled": True}, home=home)
         self.assertFalse(decision["allowed"])
         self.assertEqual(decision["reason"], "quota_unavailable")
         self.assertIn("fixture sensor unavailable", decision["detail"])
@@ -114,7 +114,7 @@ class QuotaPolicyTests(unittest.TestCase):
                 }),
                 mock.patch.object(project_quota.urllib.request, "urlopen", side_effect=fetch),
             ):
-                decision = project_quota.evaluate({"rate_limited_entity": None}, home=home)
+                decision = project_quota.evaluate({"enabled": True, "rate_limited_entity": None}, home=home)
         self.assertTrue(decision["allowed"])
         self.assertEqual(seen, ["sensor.codex_usage_weekly_remaining"])
 
@@ -135,7 +135,7 @@ class QuotaPolicyTests(unittest.TestCase):
                 raise OSError("configured sensor unavailable")
             with mock.patch.object(project_quota.urllib.request, "urlopen", side_effect=fetch):
                 decision = project_quota.evaluate(
-                    {"rate_limited_entity": "binary_sensor.fixture_rate_limit"}, home=home
+                    {"enabled": True, "rate_limited_entity": "binary_sensor.fixture_rate_limit"}, home=home
                 )
         self.assertFalse(decision["allowed"])
         self.assertEqual(decision["reason"], "quota_unavailable")
@@ -152,7 +152,7 @@ class QuotaPolicyTests(unittest.TestCase):
             secrets.parent.mkdir(parents=True)
             secrets.write_text("HA_URL=https://ha.example\nHA_TOKEN=fixture\n")
             with mock.patch.object(project_quota.urllib.request, "urlopen", return_value=Response()):
-                decision = project_quota.evaluate({"rate_limited_entity": False}, home=home)
+                decision = project_quota.evaluate({"enabled": True, "rate_limited_entity": False}, home=home)
         self.assertFalse(decision["allowed"])
         self.assertEqual(decision["reason"], "quota_unavailable")
 
