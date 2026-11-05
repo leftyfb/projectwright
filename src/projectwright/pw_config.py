@@ -56,17 +56,43 @@ def load(project: str, root: Path | None = None, *, directory_override: Path | N
     if overrides.get("layout") == "embedded":
         if directory.name != ".pw" or not path.is_file():
             raise ValueError("Embedded project must use a .pw directory")
+        if directory.is_symlink() or path.is_symlink() or not (directory.parent / ".git").exists():
+            raise ValueError("Invalid or symlinked embedded repository")
+        def reject_secrets(value):
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    if not isinstance(key, str) or any(word in key.lower() for word in
+                            ("password", "secret", "token", "api_key", "credential", "private_key")):
+                        raise ValueError("Embedded project config must not contain secrets")
+                    reject_secrets(item)
+            elif isinstance(value, list):
+                for item in value:
+                    reject_secrets(item)
+        reject_secrets(overrides)
         # Resolve paths against .pw; never against process cwd.
         embedded = dict(overrides)
         for key in ("base", "queue", "work_log", "worktree", "lock", "run_log",
                     "result_dir", "cycle_file", "worker_journal_file"):
             if key in embedded:
+                if not isinstance(embedded[key], str):
+                    raise ValueError(f"Invalid embedded {key} path")
                 value = Path(embedded[key])
-                embedded[key] = str((directory / value).resolve()) if not value.is_absolute() else str(value)
+                if value.is_absolute():
+                    raise ValueError(f"Embedded {key} path must be relative")
+                resolved = (directory / value).resolve()
+                expected = directory.parent.resolve() if key == "worktree" else directory.resolve()
+                if key == "worktree":
+                    if resolved != expected:
+                        raise ValueError("Embedded worktree must be the owning repository")
+                elif not resolved.is_relative_to(expected):
+                    raise ValueError(f"Embedded {key} escapes the state directory")
+                embedded[key] = str(resolved)
         if "planning" in embedded and "requirements_file" in embedded["planning"]:
             embedded["planning"] = dict(embedded["planning"])
             value = Path(embedded["planning"]["requirements_file"])
-            embedded["planning"]["requirements_file"] = str((directory / value).resolve()) if not value.is_absolute() else str(value)
+            if value.is_absolute() or not (directory / value).resolve().is_relative_to(directory.resolve()):
+                raise ValueError("Embedded requirements path must remain inside .pw")
+            embedded["planning"]["requirements_file"] = str((directory / value).resolve())
         overrides = embedded
     elif directory.name == ".pw":
         raise ValueError("Repository-local .pw requires embedded layout marker")
