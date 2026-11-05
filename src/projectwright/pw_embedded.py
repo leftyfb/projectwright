@@ -273,3 +273,13 @@ def callback_project(root: Path, project: str, request: str) -> Path:
     if len(matches) != 1:
         raise ValueError("Stale or ambiguous Projectwright callback")
     return matches[0]
+
+def project_id(directory: Path) -> str:
+    return directory.parent.name if directory.name == ".pw" else directory.name
+
+
+def state_directories(root: Path) -> list[Path]:
+    legacy = ([p for p in root.iterdir()
+               if p.is_dir() and ID.fullmatch(p.name) and (p / "config.json").is_file()]
+              if root.is_dir() else [])
+    return sorted(legacy + registered_projects(), key=lambda p: str(p))
