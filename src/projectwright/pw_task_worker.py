@@ -324,7 +324,7 @@ def milestone_test_scope(task: Task) -> list[str] | None:
     This is narrower than the generic test-file patterns. A TEST worker must
     not place tests under a different directory than the acceptance policy.
     """
-    match = re.match(r'^([A-Z][A-Z0-9]*-\\d+) / ([A-Z][A-Z0-9]*-\\d+-M\\d+(?:-[A-Z0-9]+)*):', task.description)
+    match = re.match(r'^([A-Z][A-Z0-9]*-\d+) / ([A-Z][A-Z0-9]*-\d+-M\d+(?:-[A-Z0-9]+)*):', task.description)
     if match is None:
         return None
     requirements_setting = PROJECT.get('planning', {}).get('requirements_file')
