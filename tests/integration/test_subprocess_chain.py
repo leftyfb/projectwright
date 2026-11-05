@@ -599,6 +599,52 @@ class RealSubprocessChain(unittest.TestCase):
         self.assertNotEqual(before, after_save)
         self.assertFalse((self.project / "worker_journal.json").exists())
 
+    def test_embedded_repo_runs_real_one_shot_read_without_external_state(self):
+        """Exercise the actual dispatcher/manager/worker chain against .pw."""
+        sys.path.insert(0, str(SRC))
+        from pw_embedded import initialize as embedded_init
+        repo = self.base / "custom-repositories" / "task-tracker-example"
+        repo.parent.mkdir(parents=True)
+        repo.mkdir()
+        git(repo, "init", "-q", "-b", "main")
+        git(repo, "config", "user.email", "fixture@example.invalid")
+        git(repo, "config", "user.name", "Fixture")
+        (repo / "probe.txt").write_text("unaltered\\n")
+        config_file = embedded_init(repo)
+        git(repo, "add", ".")
+        git(repo, "commit", "-qm", "baseline")
+        cfg = json.loads(config_file.read_text())
+        cfg["hermes"] = str(self.hermes)
+        cfg["timeout_seconds"] = 20
+        cfg["planning"]["enabled"] = True
+        cfg["planning"]["milestone_sequence"] = "strict"
+        config_file.write_text(json.dumps(cfg))
+        (repo / ".pw/queue.md").write_text(
+            "- [ ] **P101 — READ** DEMO-1 / DEMO-1-M1: inspect the isolated fixture\\n"
+        )
+        (repo / ".pw/requirements.md").write_text(
+            "## DEMO-1 — Disposable requirement\\n\\n"
+            "### DEMO-1-M1 — Read fixture\\n"
+            "#### Acceptance\\n"
+            "- **Command:** `/bin/true`\\n"
+            "- **Scope:** `probe.txt`\\n"
+        )
+        launcher = ([self.installed_dispatch] if self.installed_dispatch else
+                    [sys.executable, "-B", str(self.scripts / "pw_dispatch.py")])
+        env = {**self.env, "PROJECTWRIGHT_PROJECT_DIR": str(repo)}
+        result = subprocess.run(
+            [*launcher, "--project", "task-tracker-example",
+             "--scripts", str(self.scripts), "--one-shot", "--no-telegram"],
+            env=env, capture_output=True, text=True, timeout=35,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WORKER rc=0", result.stdout)
+        self.assertIn("[x] **P101", (repo / ".pw/queue.md").read_text())
+        self.assertTrue((repo / ".pw/state/worker_journal.json").exists())
+        self.assertFalse((repo / "worker_journal.json").exists())
+        self.assertEqual(git(repo, "status", "--porcelain"), "")
+
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
