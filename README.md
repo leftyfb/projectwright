@@ -39,39 +39,38 @@ The initial milestone can be worked and reviewed without Telegram. Advancing to 
 
 ## Quick start
 
-1. Describe the project to Hermes or another LLM; use the prompt in the [onboarding guide](docs/llm-requirements-onboarding.md) to ask questions and draft requirements.
-2. Review the draft, resolve open decisions, and save the approved Markdown draft locally as `requirements.md`.
-3. Connect an existing, initialized Git repository and initialize Projectwright:
+1. Draft and review project requirements using Hermes or another LLM. See the [requirements onboarding guide](docs/llm-requirements-onboarding.md).
+2. Initialize the Git repository and its embedded Projectwright state:
 
    ```sh
-   pw init --project myproject --repo ~/repos/myproject
+   pw init ~/projects/myproject
+   cd ~/projects/myproject
    ```
 
-   Project state normally lives at `~/projects/myproject`; the repository remains at `~/repos/myproject`. `pw init` does not create or modify the repository.
-4. Put the reviewed draft at `~/projects/myproject/requirements.md` (or use the actual configured project-state path), then explicitly plan:
+   For an existing Git repository, run `pw init .` at its root. The repository name is also the Projectwright project ID. Initialization creates `.pw/` but leaves planning, execution, and timers disabled.
+3. Create a baseline Git commit (skip this if the existing repository already has one), then save the reviewed requirements:
+
+   ```sh
+   printf '# My project\n' > README.md
+   git add README.md .gitignore
+   git commit -m "Initialize myproject"
+   pw requirements --project myproject --edit
+   ```
+
+   The requirements belong in `.pw/requirements.md`, not in a separate Projectwright state tree.
+4. Review planning and authorize one task at a time:
 
    ```sh
    pw plan --project myproject
-   ```
-
-5. Review the generated queue and blockers:
-
-   ```sh
    pw status --project myproject
-   ```
-
-   Inspect `queue.md` and proposed task scopes before proceeding.
-6. Manually authorize one task:
-
-   ```sh
+   cat .pw/queue.md
    pw start --project myproject
    ```
 
-   Confirm at the prompt. This runs one manual dispatcher cycle; it does not enable persistent or recurring execution.
-7. Test the work and inspect its results and Git diff. A passing test or completed task is not milestone acceptance. Human milestone approval/rejection is supported through the configured Telegram callback flow; if that integration is not configured and enabled, acceptance remains blocked. There is no separate manual operator approval command documented.
-8. Review the results and Git diff, update requirements if needed, then repeat planning, queue review, and one-task execution until complete.
+   Confirm the one-shot execution prompt. It does not enable unattended execution.
+5. Inspect Git changes and run tests. Human milestone acceptance is through the configured Telegram callback; without Telegram the gate remains blocked. Never manually create approval records.
 
-See the [full onboarding guide](docs/llm-requirements-onboarding.md) for the requirements format, paths, approvals, and manual-versus-recurring execution. Recurring execution is a separate opt-in; see [CLI reference](docs/cli.md) and [operator manual](docs/manual.md).
+For the complete working example, including starter files and requirements, follow the [Task Tracker walkthrough](examples/task_tracker/README.md). See [repository-local projects](docs/embedded-projects.md) and the [CLI reference](docs/cli.md).
 
 ## Documentation
 
