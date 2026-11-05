@@ -1,6 +1,6 @@
 # Task Tracker CLI — Projectwright guided walkthrough
 
-This is the **build-it-yourself** example for Projectwright's repository-local `.pw/` layout, not a prebuilt application. Projectwright plans the work and Hermes implements the tracker. For a separate runnable demo, see the [ready demo](../ready_demo/README.md).
+This is the **build-it-yourself** example for Projectwright's repository-local `.pw/` layout, not a prebuilt application. Projectwright plans the work and Hermes implements the tracker.
 
 The **project ID, Git repository directory, and all examples use one name**: `task-tracker-example`. The default home is `~/projects`, but you can initialize a repository in any directory you choose.
 
@@ -147,7 +147,7 @@ After M1 is implemented, independently run its proposed acceptance test:
 python3 -B -m unittest discover -s tests -p test_task_tracker_m1.py
 ```
 
-An absent test before M1 is implemented is expected. A passing test is **not** human milestone acceptance.
+An absent test before M1 is implemented is expected. A passing test is not milestone approval; a genuine Telegram callback is required.
 
 ## 5. Approve the milestone through Telegram
 
