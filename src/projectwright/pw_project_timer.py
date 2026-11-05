@@ -23,6 +23,14 @@ def _systemd_environment(name: str, value: str) -> str:
     return 'Environment="' + name + "=" + escaped + '"\n'
 
 
+def _systemd_argument(value: str) -> str:
+    """One literal ExecStart argument; prevent whitespace/specifier injection."""
+    if not value or any(ch in value for ch in ("\\n", "\\r", "\\x00")):
+        raise ValueError("Invalid systemd executable argument")
+    safe = value.replace("\\\\", "\\\\\\\\").replace('"', '\\\\"').replace("%", "%%")
+    return '"' + safe + '"'
+
+
 def unit_strings(project: str, minutes: int, script: Path, *,
                  repo: Path | None = None) -> tuple[str,str]:
     if not ID.fullmatch(project) or not 5 <= minutes <= 1440:
@@ -30,7 +38,7 @@ def unit_strings(project: str, minutes: int, script: Path, *,
     if not script.is_absolute(): raise ValueError('Dispatcher script path must be absolute')
     environment = _systemd_environment('PROJECTWRIGHT_PROJECT_DIR', str(repo.resolve())) if repo else ''
     service = ('[Unit]\nDescription=Projectwright dispatcher for '+project+'\n'
-               '[Service]\nType=oneshot\n' + environment + 'ExecStart=/usr/bin/python3 -B '+str(script)+' --project '+project+'\n'
+               '[Service]\nType=oneshot\n' + environment + 'ExecStart=/usr/bin/python3 -B '+_systemd_argument(str(script))+' --project '+project+'\n'
                'TimeoutStartSec=45min\n')
     timer = ('[Unit]\nDescription=Schedule project worker for '+project+'\n'
              '[Timer]\nOnBootSec=2min\nOnUnitInactiveSec='+str(minutes)+'min\nPersistent=false\n'
@@ -42,7 +50,7 @@ def approval_notify_units(notifier: Path, *, minutes: int = 10) -> tuple[str, st
         raise ValueError('Invalid notifier path or timer interval')
     service = ('[Unit]\nDescription=Projectwright approval notification scan\n'
                '[Service]\nType=oneshot\nExecStart=/usr/bin/python3 -B '
-               + str(notifier) + ' --send\n')
+               + _systemd_argument(str(notifier)) + ' --send\n')
     timer = ('[Unit]\nDescription=Projectwright approval notification timer\n'
              '[Timer]\nOnBootSec=3min\nOnUnitInactiveSec=' + str(minutes)
              + 'min\nPersistent=false\n[Install]\nWantedBy=timers.target\n')
@@ -237,11 +245,19 @@ def main() -> int:
     service_path=dest/(unit+'.service');timer_path=dest/(unit+'.timer')
     if a.action=='check':print(service);print(timer);return 0
     if a.action=='install-disabled':
-        if service_path.exists() or timer_path.exists():raise ValueError('Units already exist; refusing overwrite')
+        if service_path.exists() or timer_path.exists() or service_path.is_symlink() or timer_path.is_symlink():raise ValueError('Units already exist; refusing overwrite')
         dest.mkdir(parents=True,exist_ok=True)
         service_path.write_text(service);timer_path.write_text(timer)
         subprocess.run(['systemctl','--user','daemon-reload'],check=True)
         print('Installed disabled units for',a.project);return 0
+    if a.action in ('enable', 'disable'):
+        if service_path.is_symlink() or timer_path.is_symlink():
+            raise ValueError('Refusing symlinked Projectwright systemd units')
+        if repo is not None:
+            if (not service_path.is_file() or not timer_path.is_file()
+                    or service_path.read_text(encoding='utf-8') != service
+                    or timer_path.read_text(encoding='utf-8') != timer):
+                raise ValueError('Embedded systemd units differ from generated project scope; inspect and reinstall disabled units')
     if a.action=='enable':
         if not service_path.exists() or not timer_path.exists():raise ValueError('Units not installed')
         # Explicit user action only. Never silently enable on install.
