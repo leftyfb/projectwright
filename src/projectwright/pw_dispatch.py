@@ -434,7 +434,8 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False, one_
             print('FAIL unexpected planning decision='+decision, file=sys.stderr)
             return 20
     worker = [sys.executable, '-B', str(scripts/'pw_task_worker.py'), '--project', project, '--once']
-    if no_telegram or not (default_project_root() / project / 'config.json').is_file():
+    from pw_config import load as _load_config
+    if no_telegram or not _load_config(project)[0].is_file():
         worker.append('--no-telegram')
     worker_env = {**os.environ, 'PYTHONDONTWRITEBYTECODE':'1'}
     if one_shot:
