@@ -32,6 +32,10 @@ Use `pw timer disable NAME` to stop recurring runs and `pw timer status NAME` to
 
 `pw status` prints a human-readable summary. Add `--json` for machine-readable JSON. Both formats include the manager decision and reason, queue counts, blockers, project settings, and next action. JSON adds `recurring_execution_configured` and `recurring_execution_enabled`; these are `unknown` when the user timer cannot be inspected reliably, and `recurring_execution` summarizes the result as `enabled`, `disabled`, `not_configured`, or `unknown`.
 
+## Optional quota integration
+
+Home Assistant-backed quota checks are **off by default** for every project. To opt in, set `"quota": {"enabled": true}` in the project's `config.json` and configure the relevant HA token and sensor. An enabled quota gate fails closed if the quota reading is unavailable; plain HTTP to arbitrary LAN addresses is not permitted for bearer tokens. Existing projects with explicit `quota.enabled: true` retain that setting.
+
 ## Project paths
 
 The default project root is `~/projects`. Existing project state in older `$XDG_CONFIG_HOME/projects`, `$XDG_CONFIG_HOME/projectwright/projects` or `~/.hermes/projects` roots is not moved or automatically selected. Specify an old root explicitly with `HERMES_PROJECT_CONFIG_DIR` to access it. Use `--config-dir /absolute/config/home` consistently to select a config home; the project directory is `config-home/projects/NAME`. `PROJECTWRIGHT_CONFIG_DIR` has the same config-home meaning. The legacy `HERMES_PROJECT_CONFIG_DIR` remains a direct project-root override.

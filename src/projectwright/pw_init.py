@@ -66,6 +66,7 @@ def initialize(project: str, root: Path, *, no_config: bool = False, repo: Path 
         "execution": {"enabled": False},
         "planning": {"enabled": False},
         "notes": {"enabled": False},
+        "quota": {"enabled": False},
     }
     if git_repo is not None:
         doc["worktree"] = git_repo

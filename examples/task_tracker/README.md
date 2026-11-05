@@ -108,6 +108,10 @@ The first line should be `# Task Tracker CLI requirements` and the document shou
 
 ## 3. Plan, then inspect before authorizing work
 
+Home Assistant quota checking is **disabled by default**. This tutorial does not require an HA instance, HA token or quota sensor. If upgrading from an older version and planning is blocked by an optional quota gate, verify `quota.enabled` is explicitly `false` in `~/projects/task-tracker-example/config.json`.
+
+
+
 ```sh
 pw plan --project task-tracker-example
 pw status --project task-tracker-example
@@ -163,7 +167,7 @@ A separate live-Hermes smoke test performed initialization, planning, and one on
 - **`pw init` returned a `~/.hermes/projects/...` path rather than `~/.config/projects/...`:** Projectwright retains a backwards-compatible legacy project root. Use the `project_directory` reported by initialization. It is separate from your application Git repository; no migration or reinitialization is required.
 - **I ran both `cp` commands:** they are alternatives, not sequential steps. If the file was copied before your initial Git commit, no harm; only one command is necessary.
 - `pw: command not found`: install Projectwright and verify `pw --help` works.
-- Hermes/provider errors during `pw plan` or `pw start`: configure the normal Hermes provider and retry; this example does not supply credentials or an alternate provider.
+- An empty queue with a `no_actionable_work` marker in `planning_state.json`: older versions can suppress subsequent planning attempts based on the requirements hash. Upgrade to a version with the greenfield planner fix; the requirements must still contain actionable milestones and the model must return a valid task proposal. Do not delete project files to work around this.\n- Hermes/provider errors during `pw plan` or `pw start`: configure the normal Hermes provider and retry; this example does not supply credentials or an alternate provider.
 - Planning reports invalid requirements: preserve the exact heading IDs, `#### Acceptance` heading, one literal executable command and one or more repository-relative scope entries per milestone. Keep other criteria outside the acceptance block.
 - An acceptance command cannot find a test before implementation: expected for a greenfield milestone; do not treat the proposal as verified. Ask Projectwright to implement the milestone first, then inspect and run the command.
 - Acceptance is pending without Telegram: expected. Do not claim approval or manually create acceptance evidence. Follow `docs/user-approval-setup.md` if you choose to enable the supported callback.

@@ -18,7 +18,7 @@ class QuotaError(RuntimeError):
 def evaluate(settings: dict, *, home: Path | None = None) -> dict:
     """Return a decision. Missing/stale/unavailable readings BLOCK when enabled."""
     settings = settings or {}
-    enabled = settings.get('enabled', True)
+    enabled = settings.get('enabled', False)
     if not isinstance(enabled, bool):
         raise QuotaError('quota.enabled must be boolean')
     if not enabled:

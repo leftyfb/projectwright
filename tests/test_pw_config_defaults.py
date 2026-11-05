@@ -158,7 +158,7 @@ class ConfigDefaultResolutionTests(unittest.TestCase):
             self.assertFalse(cfg["planning"]["enabled"])
             self.assertEqual(cfg["planning"]["trigger"]["pending_below"], 2)
             self.assertEqual(cfg["id"], "demo")
-            self.assertTrue(cfg["quota"]["enabled"])
+            self.assertFalse(cfg["quota"]["enabled"])
 
 if __name__ == "__main__":
     unittest.main()
