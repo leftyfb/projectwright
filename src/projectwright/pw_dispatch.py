@@ -29,7 +29,8 @@ def default_project_root():
 
 
 SAFE_IDLE = {'awaiting_acceptance', 'disabled', 'no_op'}
-CYCLE_BLOCKERS = {'branch_or_worktree', 'active_git_cycle'}
+CYCLE_BLOCKERS = {'active_git_cycle', 'dirty_worktree_review'}
+LEGACY_CYCLE_BLOCKERS = {'branch_or_worktree', 'active_git_cycle'}
 MANAGER_EXIT_CODES = {
     'queued': 0,
     'busy': 2,
@@ -203,13 +204,25 @@ def authorized_cycle_task(project, scripts, report):
     if report.get('decision') != 'blocked':
         return False
     reason = report.get('reason')
-    if not isinstance(reason, str) or set(reason.split(', ')) != CYCLE_BLOCKERS:
+    if not isinstance(reason, str):
+        return False
+    reason_blockers = set(reason.split(', '))
+    # The manager's read-only --status and planning --once pathways use
+    # different blocker names. Both must be exact known cycle-only shapes.
+    if reason_blockers not in (CYCLE_BLOCKERS, LEGACY_CYCLE_BLOCKERS):
+        return False
+    blockers = report.get('blockers')
+    if blockers is not None and (not isinstance(blockers, list)
+                                 or set(blockers) != reason_blockers):
+        return False
+    if blockers is None and reason_blockers != LEGACY_CYCLE_BLOCKERS:
         return False
     try:
         import importlib.util
         root = default_project_root()
-        cfg = json.loads((root / project / 'config.json').read_text())
-        if cfg.get('id') != project or not cfg.get('cycle_file'):
+        from pw_config import load as load_config
+        config_path, cfg = load_config(project, root)
+        if not config_path.is_file() or cfg.get('id') != project:
             return False
         cycle = json.loads(Path(cfg['cycle_file']).expanduser().read_text())
         if not isinstance(cycle, dict) or cycle.get('version') != 1 or cycle.get('phase') != 'active':
@@ -264,7 +277,7 @@ def authorized_cycle_task(project, scripts, report):
         if not dirty or not dirty <= set(allowed):
             return False
         # A current journal or recovery incident cannot authorize dispatch.
-        journal_file = manager_helpers['worker_journal_path'](cfg, root / project / 'config.json')
+        journal_file = manager_helpers['worker_journal_path'](cfg, config_path)
         journal = manager_helpers['read_json_optional'](journal_file)
         incidents = manager_helpers['read_json_optional'](root / project / 'recovery_incidents.json')
         if journal.get('current_task') is not None or incidents and (
@@ -277,13 +290,14 @@ def authorized_cycle_task(project, scripts, report):
         return False
 
 
-def parse_manual_status(stdout, project, returncode):
+def parse_manual_status(stdout, project, returncode, *, cycle_authorized=False):
     """Fail closed on the manager's read-only status before a manual worker run."""
-    if returncode != 0:
+    if returncode != 0 and not (returncode == 2 and cycle_authorized):
         raise ValueError(f'manager status exit code {returncode}')
     try:
-        report = json.loads(stdout)
-    except (json.JSONDecodeError, TypeError) as exc:
+        report = json.loads(stdout, object_pairs_hook=_unique_object,
+                            parse_constant=_reject_json_constant)
+    except (ValueError, TypeError) as exc:
         raise ValueError(f'manager status is not JSON: {exc}') from exc
     required = {'project', 'decision', 'pending', 'completed', 'queue_blocked',
                 'invalid_lines', 'blockers', 'planning_enabled', 'branch', 'head',
@@ -292,8 +306,14 @@ def parse_manual_status(stdout, project, returncode):
         raise ValueError('manager status is missing required safety fields')
     if report['project'] != project:
         raise ValueError('manager status project mismatch')
-    if not isinstance(report['decision'], str) or report['decision'] not in {'disabled', 'no_op', 'replenish', 'strategic_review'}:
+    allowed_decisions = {'disabled', 'no_op', 'replenish', 'strategic_review'}
+    if cycle_authorized:
+        allowed_decisions.add('blocked')
+    if not isinstance(report['decision'], str) or report['decision'] not in allowed_decisions:
         raise ValueError(f"manager status blocks execution: {report['decision']}")
+    if cycle_authorized and (returncode != 2 or report['decision'] != 'blocked'
+                             or report.get('reason') is None):
+        raise ValueError('invalid authorized cycle status')
     for field in ('pending', 'completed', 'queue_blocked'):
         if type(report[field]) is not int or report[field] < 0:
             raise ValueError(f'manager status has invalid {field} count')
@@ -305,7 +325,8 @@ def parse_manual_status(stdout, project, returncode):
         raise ValueError('manager status has invalid authorization snapshot')
     if type(report['planning_enabled']) is not bool:
         raise ValueError('manager status has invalid planning state')
-    if not isinstance(report['blockers'], list) or report['blockers']:
+    if (not isinstance(report['blockers'], list) or
+            (set(report['blockers']) != CYCLE_BLOCKERS if cycle_authorized else bool(report['blockers']))):
         raise ValueError('manager status reports safety blockers')
     if not isinstance(report['invalid_lines'], list) or report['invalid_lines']:
         raise ValueError('manager status reports invalid queue entries')
@@ -365,8 +386,17 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False, one_
         print('FAIL manager status/planning timed out; worker not launched', file=sys.stderr)
         return 21
     try:
-        report = (parse_manual_status(m.stdout, project, m.returncode) if one_shot
-                  else parse_manager_response(m.stdout, project, m.returncode))
+        if one_shot:
+            cycle_authorized = False
+            if m.returncode == 2:
+                candidate = json.loads(m.stdout, object_pairs_hook=_unique_object,
+                                       parse_constant=_reject_json_constant)
+                cycle_authorized = (isinstance(candidate, dict) and
+                                    authorized_cycle_task(project, scripts, candidate))
+            report = parse_manual_status(m.stdout, project, m.returncode,
+                                         cycle_authorized=cycle_authorized)
+        else:
+            report = parse_manager_response(m.stdout, project, m.returncode)
     except (ValueError, TypeError) as exc:
         print(f'FAIL manager contract: {exc}', file=sys.stderr)
         return 21
