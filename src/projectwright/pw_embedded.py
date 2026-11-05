@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 
 ID = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 README = """# Projectwright project metadata
@@ -226,10 +227,20 @@ def registered_projects(path: Path | None = None) -> list[Path]:
 
 def register(repo: Path, path: Path | None = None) -> None:
     """Record arbitrary repository location outside Git; idempotent and locked."""
-    repo = repo.expanduser().resolve()
+    requested = repo.expanduser()
+    if requested.is_symlink():
+        raise ValueError("Refusing symlinked repository path")
+    repo = requested.resolve()
     marker = repo / ".pw"
     if marker not in registered_projects_for_registration(repo):
         raise ValueError("Not an initialized embedded repository")
+    # A Git clone of shared .pw/ definitions has none of the ignored runtime
+    # directories. Restore only those directories, never overwriting files.
+    for name in ("state", "logs", "results"):
+        runtime = marker / name
+        if runtime.is_symlink() or (runtime.exists() and not runtime.is_dir()):
+            raise ValueError(f"Invalid embedded runtime directory: {name}")
+        runtime.mkdir(mode=0o700, exist_ok=True)
     path = path or registry_path()
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     if path.is_symlink():
@@ -241,10 +252,10 @@ def register(repo: Path, path: Path | None = None) -> None:
         fcntl.flock(handle, fcntl.LOCK_EX)
         existing = registered_projects(path)
         locations = sorted({str(m.parent) for m in existing} | {str(repo)})
-        temp = path.with_name(path.name + ".tmp")
-        if temp.is_symlink():
-            raise ValueError("Refusing symlinked registry temporary file")
-        fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        # A previous crash must not strand registration behind a fixed .tmp
+        # filename. mkstemp also avoids following attacker-provided symlinks.
+        fd, name = tempfile.mkstemp(prefix=".registry-", dir=path.parent)
+        temp = Path(name)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as out:
                 json.dump({"version": 1, "repositories": locations}, out, indent=2)
