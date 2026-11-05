@@ -11,12 +11,16 @@ from pw_dispatch import default_project_root
 _ID = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
 
-def load(project: str, root: Path | None = None) -> tuple[Path, dict]:
+def load(project: str, root: Path | None = None, *, directory_override: Path | None = None) -> tuple[Path, dict]:
     if not _ID.fullmatch(project):
         raise ValueError("Invalid project ID")
     root = Path(root) if root is not None else default_project_root()
     from pw_embedded import directory as project_directory
-    directory = project_directory(project, root)
+    directory = Path(directory_override) if directory_override is not None else project_directory(project, root)
+    if directory_override is not None:
+        from pw_embedded import project_id
+        if project_id(directory) != project:
+            raise ValueError("Override project identity mismatch")
     path = directory / "config.json"
     overrides = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
     if not isinstance(overrides, dict):
