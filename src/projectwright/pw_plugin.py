@@ -24,7 +24,7 @@ def _authorized_ids():
 
 def _factory(app, adapter):
     from telegram.ext import CallbackQueryHandler
-    from pw_buttons import approve, reject, resolve
+    from pw_buttons import approve, reject
     from project_queue_manager import default_project_root
     root = default_project_root()
     # A gateway can be pinned to a dedicated project tree for isolated tests.
@@ -49,7 +49,6 @@ def _factory(app, adapter):
             return
         try:
             action = q.data.split(':', 2)[1]
-            _, target_dir, _ = await asyncio.to_thread(resolve, root, q.data)
             result = await asyncio.to_thread(approve if action == 'a' else reject, root, q.data)
         except Exception as exc:
             LOG.exception('Milestone action refused')
@@ -62,7 +61,12 @@ def _factory(app, adapter):
             # outage must not turn an already-approved milestone into an error.
             try:
                 from pw_completion import notify_completion
-                await asyncio.to_thread(notify_completion, target_dir)
+                from pw_embedded import projects_for_name
+                project = q.data.split(':', 3)[2]
+                matches = projects_for_name(project, root)
+                if len(matches) != 1:
+                    raise ValueError('Ambiguous completion delivery target; notifier may retry')
+                await asyncio.to_thread(notify_completion, matches[0])
             except Exception:
                 LOG.exception('Project completion notice could not be sent; notifier timer may retry')
     # Filter excludes all Hermes core buttons. Hermes reorders plugin callback handlers ahead of catch-all.
