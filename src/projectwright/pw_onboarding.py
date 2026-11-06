@@ -210,8 +210,10 @@ def authorize_persistent_execution(project: str, confirmed: bool, minutes: int =
             raise ValueError("Timer installation failed; execution remains unauthorized")
     config.setdefault("execution", {})["enabled"] = True
     _write(path, config)
-    print(f"Persistent execution authorized for {project}; timer installed but disabled.")
-    print(f"To begin recurring execution: pw timer enable {project}")
+    print(f"Timer created for {project} ({minutes}-minute interval) and LEFT DISABLED.")
+    print("No recurring tasks will run until you explicitly enable the timer.")
+    print(f"When ready, run: pw timer enable {project}")
+    print(f"To check status: pw timer status {project}")
     return 0
 
 
