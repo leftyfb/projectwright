@@ -248,6 +248,10 @@ def approve_local(project: str, milestone: str, confirmed: bool) -> int:
     pending = json.loads(pending_file.read_text(encoding="utf-8")) if pending_file.is_file() else None
     receipt = approve(config, path.parent, requirement, milestone, command, scopes,
                       expected=pending)
+    if pending is not None:
+        if receipt["git_head"] != pending.get("head"):
+            raise ValueError("Accepted receipt HEAD does not match the pinned request")
+        pending_file.unlink()
     print(f"Milestone {milestone} accepted at Git HEAD {receipt['git_head']}.")
     print("Run pw plan to continue if further milestones remain.")
     return 0
