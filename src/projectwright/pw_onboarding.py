@@ -127,12 +127,21 @@ def authorize_planning(project: str) -> int:
     _write(config_path, config)
     cmd = [sys.executable, "-B", "-m", "pw_queue_manager", "--project", project, "--once"]
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    detail = (result.stdout or "").strip()
+    try:
+        payload = json.loads(detail)
+    except (TypeError, json.JSONDecodeError):
+        payload = None
+    # The manager intentionally exits 3 for a healthy no-op. This is not a
+    # planning failure; keep the manager's machine-readable exit contract and
+    # normalize only the interactive onboarding command's result.
+    if result.returncode == 3 and isinstance(payload, dict) and (
+            payload.get("project") == project and payload.get("decision") == "no_op"):
+        reason = payload.get("reason") or "Queue already has enough work"
+        print(f"pw plan: No planning needed — {reason}")
+        return 0
     if result.returncode:
         detail = (result.stdout or "").strip()
-        try:
-            payload = json.loads(detail)
-        except (TypeError, json.JSONDecodeError):
-            payload = None
         if isinstance(payload, dict):
             reason = payload.get("reason") or "Planning was blocked"
             blockers = payload.get("blockers") or []
