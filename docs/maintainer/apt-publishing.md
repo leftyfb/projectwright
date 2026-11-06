@@ -6,6 +6,20 @@ subscriber has configured the source and verified its archive signing key.
 Initial deployment and key provisioning are complete; the maintainer setup below
 is retained for recovery and future key rotation.
 
+## Required public signing-key identity
+
+**Before merging onboarding changes or directing new users to install the APT source**, publish the archive's exact 40-hex-character primary-key fingerprint through an independently authenticated maintainer channel. The private GitHub Actions variable `APT_SIGNING_FINGERPRINT` is checked by the publishing workflow, but it is **not** a public trust anchor.
+
+On the trusted maintainer system containing the signing key, obtain its fingerprint with:
+
+```sh
+gpg --list-secret-keys --with-fingerprint 'Projectwright APT Archive'
+```
+
+Cross-check the full primary-key fingerprint against the configured `APT_SIGNING_FINGERPRINT` and the exported public key, then publish the complete value in a maintainer-controlled, separately authenticated notice. A signed release announcement, independently verified security announcement, or known trusted contact channel may be appropriate. Do not use a fingerprint published exclusively alongside the downloadable public key on GitHub Pages as purported independent verification.
+
+The user-facing [README installation instructions](../../README.md#1-install) require that independently authenticated reference and refuse key installation when the fingerprint does not match. Do not insert an invented fingerprint or extract one from the untrusted download and call that independent validation. When rotating a signing key, announce both old and new full fingerprints through the authenticated channel before publishing the replacement key.
+
 ## Repository format and trust boundary
 
 - Suite `stable`, component `main`, architectures `amd64` and `arm64`. The
