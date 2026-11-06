@@ -94,7 +94,7 @@ class UnifiedCommandTests(unittest.TestCase):
         ) as called, redirect_stderr(io.StringIO()) as output:
             self.assertEqual(pw_dispatch.cli(), 2)
             called.assert_not_called()
-        self.assertIn("Unknown Projectwright command: bad\\nusage: pw ", output.getvalue())
+        self.assertIn("Unknown Projectwright command: bad\nusage: pw ", output.getvalue())
         self.assertNotIn(r"\\nusage:", output.getvalue())
 
     def test_help_has_no_side_effects(self):
