@@ -122,8 +122,8 @@ class TestTick(DispatchFixture):
         initialize(repo)
         marker_dir = repo / ".pw"
         (marker_dir / "queue.md").write_text(
-            "- [x] **P101 — EDIT** TRACK-1 / TRACK-1-M1: build the tracker\\n"
-            "- [ ] **P102 — TEST** TRACK-1 / TRACK-1-M1: test the tracker\\n",
+            "- [x] **P101 — EDIT** TRACK-1 / TRACK-1-M1: build the tracker\n"
+            "- [ ] **P102 — TEST** TRACK-1 / TRACK-1-M1: test the tracker\n",
             encoding="utf-8",
         )
         (marker_dir / "state" / "worker_journal.json").write_text(
@@ -142,7 +142,7 @@ class TestTick(DispatchFixture):
                 return subprocess.CompletedProcess(argv, 0, json.dumps(report), "")
             return subprocess.CompletedProcess(argv, 0, "", "")
 
-        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \\
+        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \
              contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(dispatch.run_tick("task-tracker", self.scripts, runner=runner), 0)
         self.assertEqual(len(calls), 2)
