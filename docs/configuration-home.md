@@ -54,6 +54,6 @@ This creates the per-project systemd user timer, **left disabled**, and prints `
 
 ## Approval without Telegram
 
-After reviewing completed milestone work and commits, run `pw approve --milestone YOUR-MILESTONE-ID`. It shows the configured command and scope, requires explicit confirmation, and invokes the same milestone acceptance guard used by Telegram approvals. It will not accept incomplete tasks, untracked required paths, a dirty worktree, or a failed acceptance command.
+After reviewing completed milestone work and commits, run `pw approve YOUR-MILESTONE-ID`. It shows the configured command and scope, requires explicit confirmation, and invokes the same milestone acceptance guard used by Telegram approvals. It will not accept incomplete tasks, untracked required paths, a dirty worktree, or a failed acceptance command.
 
 See the [README](../README.md) for complete examples and the [CLI reference](cli.md) for commands and settings.
