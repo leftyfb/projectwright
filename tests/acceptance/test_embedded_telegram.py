@@ -227,5 +227,31 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         replenish.assert_called_once_with(marker)
 
 
+    def test_post_approval_planning_scopes_exact_repository(self):
+        repo = self.repository()
+        marker = repo / ".pw"
+        calls = []
+        def fake_run(argv, **kwargs):
+            calls.append((argv, kwargs))
+            return types.SimpleNamespace(returncode=0, stdout='{"decision":"queued"}', stderr='')
+        with patch("pw_config.load", return_value=(marker / "config.json", {"planning": {"enabled": True}})), \
+             patch.object(pw_plugin.subprocess, "run", side_effect=fake_run):
+            pw_plugin._plan_after_approval(marker)
+        self.assertEqual(len(calls), 1)
+        argv, kwargs = calls[0]
+        self.assertEqual(argv[-3:], ["--project", repo.name, "--once"])
+        self.assertEqual(kwargs["env"]["PROJECTWRIGHT_PROJECT_DIR"], str(repo.resolve()))
+        self.assertTrue(kwargs["check"] is False)
+
+    def test_post_approval_planning_failure_is_retryable(self):
+        repo = self.repository()
+        marker = repo / ".pw"
+        with patch("pw_config.load", return_value=(marker / "config.json", {"planning": {"enabled": True}})), \
+             patch.object(pw_plugin.subprocess, "run",
+                          return_value=types.SimpleNamespace(returncode=4, stdout='{"decision":"planner_failed"}', stderr='')):
+            with self.assertRaisesRegex(RuntimeError, "Post-approval planner returned 4"):
+                pw_plugin._plan_after_approval(marker)
+
+
 if __name__ == "__main__":
     unittest.main()
