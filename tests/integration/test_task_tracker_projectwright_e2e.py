@@ -200,7 +200,7 @@ Reject malformed local input and document recovery without destroying user data.
 
             # Persistent dispatch is a separate explicit authorization, not a
             # side effect of the preceding one-shot start. Keep it in this
-            # isolated fixture only; no timer is installed.
+            # isolated fixture only; the timer is installed but disabled.
             run("authorize-execution", "--project", project, "--config-dir", str(state), "--yes")
             for task_id in ("P101", "P102", "P103"):
                 result = run("tick", "--project", project, "--config-dir", str(state), "--no-telegram")
@@ -210,7 +210,7 @@ Reject malformed local input and document recovery without destroying user data.
                 self.assertGreaterEqual(len(completed_ids), ("P101", "P102", "P103").index(task_id) + 2)
                 current_config = json.loads(config_path.read_text(encoding="utf-8"))
                 self.assertIs(current_config["execution"]["enabled"], True)
-                self.assertFalse(unit.exists(), "manual pw start unexpectedly installed a recurring timer")
+                self.assertTrue(unit.exists(), "authorize-execution should install a disabled timer")
 
             # No disable subcommand exists; restore the disposable project's
             # config directly after the manually driven cycle for the final
@@ -224,8 +224,8 @@ Reject malformed local input and document recovery without destroying user data.
             self.assertEqual(status["decision"], "awaiting_acceptance")
             self.assertEqual(status.get("milestones"), ["TRACK-1-M1"])
             self.assertIs(status["execution_enabled"], False)
-            self.assertEqual(status["recurring_execution"], "not_configured")
-            self.assertIs(status["recurring_execution_configured"], False)
+            self.assertEqual(status["recurring_execution"], "disabled")
+            self.assertIs(status["recurring_execution_configured"], True)
             self.assertIs(status["recurring_execution_enabled"], False)
             self.assertFalse((project_dir / "telegram_acceptance.json").exists())
             # The last verified task now pins the approval request immediately,
