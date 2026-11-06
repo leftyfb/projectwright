@@ -44,6 +44,9 @@ KEYS = STRINGS | BOOLEANS | INTEGERS | NUMBERS | OPTIONAL_STRINGS | ARRAYS | set
 AUTH_ONLY = {"execution.enabled"}
 # Changes to these paths could redirect work to unintended resources.
 SENSITIVE = {"branch", "worktree", "hermes", "provider.type",
+             "base", "queue", "work_log", "lock", "run_log",
+             "result_dir", "cycle_file", "worker_journal_file",
+             "planning.requirements_file",
              "provider.planner_argv", "provider.worker_argv",
              "quota.ha_env_file", "quota.allow_local_http",
              "notes.progress_file", "notes.mirrors.queue",
@@ -62,6 +65,7 @@ DEFAULT_VALUES = {
     "quota.remaining_entity": "sensor.codex_usage_weekly_remaining",
     "quota.rate_limited_entity": None,
     "quota.allow_local_http": False,
+    "quota.ha_env_file": str(Path.home() / ".hermes/secrets/ha.env"),
     "test_file_patterns": ["scripts/test_*.py", "tests/test_*.py"],
 }
 
@@ -214,8 +218,10 @@ def operate(action: str, project: str, key: str | None = None,
         return
     if key in READ_ONLY:
         raise ValueError(f"{key} is managed by initialization and cannot be changed")
-    if key in AUTH_ONLY:
-        raise ValueError("Use pw authorize-execution --project PROJECT --yes to enable execution; do not edit it through pw config")
+    if key in AUTH_ONLY and action == "set" and raw == "true":
+        raise ValueError("Use pw authorize-execution --project PROJECT --yes to enable execution")
+    if key in AUTH_ONLY and action == "set" and raw != "false":
+        raise ValueError("execution.enabled accepts false through pw config; enabling requires pw authorize-execution")
     if key == "planning.enabled" and action == "set" and raw == "true":
         raise ValueError("Use pw plan --project PROJECT to authorize planning")
     if action == "set" and raw is None:
