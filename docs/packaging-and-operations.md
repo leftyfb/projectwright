@@ -44,7 +44,7 @@ sudo apt install ./projectwright_*_all.deb
 pw setup
 ```
 
-Run `pw setup` as the unprivileged user who owns the Hermes installation. Alternatively, configure the [signed APT repository](apt-repository.md) and use `sudo apt install projectwright`. Once a newer release is indexed, `sudo apt update` and `sudo apt upgrade` install the update without changing the machine's source configuration.
+Run `pw setup` as the unprivileged user who owns the Hermes installation. Alternatively, follow the [README APT installation procedure](../README.md#1-install). Once a newer release is indexed, `sudo apt update` and `sudo apt upgrade` install the update without changing the machine's source configuration.
 
 ## Build and inspect without installing
 
