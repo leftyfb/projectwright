@@ -78,6 +78,15 @@ class WorkerDeliveryPersistenceTests(unittest.TestCase):
                 }))
                 return 0, "fixture Hermes output"
 
+            real_subprocess_run = subprocess.run
+            notification_calls = []
+            def run_with_notification_stub(argv, **kwargs):
+                if "pw_notify" in argv:
+                    notification_calls.append(argv)
+                    return subprocess.CompletedProcess(
+                        args=argv, returncode=0, stdout="No new notifications", stderr="")
+                return real_subprocess_run(argv, **kwargs)
+
             with patch.dict(os.environ, env):
                 worker.load_project("fixture")
                 with (
@@ -90,16 +99,13 @@ class WorkerDeliveryPersistenceTests(unittest.TestCase):
                     patch.object(worker, "notification_footer", return_value="fixture footer"),
                     patch.object(worker, "deliver", return_value=False),
                     patch.object(worker.subprocess, "run",
-                                 return_value=subprocess.CompletedProcess(
-                                     args=["pw_notify"], returncode=0,
-                                     stdout="No new notifications", stderr="")) as notified,
+                                 side_effect=run_with_notification_stub),
                 ):
                     result = worker.process_once()
 
-            self.assertEqual(notified.call_count, 1,
+            self.assertEqual(len(notification_calls), 1,
                              "final task triggers the approval notifier even if progress delivery fails")
-            self.assertIn("pw_notify", notified.call_args.args[0])
-            self.assertIn("--send", notified.call_args.args[0])
+            self.assertIn("--send", notification_calls[0])
             self.assertEqual(result, 1, "delivery failure is reported to the caller")
             self.assertEqual(queue.read_text(), "- [x] **P101 — READ** inspect fixture\n")
             progress = project_worker_progress.read_state(project_dir / "worker_state.json")
