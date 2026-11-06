@@ -492,7 +492,7 @@ def main() -> int:
     parser.add_argument("action", choices=("plan", "requirements", "start", "approve", "authorize-execution", "status"))
     parser.add_argument("--project", required=True)
     parser.add_argument("--config-dir", type=Path, help="Configuration home (contains projects/)")
-    parser.add_argument("--milestone", help="Milestone ID to approve locally")
+    parser.add_argument("milestone_id", nargs="?", help="Milestone ID from a ### heading in .pw/requirements.md (e.g. TRACK-1-M1)")
     parser.add_argument("--minutes", type=int, default=20, help="Disabled worker timer interval (1-1440 minutes)")
     parser.add_argument("--edit", action="store_true", help="Open requirements in an editor")
     parser.add_argument("--yes", action="store_true", help="Confirm one manual task, or explicitly authorize persistent execution")
@@ -514,9 +514,11 @@ def main() -> int:
         if args.action == "authorize-execution":
             return authorize_persistent_execution(args.project, args.yes, args.minutes)
         if args.action == "approve":
-            if not args.milestone:
-                parser.error("--milestone is required for local approval")
-            return approve_local(args.project, args.milestone, args.yes)
+            if not args.milestone_id:
+                parser.error("specify a milestone ID, e.g. pw approve TRACK-1-M1")
+            return approve_local(args.project, args.milestone_id, args.yes)
+        if args.milestone_id:
+            parser.error("a milestone ID is only accepted with pw approve")
         return status(args.project, args.json)
     except (ValueError, OSError) as exc:
         print(f"pw {args.action}: {exc}", file=sys.stderr)
