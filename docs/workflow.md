@@ -77,7 +77,7 @@ tracked at approval time. Every milestone in a strict requirements document
 must define one command and at least one scope. The supported policy lives in the selected `.pw/requirements.md` and is read according to `planning.requirements_file`. Maintain a single source of acceptance rules. The human
 approval boundary and receipt freshness checks remain unchanged.
 
-**Telegram is optional.** Local operators can approve completed milestones using `pw approve --milestone ID`. It displays the configured acceptance command and scope, requires confirmation (unless explicitly run with `--yes`), and calls the same guarded acceptance implementation. Any existing pinned Telegram request and rejection must be honored; it cannot be bypassed through the local path.
+**Telegram is optional.** Local operators can approve completed milestones using `pw approve MILESTONE-ID`. It displays the configured acceptance command and scope, requires confirmation (unless explicitly run with `--yes`), and calls the same guarded acceptance implementation. Any existing pinned Telegram request and rejection must be honored; it cannot be bypassed through the local path.
 
 For Telegram approvals, the notifier scans pending requests and posts
 inline **Approve** and **Reject** buttons to authorized recipients. Callback
