@@ -53,7 +53,26 @@ cat .pw/queue.md
 
 Review the proposed tasks before executing anything. Planning does not authorize execution. The first milestone (`TRACK-1-M1`) builds the task tracker and its initial tests; `TRACK-1-M2` adds validation and documentation.
 
-## 5. Run one task at a time
+## 5. Choose how Projectwright runs tasks
+
+**Option A — automated (recommended to test timers and Telegram approvals):**
+
+```sh
+pw config set planning.milestone_sequence strict
+pw authorize-execution --project task-tracker --yes
+pw timer install task-tracker --minutes 5
+pw timer enable task-tracker
+pw timer status task-tracker
+pw status
+```
+
+`pw timer install` writes the systemd user units, **disabled by default**. Nothing is scheduled until `pw timer enable` is called. This two-step process intentionally separates installation from permission to run unattended. Run `pw timer disable task-tracker` to stop scheduling; you do not need to reinstall later to enable it again.
+
+Timer intervals range from **1 to 1440 minutes**. The next interval begins **after the previous worker service finishes**: a 15-minute task is not killed or overlapped by a 1-minute timer, and the project lock prevents multiple workers modifying the same project. Each activation attempts at most one task. Approval of milestone M1 must happen through Telegram before strict sequencing allows M2 to be planned. Configure Telegram via `pw setup` beforehand if needed. Follow progress using `pw status` and `journalctl --user -u projectwright-worker-task-tracker-*.service -n 30 --no-pager` (replace the wildcard with your service name if your systemd version requires it). When a task is active, `pw status` shows its journal phase and read-only queue counts.
+
+**Option B — manual:** follow the one-task commands in the next sections. **Do not use `pw start` while you are testing unattended execution.** Manual runs are separate explicit authorizations.
+
+## 6. Run one task at a time (manual option)
 
 ```sh
 pw start --project task-tracker
@@ -78,7 +97,7 @@ python3 -B -m unittest discover -s tests -p test_task_tracker_m1.py
 
 A passing test **is not milestone approval**.
 
-## 6. Approve M1, then complete M2
+## 7. Approve M1, then complete M2 (manual option)
 
 Projectwright uses an authorized Telegram approval callback for milestone acceptance. Review the files, Git commits, and tests, then approve M1 with the Telegram buttons. Without configured Telegram approvals, Projectwright correctly stops at the acceptance gate. Do not create approval records manually.
 
@@ -103,7 +122,7 @@ Review and approve M2 through Telegram. See the [Telegram setup instructions](ht
 - One project at `~/projects/task-tracker/`, containing the application, Git history, and `.pw/` state.
 - Requirements at `.pw/requirements.md`, queue at `.pw/queue.md`, and progress at `.pw/work_log.md`.
 - No extra cloud services or network access needed by the *task tracker*; Hermes uses your configured provider.
-- No unattended execution enabled by this walkthrough.
+- Unattended execution is optional and must be explicitly enabled with `pw timer enable`.
 - Human acceptance, not test success alone, is required before the next milestone.
 
 ## Troubleshooting
