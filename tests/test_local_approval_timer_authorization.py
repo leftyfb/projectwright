@@ -69,6 +69,7 @@ class LocalApprovalAndAuthorizationTests(unittest.TestCase):
             output = io.StringIO()
             with patch.object(pw_onboarding, "_config", return_value=(directory / "config.json", cfg)), \
                  patch("pw_milestone_guard.policy_for_project", return_value=policy), \
+                 patch("pw_config.load", return_value=(directory / "config.json", cfg)), \
                  patch("pw_milestone_guard.approve", return_value=receipt) as approve, \
                  redirect_stdout(output):
                 self.assertEqual(pw_onboarding.approve_local("myproject", "APP-1-M1", True), 0)
