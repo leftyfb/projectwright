@@ -35,8 +35,8 @@ def _systemd_argument(value: str) -> str:
 
 def unit_strings(project: str, minutes: int, script: Path, *,
                  repo: Path | None = None) -> tuple[str,str]:
-    if not ID.fullmatch(project) or not 5 <= minutes <= 1440:
-        raise ValueError('Invalid project or interval (5..1440 minutes)')
+    if not ID.fullmatch(project) or not 1 <= minutes <= 1440:
+        raise ValueError('Invalid project or interval (1..1440 minutes)')
     if not script.is_absolute(): raise ValueError('Dispatcher script path must be absolute')
     environment = _systemd_environment('PROJECTWRIGHT_PROJECT_DIR', str(repo.resolve())) if repo else ''
     service = ('[Unit]\nDescription=Projectwright dispatcher for '+project+'\n'
@@ -255,7 +255,7 @@ def main() -> int:
         setup_user_approvals(minutes=a.minutes, enable_plugin=a.enable_hermes_plugin)
         print('User approval timer enabled')
         return 0
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['check','install-disabled','enable','disable','status']);p.add_argument('project');p.add_argument('--minutes',type=int,default=20);p.add_argument('--root',type=Path,default=None)
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['check','install','enable','disable','status']);p.add_argument('project');p.add_argument('--minutes',type=int,default=20);p.add_argument('--root',type=Path,default=None)
     a=p.parse_args()
     if not ID.fullmatch(a.project):p.error('Invalid project ID')
     from project_queue_manager import default_project_root
@@ -281,12 +281,12 @@ def main() -> int:
     dest=Path.home()/'.config/systemd/user'
     service_path=dest/(unit+'.service');timer_path=dest/(unit+'.timer')
     if a.action=='check':print(service);print(timer);return 0
-    if a.action=='install-disabled':
+    if a.action=='install':
         if service_path.exists() or timer_path.exists() or service_path.is_symlink() or timer_path.is_symlink():raise ValueError('Units already exist; refusing overwrite')
         dest.mkdir(parents=True,exist_ok=True)
         service_path.write_text(service);timer_path.write_text(timer)
         subprocess.run(['systemctl','--user','daemon-reload'],check=True)
-        print('Installed disabled units for',a.project);return 0
+        print('Installed timer for', a.project, '(disabled; run: pw timer enable '+a.project+')');return 0
     if a.action in ('enable', 'disable'):
         if service_path.is_symlink() or timer_path.is_symlink():
             raise ValueError('Refusing symlinked Projectwright systemd units')
@@ -305,7 +305,7 @@ def main() -> int:
                 a.project, int(match.group(1)), script, repo=repo)
             if (service_path.read_text(encoding='utf-8') != expected_service
                     or installed_timer != expected_timer):
-                raise ValueError('Embedded systemd units differ from generated project scope; inspect and reinstall disabled units')
+                raise ValueError('Embedded systemd units differ from generated project scope; inspect and reinstall the units')
         # Disabling an existing unit is always allowed even if it was altered;
         # refusing would leave unattended execution running.
     if a.action=='enable':
