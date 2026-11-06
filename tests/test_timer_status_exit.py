@@ -72,8 +72,8 @@ class TimerStatusTests(unittest.TestCase):
             (project / "config.json").write_text(json.dumps({"id": "fixture"}))
             argv = ["pw_project_timer.py", "install", "fixture", "--minutes", "1",
                     "--root", str(root / "projects")]
-            with patch.object(timer.Path, "home", return_value=root), \\
-                 patch.object(timer.sys, "argv", argv), \\
+            with patch.object(timer.Path, "home", return_value=root), \
+                 patch.object(timer.sys, "argv", argv), \
                  patch.object(timer.subprocess, "run",
                               return_value=subprocess.CompletedProcess([], 0)) as run:
                 self.assertEqual(timer.main(), 0)
