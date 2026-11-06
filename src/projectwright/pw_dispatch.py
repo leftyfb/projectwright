@@ -509,9 +509,10 @@ def cli():
         'register': ('pw_embedded', []),
         'requirements': ('pw_onboarding', ['requirements']),
         'start': ('pw_onboarding', ['start']),
+        'approve': ('pw_onboarding', ['approve']),
         'authorize-execution': ('pw_onboarding', ['authorize-execution']),
     }
-    usage = 'usage: pw {tick|status|plan|start|authorize-execution|requirements|worker|notify|timer|setup|gateway-restart|setup-user|defaults|config|init|register} [options]'
+    usage = 'usage: pw {tick|status|plan|start|approve|authorize-execution|requirements|worker|notify|timer|setup|gateway-restart|setup-user|defaults|config|init|register} [options]'
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
         print(usage)
         return 0 if len(sys.argv) > 1 else 2
@@ -549,7 +550,7 @@ def cli():
             env["PROJECTWRIGHT_PROJECT_DIR"] = str(found.parent)
     arguments = list(sys.argv[2:])
     if (command in {'tick', 'status', 'plan', 'worker', 'notify', 'requirements',
-                    'start', 'authorize-execution', 'config'} and
+                    'start', 'approve', 'authorize-execution', 'config'} and
             '--project' not in arguments and env.get('PROJECTWRIGHT_PROJECT_DIR')):
         arguments.extend(['--project', Path(env['PROJECTWRIGHT_PROJECT_DIR']).name])
     return subprocess.run([sys.executable, '-B', '-m', module, *fixed, *arguments],

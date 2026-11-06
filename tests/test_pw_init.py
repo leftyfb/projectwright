@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 SRC = Path(__file__).resolve().parents[1]/"src"/"projectwright"
 
@@ -16,6 +17,62 @@ class SafeInitTests(unittest.TestCase):
         env.pop("PROJECTWRIGHT_CONFIG_DIR", None)
         return subprocess.run([sys.executable, "-B", "-m", module, *args], env=env,
                               capture_output=True, text=True)
+
+    def test_new_empty_project_creates_clean_initial_git_commit(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            repo = home / "projects" / "newproject"
+            with unittest.mock.patch.dict(os.environ, {
+                "GIT_AUTHOR_NAME": "Fixture",
+                "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
+                "GIT_COMMITTER_NAME": "Fixture",
+                "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
+            }):
+                result = self.invoke("pw_init", home, str(repo))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(json.loads(result.stdout)["initial_commit_created"])
+            self.assertIn("No manual Git commit is required", result.stderr)
+            tracked = subprocess.check_output(["git", "-C", str(repo), "ls-tree",
+                                               "--name-only", "HEAD"], text=True).splitlines()
+            self.assertEqual(tracked, [".gitignore"])
+            self.assertEqual(subprocess.check_output(
+                ["git", "-C", str(repo), "status", "--porcelain"], text=True), "")
+            self.assertTrue((repo / ".pw" / "config.json").is_file())
+
+    def test_new_project_reports_error_if_git_cannot_commit(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            repo = home / "projects" / "newproject"
+            env = {
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": "/dev/null",
+                "GIT_AUTHOR_NAME": "",
+                "GIT_AUTHOR_EMAIL": "",
+                "GIT_COMMITTER_NAME": "",
+                "GIT_COMMITTER_EMAIL": "",
+            }
+            with mock.patch.dict(os.environ, env):
+                result = self.invoke("pw_init", home, str(repo))
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertFalse(json.loads(result.stdout)["initial_commit_created"])
+            self.assertIn("ACTION REQUIRED", result.stderr)
+            self.assertTrue((repo / ".pw/config.json").exists())
+
+    def test_existing_git_repository_never_auto_commits(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            repo = home / "existing"
+            repo.mkdir()
+            subprocess.run(["git", "-C", str(repo), "init", "-b", "main"], check=True, capture_output=True)
+            (repo / ".gitignore").write_text("*.swp\n")
+            result = self.invoke("pw_init", home, str(repo))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(json.loads(result.stdout)["initial_commit_created"])
+            self.assertIn("ACTION REQUIRED", result.stderr)
+            self.assertIn("*.swp\n/.pw/\n", (repo / ".gitignore").read_text())
+            head = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "HEAD"],
+                                  capture_output=True)
+            self.assertNotEqual(head.returncode, 0)
 
     def test_embedded_init_rejects_legacy_only_options_without_mutation(self):
         with tempfile.TemporaryDirectory() as td:

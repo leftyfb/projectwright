@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 
 from pw_dispatch import default_project_root
@@ -115,14 +116,76 @@ def main() -> int:
         directory = args.directory or (Path.home() / "projects" / args.project)
         if args.project is not None and directory.expanduser().resolve().name != args.project:
             parser.error("--project must match repository directory name")
+        # Auto-commit only a genuinely new, empty directory.
+        candidate = directory.expanduser()
+        brand_new_empty = (not candidate.exists() or
+                           (candidate.is_dir() and not any(candidate.iterdir())))
         try:
             output = initialize_embedded(directory, shared=args.shared)
             from pw_embedded import register
             register(output.parent.parent)
         except (ValueError, FileExistsError, OSError, subprocess.CalledProcessError) as exc:
             parser.error(str(exc))
-        print(json.dumps({"project": output.parent.parent.name, "config": str(output), "project_directory": str(output.parent.parent), "decision": "disabled"}))
-        return 0
+        project_dir = output.parent.parent
+        initial_commit_created = False
+        if brand_new_empty:
+            # Only stage the Git ignore file created by this invocation.
+            staged = subprocess.run(
+                ["git", "-C", str(project_dir), "add", "--", ".gitignore"],
+                capture_output=True, text=True, check=False,
+            )
+            if staged.returncode == 0:
+                committed = subprocess.run(
+                    ["git", "-C", str(project_dir), "commit", "-m",
+                     "Initialize Projectwright project", "--only", "--", ".gitignore"],
+                    capture_output=True, text=True, check=False,
+                )
+                initial_commit_created = committed.returncode == 0
+            if initial_commit_created:
+                print(
+                    "Git repository initialized with an initial .gitignore commit. "
+                    "No manual Git commit is required before setting requirements.",
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    "\nACTION REQUIRED: Git initial commit could not be created automatically.\n"
+                    "Projectwright state is initialized, but planning requires a Git HEAD.\n"
+                    f"  cd {project_dir}\n"
+                    "  git status --short\n"
+                    "  git add .gitignore\n"
+                    '  git commit -m "Initialize Projectwright project"\n'
+                    "If Git reports a missing author identity, configure user.name and user.email first.\n",
+                    file=sys.stderr,
+                )
+        else:
+            head = subprocess.run(
+                ["git", "-C", str(project_dir), "rev-parse", "--verify", "HEAD"],
+                capture_output=True, text=True, check=False,
+            )
+            git_state = subprocess.run(
+                ["git", "-C", str(project_dir), "status", "--porcelain"],
+                capture_output=True, text=True, check=False,
+            )
+            if head.returncode != 0 or (git_state.returncode == 0 and git_state.stdout.strip()):
+                print(
+                    "\nACTION REQUIRED: Projectwright initialized an existing directory without committing its changes.\n"
+                    "Review and commit your Git changes before planning or executing tasks.\n"
+                    f"  cd {project_dir}\n"
+                    "  git status --short\n"
+                    "  git add .gitignore\n"
+                    '  git commit -m "Ignore Projectwright state"\n'
+                    "Projectwright did NOT commit changes to your existing project.\n",
+                    file=sys.stderr,
+                )
+        print(json.dumps({"project": project_dir.name,
+                          "config": str(output),
+                          "project_directory": str(project_dir),
+                          "decision": "disabled",
+                          "initial_commit_created": initial_commit_created}))
+        # An empty project's initial Git HEAD is a required postcondition.
+        # Preserve the created files for recovery but signal incomplete setup.
+        return 2 if brand_new_empty and not initial_commit_created else 0
     if args.project is None:
         parser.error("Specify a repository path or --project")
     if args.config_dir is not None and not args.config_dir.is_absolute():

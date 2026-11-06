@@ -173,14 +173,89 @@ def start(project: str, confirmed: bool) -> int:
     return subprocess.run(cmd, check=False).returncode
 
 
-def authorize_persistent_execution(project: str, confirmed: bool) -> int:
+def authorize_persistent_execution(project: str, confirmed: bool, minutes: int = 20) -> int:
     path, config = _config(project)
     if not confirmed:
         print("Persistent execution requires explicit confirmation; rerun with --yes", file=sys.stderr)
         return 2
+    if not 1 <= minutes <= 1440:
+        raise ValueError("Timer interval must be between 1 and 1440 minutes")
+    # Install the timer BEFORE enabling persistent execution. A failed install
+    # must not leave execution authorized without the requested timer.
+    from pw_project_timer import unit_name
+    directory = _project_dir(project)
+    repo = directory.parent if directory.name == ".pw" else None
+    unit = unit_name(project, repo)
+    systemd_dir = Path.home() / ".config/systemd/user"
+    service_file = systemd_dir / (unit + ".service")
+    timer_file = systemd_dir / (unit + ".timer")
+    if service_file.exists() or timer_file.exists() or service_file.is_symlink() or timer_file.is_symlink():
+        if not (service_file.is_file() and timer_file.is_file()
+                and not service_file.is_symlink() and not timer_file.is_symlink()):
+            raise ValueError("Incomplete or unsafe timer installation; inspect user systemd units")
+        state = subprocess.run(["systemctl", "--user", "is-enabled", unit + ".timer"],
+                               capture_output=True, text=True, check=False)
+        if state.returncode == 0:
+            raise ValueError("Timer is already enabled; disable it before reauthorizing")
+        from pw_project_timer import unit_strings
+        script = Path(__file__).resolve().parent / "pw_dispatch.py"
+        expected_service, expected_timer = unit_strings(project, minutes, script, repo=repo)
+        if service_file.read_text() != expected_service or timer_file.read_text() != expected_timer:
+            raise ValueError("Existing timer differs; inspect it before authorizing execution")
+    else:
+        result = subprocess.run([sys.executable, "-B", "-m", "pw_project_timer",
+                                 "install", project, "--minutes", str(minutes)],
+                                check=False)
+        if result.returncode:
+            raise ValueError("Timer installation failed; execution remains unauthorized")
     config.setdefault("execution", {})["enabled"] = True
     _write(path, config)
-    print(f"Persistent execution enabled for {project}; configure recurring runs separately with pw timer.")
+    print(f"Timer created for {project} ({minutes}-minute interval) and LEFT DISABLED.")
+    print("No recurring tasks will run until you explicitly enable the timer.")
+    print(f"When ready, run: pw timer enable {project}")
+    print(f"To check status: pw timer status {project}")
+    return 0
+
+
+def approve_local(project: str, milestone: str, confirmed: bool) -> int:
+    """Explicit operator acceptance; use the same evidence guard as Telegram."""
+    import re
+    from pw_milestone_guard import approve, policy_for_project
+    path, config = _config(project)
+    policy = policy_for_project(path.parent)
+    spec = policy.get("milestones", {}).get(milestone) if isinstance(policy, dict) else None
+    if not isinstance(spec, dict):
+        raise ValueError("No acceptance policy found for this milestone in requirements.md")
+    requirement = spec.get("requirement")
+    command = spec.get("command")
+    scopes = spec.get("scope_paths")
+    if not isinstance(requirement, str) or not isinstance(command, list) or not command or not isinstance(scopes, list) or not scopes:
+        raise ValueError("Invalid milestone acceptance policy")
+    print(f"Milestone: {milestone}")
+    print(f"Requirement: {requirement}")
+    print("Acceptance command: " + " ".join(shlex.quote(arg) for arg in command))
+    print("Authorized scope: " + ", ".join(scopes))
+    print("Review the changes and commits before approval. This runs the acceptance command.")
+    if not confirmed:
+        if not sys.stdin.isatty():
+            raise ValueError("Interactive approval required; use --yes only after reviewing the milestone")
+        if input("Approve this milestone after verification? [y/N] ").strip().lower() not in ("y", "yes"):
+            print("Milestone not approved.")
+            return 1
+    # Honor any pinned Telegram request, including explicit rejections and staleness.
+    # An alternate approval channel must never bypass a rejected callback.
+    pending_file = path.parent / "telegram_approval_pending.json"
+    pending = json.loads(pending_file.read_text(encoding="utf-8")) if pending_file.is_file() else None
+    from pw_config import load as load_effective_config
+    _, effective_config = load_effective_config(project, directory_override=path.parent)
+    receipt = approve(effective_config, path.parent, requirement, milestone, command, scopes,
+                      expected=pending)
+    if pending is not None:
+        if receipt["git_head"] != pending.get("head"):
+            raise ValueError("Accepted receipt HEAD does not match the pinned request")
+        pending_file.unlink()
+    print(f"Milestone {milestone} accepted at Git HEAD {receipt['git_head']}.")
+    print("Run pw plan to continue if further milestones remain.")
     return 0
 
 
@@ -340,9 +415,15 @@ def status(project: str, as_json: bool) -> int:
     elif report.get("blockers") and "requirements_invalid" in report["blockers"]:
         next_action = f"Correct the listed requirements diagnostics, then rerun: pw status --project {project}"
     elif report.get("decision") == "awaiting_acceptance":
-        next_action = ("Milestone acceptance is pending. Approve through the configured "
-                       "Telegram callback; Projectwright will attempt to replenish "
-                       "the next milestone immediately after approval.")
+        pending_milestones = report.get("milestones")
+        if (isinstance(pending_milestones, list) and len(pending_milestones) == 1
+                and isinstance(pending_milestones[0], str)
+                and re.fullmatch(r"[A-Z][A-Z0-9_-]*-M[1-9][0-9]*", pending_milestones[0])):
+            next_action = f"Review the completed milestone, then run: pw approve {pending_milestones[0]}"
+        elif isinstance(pending_milestones, list) and len(pending_milestones) > 1:
+            next_action = "Review the pending milestones and approve each by ID with: pw approve MILESTONE-ID"
+        else:
+            next_action = "Review the pending milestone and its acceptance policy; use pw approve MILESTONE-ID or Telegram buttons."
     elif report.get("decision") == "busy":
         next_action = "A run is in progress; no action required. Check the user service journal for progress."
     elif (report.get("decision") == "blocked" and
@@ -392,6 +473,12 @@ def status(project: str, as_json: bool) -> int:
     if report.get("queue_counts_snapshot"):
         print("Queue counts: read-only snapshot while a run holds the lock")
     print(f"Current activity: {report.get('current_activity', 'unknown')} — {report.get('reason', 'unknown')}")
+    if report.get("decision") == "awaiting_acceptance":
+        pending_milestones = report.get("milestones")
+        if isinstance(pending_milestones, list) and pending_milestones:
+            for milestone in pending_milestones:
+                if isinstance(milestone, str):
+                    print(f"Milestone awaiting approval: {milestone}")
     task = report.get("current_task")
     if isinstance(task, dict):
         task_id = task.get("id") or task.get("task_id") or "?"
@@ -414,9 +501,11 @@ def status(project: str, as_json: bool) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("plan", "requirements", "start", "authorize-execution", "status"))
+    parser.add_argument("action", choices=("plan", "requirements", "start", "approve", "authorize-execution", "status"))
     parser.add_argument("--project", required=True)
     parser.add_argument("--config-dir", type=Path, help="Configuration home (contains projects/)")
+    parser.add_argument("milestone_id", nargs="?", help="Milestone ID from a ### heading in .pw/requirements.md (e.g. TRACK-1-M1)")
+    parser.add_argument("--minutes", type=int, default=20, help="Disabled worker timer interval (1-1440 minutes)")
     parser.add_argument("--edit", action="store_true", help="Open requirements in an editor")
     parser.add_argument("--yes", action="store_true", help="Confirm one manual task, or explicitly authorize persistent execution")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON status")
@@ -435,7 +524,13 @@ def main() -> int:
         if args.action == "start":
             return start(args.project, args.yes)
         if args.action == "authorize-execution":
-            return authorize_persistent_execution(args.project, args.yes)
+            return authorize_persistent_execution(args.project, args.yes, args.minutes)
+        if args.action == "approve":
+            if not args.milestone_id:
+                parser.error("specify a milestone ID, e.g. pw approve TRACK-1-M1")
+            return approve_local(args.project, args.milestone_id, args.yes)
+        if args.milestone_id:
+            parser.error("a milestone ID is only accepted with pw approve")
         return status(args.project, args.json)
     except (ValueError, OSError) as exc:
         print(f"pw {args.action}: {exc}", file=sys.stderr)

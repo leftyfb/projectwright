@@ -6,7 +6,7 @@ The `pw` launcher preserves the existing service commands and adds a small onboa
 
 `pw init PATH` initializes a Git repository at PATH if necessary and creates its local `.pw/` directory. Without a custom path, `pw init --project NAME` uses `~/projects/NAME`. To initialize an existing repository, use `pw init .` at its root. Initialization does not enable planning, execution, or timers.
 
-`pw init PATH --shared` allows selected human-readable `.pw/` definitions to be tracked; default mode ignores all of `.pw/`. Existing legacy installations using `--repo` and `--config-dir` remain compatible.
+`pw init PATH --shared` allows selected human-readable `.pw/` definitions to be tracked; default mode ignores all of `.pw/`.
 
 The primary commands are `pw requirements --project NAME --edit`, `pw plan --project NAME`, `pw status --project NAME`, and `pw start --project NAME`. For a complete runnable walkthrough and packaged requirements, use [the Task Tracker example](../examples/task-tracker/README.md).
 
@@ -16,25 +16,28 @@ Invoking `pw plan` explicitly authorizes planning: it enables `planning.enabled`
 
 `pw start` asks for confirmation before launching one manual dispatcher run. It does not modify `execution.enabled`, install a timer, or enable recurring execution. In non-interactive scripts, `pw start --project NAME --yes` is the explicit confirmation. A declined prompt leaves the project unchanged. The worker's Git scope checks, journals, recovery rules, task sequencing and milestone gates remain in effect.
 
-Persistent execution is separately authorized with `pw authorize-execution --project NAME --yes`; this only changes the persistent project setting. To run unattended, install a timer definition **without starting it**, then explicitly enable it:
+Persistent execution is separately authorized with `pw authorize-execution --project NAME --yes --minutes 5`. This **installs the user timer but leaves it disabled**; the command prints the exact activation instruction. To run unattended, explicitly enable it:
 
 ```sh
-pw authorize-execution --project NAME --yes
-pw timer install NAME --minutes 5
+pw authorize-execution --project NAME --yes --minutes 5
+# Timer has been created but remains disabled.
 pw timer enable NAME
 ```
 
-The `install` command only writes user systemd service/timer units; it does not schedule work until `enable`. Worker intervals are 1–1440 minutes (default 20); `OnUnitInactiveSec` schedules the next activation relative to the **end** of the preceding run, rather than overlapping active tasks. The dispatcher and project lock also prevent concurrent work. Approval notification timers are separate and retain their own configuration and constraints.
+The `authorize-execution` command writes disabled systemd service/timer units when necessary and authorizes persistent execution. It does not schedule work until `pw timer enable`. You can still install timer units independently with `pw timer install NAME --minutes N` if needed. Worker intervals are 1–1440 minutes (default 20); `OnUnitInactiveSec` schedules the next activation relative to the **end** of the preceding run, rather than overlapping active tasks. The dispatcher and project lock also prevent concurrent work. Approval notification timers are separate and retain their own configuration and constraints.
 
 Use `pw timer disable NAME` to stop recurring runs and `pw timer status NAME` to inspect the timer. `pw start` never authorizes persistent execution, installs a timer, or enables recurring execution.
+
+The milestone ID is the identifier in a `###` milestone heading of `.pw/requirements.md`, such as `TRACK-1-M1` in `### TRACK-1-M1 — Scaffold and core lifecycle`. It is **not** a task ID (`P101`) or project ID (`task-tracker`). Find all declared IDs with `grep '^### ' .pw/requirements.md`. When a milestone is awaiting acceptance, `pw status` prints `Milestone awaiting approval: TRACK-1-M1` and the corresponding `Next action: ... pw approve TRACK-1-M1` guidance; `pw status --json` includes the manager's `milestones` list and a `next_action` field.
+
+Local milestone approval is available without Telegram: `pw approve MILESTONE-ID --project NAME` prints the acceptance command and scope and asks for explicit human confirmation before invoking the guarded acceptance checks. You can also use `--yes` for deliberately reviewed noninteractive approval. The milestone must have completed tasks, valid acceptance rules, and clean Git state.
 
 `pw status` prints a human-readable summary. While a worker holds the lock, status reads the live task journal and a read-only queue snapshot; a busy lock is not an approval blocker and the displayed counts may change as the task finishes. Add `--json` for machine-readable JSON. Both formats include the manager decision and reason, queue counts, blockers, project settings, and next action. JSON adds `recurring_execution_configured` and `recurring_execution_enabled`; these are `unknown` when the user timer cannot be inspected reliably, and `recurring_execution` summarizes the result as `enabled`, `disabled`, `not_configured`, or `unknown`.
 
 ## Configure a project with `pw config`
 
-All examples operate on the **selected project**; for an embedded repository
-the file is `~/projects/NAME/.pw/config.json`. The commands also accept
-`--config-dir /absolute/config/home` for a legacy external project.
+All examples operate on the **selected project**; for a repository-local project
+the file is `~/projects/NAME/.pw/config.json`.
 
 ```sh
 pw config list --project task-tracker
@@ -55,13 +58,13 @@ pw config reset planning.milestone_sequence --project task-tracker
 
 ### Supported settings
 
-These are the keys supported by `pw config`, their effective defaults and their constraints. Not all defaults are materialized in the file. Path values for the embedded layout are **relative to `.pw/`**, not the current shell directory.
+These are the keys supported by `pw config`, their effective defaults and their constraints. Not all defaults are materialized in the file. Path values for the repository-local layout are **relative to `.pw/`**, not the current shell directory.
 
 | Setting | Effective default | Usage / constraint |
 |---|---|---|
 | `planning.milestone_sequence` | `off` | `strict` requires accepted milestones in order; `off` removes the override. Recommended for automatic milestone-by-milestone workflows |
 | `planning.enabled` | `false` | Planning authorization through `pw plan`; can set `false` to turn it off |
-| `planning.requirements_file` | `requirements.md` (embedded) | Relative requirements path inside `.pw/` |
+| `planning.requirements_file` | `requirements.md` | Relative requirements path inside `.pw/` |
 | `planning.trigger.pending_below` | `3` | Replenish when fewer than this many tasks remain; positive integer |
 | `planning.trigger.review_every_completed_tasks` | `6` | Strategic-review trigger after completed-task count; positive integer |
 | `planning.trigger.replan_on_blocker` | `true` | Trigger preference; does not override safety blockers |
@@ -89,7 +92,7 @@ These are the keys supported by `pw config`, their effective defaults and their 
 | `display_name` | Project ID | Display title in progress notes |
 | `branch` | `main` | Git branch checked by worker/manager |
 | `base`, `queue`, `work_log` | Project-local paths | Base, queue and worker log paths; these are structural and usually shouldn't be changed |
-| `worktree` | Owning repository (embedded) | Immutable target relationship for embedded projects; legacy external state may reference a different repo |
+| `worktree` | Owning repository (embedded) | Immutable target relationship to the owning repository |
 | `lock`, `run_log`, `result_dir` | Project-local paths | Worker synchronization, activity logging and artifacts |
 | `cycle_file`, `worker_journal_file` | Project-local paths | Git-cycle and worker recovery records; don't change with active state |
 | `id`, `layout`, `projectwright_initialized` | Set by `pw init` | Readable but **not editable** via `pw config` |
@@ -128,11 +131,9 @@ Home Assistant-backed quota checks are **off by default** for every project. To 
 
 The default deliverable repository is `~/projects/NAME/`, with Projectwright state under `~/projects/NAME/.pw/`. You may choose any other directory using `pw init /other/parent/NAME`. Internal embedded configuration paths are relative to `.pw/`, independent of the shell's working directory.
 
-The CLI discovers `.pw/` by walking upward inside the current repository. Background callbacks and timers use an external registry; run `pw register .` after moving or cloning an initialized repository. If multiple repositories have the same name, run the command from the intended repository rather than relying on an ambiguous name.
+The CLI discovers `.pw/` by walking upward inside the current repository. Background callbacks and timers use a project registry; run `pw register .` after moving or cloning an initialized repository. If multiple repositories have the same name, run the command from the intended repository rather than relying on an ambiguous name.
 
-Existing installations with external state remain supported. `--config-dir /absolute/config/home` selects the legacy `config-home/projects/NAME` layout, and `HERMES_PROJECT_CONFIG_DIR` is a legacy direct-root override.
-
-## Existing commands
+## Other commands
 
 | Command | Purpose |
 |---|---|
@@ -146,6 +147,6 @@ Existing installations with external state remain supported. `--config-dir /abso
 | `pw config` | List, get, set and reset validated project configuration |
 | `pw gateway-restart` | Prompt the current user to restart an active Hermes gateway after an install or upgrade |
 
-Legacy `pw-dispatch`, `pw-manager`, `pw-worker`, `pw-notify`, and `pw-timer` entrypoints remain available. `pw init --project NAME --no-config` retains its config-free skeleton behavior; it cannot be combined with `--repo`.
 
-A Projectwright project controls one worktree. A repository can be outside its state directory, but coordinated execution across multiple repositories as one task is not supported. Preserve the worker's existing repository-scope safeguards. See [workflow](workflow.md), [configuration paths](configuration-home.md), and the [operator manual](manual.md) for advanced behavior, recovery and approvals.
+
+A Projectwright project controls one worktree. Coordinated execution across multiple repositories as one task is not supported. Preserve the worker's existing repository-scope safeguards. See [workflow](workflow.md), [configuration paths](configuration-home.md), and the [operator manual](manual.md) for advanced behavior, recovery and approvals.

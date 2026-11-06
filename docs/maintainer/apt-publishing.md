@@ -1,10 +1,24 @@
-# Signed APT repository (maintainer setup and subscriber guide)
+# Maintainer: signed APT repository publishing
 
 The signed repository is published at `https://leftyfb.github.io/projectwright/`.
 Projectwright can be installed and upgraded through ordinary Ubuntu APT once the
 subscriber has configured the source and verified its archive signing key.
 Initial deployment and key provisioning are complete; the maintainer setup below
 is retained for recovery and future key rotation.
+
+## Public signing-key identity
+
+The Projectwright maintainer provided the following 40-character fingerprint from the repository's `APT_SIGNING_FINGERPRINT` Actions variable:
+
+```text
+064F558B4CE2A03869881CEE383454EB0B74AAA3
+```
+
+This is published as the expected reference directly in the [user README installation instructions](../../README.md#1-install). The README's installation commands compare the downloaded public key with this fixed value and refuse to install it on mismatch. The APT site is **not** used to supply the expected value.
+
+For auditing, read the configured variable with `gh variable get APT_SIGNING_FINGERPRINT --repo leftyfb/projectwright`, then cross-check it with the key on the trusted signing host using `gpg --list-secret-keys --with-fingerprint 'Projectwright APT Archive'`. This records the maintainer-provided identity; it does not establish an independent third-party endorsement. Users with higher assurance requirements should also confirm the fingerprint over another trusted channel.
+
+**Key rotation:** Publish the replacement key's fingerprint through a trusted maintainer channel and update the user-facing pinned value *before* users are instructed to install the new key. Keep the private signing key outside version control, CI logs, and GitHub Pages.
 
 ## Repository format and trust boundary
 
@@ -73,7 +87,7 @@ recovery. The APT job rebuilds indexes from **all** published stable version-onl
 release assets; it never rebuilds or overwrites the GitHub Release packages.
 Release assets must provide the expected `.deb` and `SHA256SUMS`.
 
-See [release procedure](release-process.md) for the supported development-to-release
+See [release procedure](../release-process.md) for the supported development-to-release
 sequence and explicit release authorization controls.
 
 The workflow fails closed if the signing key, fingerprint, release assets, or
@@ -83,29 +97,9 @@ release-publishing workflow on `main`. It requires Pages deployment
 permissions only in the deployment job. The signing private key is restricted to
 the build job, and the public key is exported to the Pages output.
 
-## Subscriber: installation and updates
+## Installation instructions for users
 
-Check the signing fingerprint against a maintainer-published value over an
-independent channel; **do not trust the downloaded key solely because the file
-is served over HTTPS**. After verification, on supported Ubuntu systems:
-
-```sh
-curl -fsSLo projectwright-archive-keyring.gpg \
-  https://leftyfb.github.io/projectwright/projectwright-archive-keyring.gpg
-gpg --show-keys --with-fingerprint projectwright-archive-keyring.gpg
-sudo install -m 0644 projectwright-archive-keyring.gpg \
-  /usr/share/keyrings/projectwright-archive-keyring.gpg
-echo 'deb [signed-by=/usr/share/keyrings/projectwright-archive-keyring.gpg] https://leftyfb.github.io/projectwright/ stable main' \
-  | sudo tee /etc/apt/sources.list.d/projectwright.list
-sudo apt update
-sudo apt install projectwright
-pw setup
-```
-
-Run `pw setup` as the ordinary Hermes user, never under `sudo`. Hermes is
-required but installed/configured separately. Telegram approval remains
-optional and requires confirmation. Future upgrades use ordinary `apt upgrade`
-after the signed repository is republished with a verified newer release.
+The complete APT source and key installation instructions live in the [main README](../../README.md#1-install). Keep this document focused on publisher-side signing and release operations.
 
 ## Release and key lifecycle
 
