@@ -68,7 +68,7 @@ pw status
 
 `pw authorize-execution` creates the systemd user timer **disabled by default** and prints the exact `pw timer enable task-tracker` command. Nothing is scheduled until you explicitly enable the timer. This two-step process separates authorization and installation from permission to start recurring work. Run `pw timer disable task-tracker` to stop scheduling; you do not need to reinstall later to enable it again.
 
-Timer intervals range from **1 to 1440 minutes**. The next interval begins **after the previous worker service finishes**: a 15-minute task is not killed or overlapped by a 1-minute timer, and the project lock prevents multiple workers modifying the same project. Each activation attempts at most one task. Milestone M1 must be explicitly approved before strict sequencing allows M2 to be planned. Use local `pw approve --milestone TRACK-1-M1` after reviewing the work, or enable optional Telegram approval buttons with `pw setup`. Follow progress using `pw status` and `journalctl --user -u projectwright-worker-task-tracker-*.service -n 30 --no-pager` (replace the wildcard with your service name if your systemd version requires it). When a task is active, `pw status` shows its journal phase and read-only queue counts.
+Timer intervals range from **1 to 1440 minutes**. The next interval begins **after the previous worker service finishes**: a 15-minute task is not killed or overlapped by a 1-minute timer, and the project lock prevents multiple workers modifying the same project. Each activation attempts at most one task. Milestone M1 must be explicitly approved before strict sequencing allows M2 to be planned. Use local `pw approve TRACK-1-M1` after reviewing the work, or enable optional Telegram approval buttons with `pw setup`. Follow progress using `pw status` and `journalctl --user -u projectwright-worker-task-tracker-*.service -n 30 --no-pager` (replace the wildcard with your service name if your systemd version requires it). When a task is active, `pw status` shows its journal phase and read-only queue counts.
 
 **Option B — manual:** follow the one-task commands in the next sections. **Do not use `pw start` while you are testing unattended execution.** Manual runs are separate explicit authorizations.
 
@@ -99,12 +99,14 @@ A passing test **is not milestone approval**.
 
 ## 7. Approve M1, then complete M2 (manual option)
 
-Review the files, Git commits, and tests. Then approve M1 locally with `pw approve --milestone TRACK-1-M1`. This uses the same guarded acceptance checks as Telegram. If you configured Telegram, you may instead approve using the authorized Telegram buttons. Do not create approval records manually.
+The milestone ID is taken directly from a `###` heading in `.pw/requirements.md` (for example `### TRACK-1-M1 — ...`); it is not the project name or a task number. To list IDs, run `grep '^### ' .pw/requirements.md`.
+
+Review the files, Git commits, and tests. Then approve M1 locally with `pw approve TRACK-1-M1`. This uses the same guarded acceptance checks as Telegram. If you configured Telegram, you may instead approve using the authorized Telegram buttons. Do not create approval records manually.
 
 Approve M1 locally (skip this command if you already approved through Telegram):
 
 ```sh
-pw approve --milestone TRACK-1-M1
+pw approve TRACK-1-M1
 ```
 
 After approval:
@@ -121,7 +123,7 @@ Repeat one-task runs and reviews until M2 is implemented, then run:
 python3 -B -m unittest discover -s tests -p test_task_tracker_m2.py
 ```
 
-Review and approve M2 locally with `pw approve --milestone TRACK-1-M2`, or use configured Telegram approval buttons. See the [optional Telegram setup instructions](../../docs/user-approval-setup.md).
+Review and approve M2 locally with `pw approve TRACK-1-M2`, or use configured Telegram approval buttons. See the [optional Telegram setup instructions](../../docs/user-approval-setup.md).
 
 ## Expected outcomes
 
@@ -136,5 +138,5 @@ Review and approve M2 locally with `pw approve --milestone TRACK-1-M2`, or use c
 - **Already initialized?** Don't rerun `pw init` inside an existing `.pw/`.
 - **Planning blocked?** Run `pw status --project task-tracker --json`, confirm the copied requirements are nonempty, Git has a commit, and Hermes is configured.
 - **Tests not found?** Expected before Hermes implements that milestone.
-- **Approval pending?** Review the milestone and run `pw approve --milestone TRACK-1-M1` (or the actual pending milestone). Telegram is optional.
+- **Approval pending?** Review the milestone and run `pw approve TRACK-1-M1` (or the actual pending milestone). Telegram is optional.
 - **Unexpected Git changes?** Review them before authorizing more work. Do not commit `.pw/` operational state.
