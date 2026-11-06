@@ -1,8 +1,31 @@
 # Projectwright
 
-Projectwright turns a Git repository and a reviewed `requirements.md` into a queue of small development tasks. **Hermes** does the planning and coding; Projectwright coordinates tasks, Git safety checks, progress, and human milestone approval. Planning never automatically grants permission to execute work.
+Projectwright helps build software from requirements by organizing work into **tasks** and **milestones**. A task is one small step of work; a milestone groups related tasks into a result you can review and approve before the project moves forward.
 
-Your code, Git history, and Projectwright state live in one repository. Projectwright files are in `.pw/` and are ignored by Git by default. The usual parent directory for new repositories is `~/projects`, but you can use any location.
+**Hermes performs the work, Projectwright manages the workflow, and humans approve completed milestones.** Projectwright coordinates planning, execution, verification, and Git safety checks. You can run tasks manually or enable a timer for unattended execution—neither mode bypasses milestone approvals.
+
+Your code, Git history, and Projectwright state live in one repository. Projectwright files are stored in `.pw/` and ignored by Git by default. New projects normally live under `~/projects`, but you can choose any location.
+
+## How it works
+
+```mermaid
+flowchart TD
+    A(["START HERE: pw init<br/>Initialize your project"]) --> B["Define requirements<br/>.pw/requirements.md"]
+    B --> C["Plan tasks<br/>pw plan"]
+    C --> D["Review task queue"]
+    D --> E["Execute the next task<br/>Hermes via pw start or timer"]
+    E --> F["Verify results and Git changes"]
+    F --> G{"Milestone complete?"}
+    G -->|No| E
+    G -->|Yes| H["Human approval<br/>pw approve MILESTONE-ID or Telegram"]
+    H --> I{"More milestones?"}
+    I -->|Yes| C
+    I -->|No| J(["Project complete"])
+    classDef start fill:#dceeff,stroke:#2563eb,stroke-width:3px,color:#12315c;
+    class A start;
+```
+
+Each milestone must pass its acceptance checks and receive explicit human approval before strict milestone sequencing continues. The diagram shows the normal path; if a task fails verification, Projectwright reports a blocker for review rather than automatically treating it as complete.
 
 ## 1. Install
 
