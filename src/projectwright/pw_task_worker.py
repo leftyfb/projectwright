@@ -976,7 +976,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
                 progress_delivered = True
         else:
             progress_delivered = True
-        if ok and following is None and not no_telegram:
+        if ok and following is None and Path(PROJECT_CONFIG).is_file():
             # The last queue checkbox, work log and journal are durable, and
             # the worker lock was released above. Reuse the existing pinned
             # approval scan and idempotent notifier instead of waiting for the
