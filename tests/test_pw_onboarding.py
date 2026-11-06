@@ -112,14 +112,14 @@ class OnboardingTests(unittest.TestCase):
                                                       "decision": "disabled",
                                                       "blockers": []}),
                                 "stderr": ""})()
-        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \\
-             patch.object(pw_onboarding.subprocess, "run", return_value=result), \\
+        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \
+             patch.object(pw_onboarding.subprocess, "run", return_value=result), \
              patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
             self.assertEqual(pw_onboarding.status("task-tracker", False), 0)
             self.assertIn("Worktree: " + str(repo.resolve()), out.getvalue())
             self.assertNotIn("Worktree: ..", out.getvalue())
-        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \\
-             patch.object(pw_onboarding.subprocess, "run", return_value=result), \\
+        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \
+             patch.object(pw_onboarding.subprocess, "run", return_value=result), \
              patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
             self.assertEqual(pw_onboarding.status("task-tracker", True), 0)
             self.assertEqual(json.loads(out.getvalue())["worktree"], str(repo.resolve()))
