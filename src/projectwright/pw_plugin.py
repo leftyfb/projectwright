@@ -40,7 +40,8 @@ def _plan_after_approval(directory: Path) -> None:
     if not cfg.get('planning', {}).get('enabled'):
         return
     result = subprocess.run(
-        [sys.executable, '-B', '-m', 'pw_queue_manager', '--project', project, '--once'],
+        [sys.executable, '-B', str(Path(__file__).resolve().parent / 'pw_queue_manager.py'),
+         '--project', project, '--once'],
         env=env, capture_output=True, text=True, timeout=650, check=False)
     if result.returncode not in (0, 3):
         raise RuntimeError(
