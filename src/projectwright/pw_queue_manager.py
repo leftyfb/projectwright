@@ -53,6 +53,12 @@ def provider_argv(cfg: dict, phase: str, *, prompt: str | None = None) -> tuple[
     kind = provider.get('type', 'hermes')
     if kind == 'hermes':
         path = str(Path(cfg['hermes']).expanduser())
+        # User-systemd services do not inherit the interactive shell PATH.
+        # Keep explicitly configured executables authoritative; only resolve
+        # the default bare 'hermes' through known user-local installations.
+        if path == 'hermes':
+            from pw_project_timer import find_hermes_cli
+            path = find_hermes_cli() or path
         if phase == 'planner':
             if not isinstance(prompt, str):
                 raise ValueError('Hermes planner requires a prompt')
