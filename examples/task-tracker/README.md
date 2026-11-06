@@ -99,7 +99,7 @@ A passing test **is not milestone approval**.
 
 ## 7. Approve M1, then complete M2 (manual option)
 
-The milestone ID is taken directly from a `###` heading in `.pw/requirements.md` (for example `### TRACK-1-M1 — ...`); it is not the project name or a task number. To list IDs, run `grep '^### ' .pw/requirements.md`.
+The milestone ID is taken directly from a `###` heading in `.pw/requirements.md` (for example `### TRACK-1-M1 — ...`); it is not the project name or a task number. To list all IDs, run `grep '^### ' .pw/requirements.md`. When M1 is awaiting acceptance, `pw status` also prints `Milestone awaiting approval: TRACK-1-M1` and directs you to `pw approve TRACK-1-M1`.
 
 Review the files, Git commits, and tests. Then approve M1 locally with `pw approve TRACK-1-M1`. This uses the same guarded acceptance checks as Telegram. If you configured Telegram, you may instead approve using the authorized Telegram buttons. Do not create approval records manually.
 
