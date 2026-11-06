@@ -255,9 +255,12 @@ def status(project: str, as_json: bool) -> int:
     planning_enabled = cfg.get("planning", {}).get("enabled") if initialized else False
     execution_enabled = cfg.get("execution", {}).get("enabled") if initialized else False
     recurring_configured, recurring_enabled = _recurring_state(project)
+    display_worktree = cfg.get("worktree") if initialized else None
+    if initialized and cfg.get("layout") == "embedded" and isinstance(display_worktree, str):
+        display_worktree = str((project_dir / display_worktree).resolve())
     report.update({
         "initialized": initialized,
-        "worktree": cfg.get("worktree") if initialized else None,
+        "worktree": display_worktree,
         "planning_enabled": planning_enabled if isinstance(planning_enabled, bool) else None,
         "execution_enabled": execution_enabled if isinstance(execution_enabled, bool) else None,
         "recurring_execution_configured": recurring_configured,
