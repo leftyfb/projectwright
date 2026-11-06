@@ -215,7 +215,8 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         with patch.dict(sys.modules, {"telegram": types.ModuleType("telegram"),
                                       "telegram.ext": telegram_ext}), \
              patch.object(pw_plugin, "_authorized_ids", return_value=frozenset({"123"})), \
-             patch.object(pw_completion, "notify_completion", return_value=[]) as completion:
+             patch.object(pw_completion, "notify_completion", return_value=[]) as completion, \
+             patch.object(pw_plugin, "_plan_after_approval") as replenish:
             pw_plugin._factory(app, None)
             asyncio.run(callbacks[0].callback(
                 types.SimpleNamespace(callback_query=query), None))
@@ -223,6 +224,7 @@ class EmbeddedTelegramLifecycle(unittest.TestCase):
         self.assertEqual(len(edits), 1)
         self.assertIn("APPROVED", edits[0])
         completion.assert_called_once_with(marker)
+        replenish.assert_called_once_with(marker)
 
 
 if __name__ == "__main__":
