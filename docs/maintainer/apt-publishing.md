@@ -16,7 +16,7 @@ On the trusted maintainer system containing the signing key, obtain its fingerpr
 gpg --list-secret-keys --with-fingerprint 'Projectwright APT Archive'
 ```
 
-Cross-check the full primary-key fingerprint against the configured `APT_SIGNING_FINGERPRINT` and the exported public key, then publish the complete value in a maintainer-controlled, separately authenticated notice. A signed release announcement, independently verified security announcement, or known trusted contact channel may be appropriate. Do not use a fingerprint published exclusively alongside the downloadable public key on GitHub Pages as purported independent verification.
+To read the configured repository variable with an authorized GitHub CLI session, run `gh variable get APT_SIGNING_FINGERPRINT --repo leftyfb/projectwright`. Cross-check that 40-character value against the full primary-key fingerprint on the trusted signing host and the exported public key, then publish the complete value in a maintainer-controlled, separately authenticated notice. A signed release announcement, independently verified security announcement, or known trusted contact channel may be appropriate. Do not use a fingerprint published exclusively alongside the downloadable public key on GitHub Pages as purported independent verification.
 
 The user-facing [README installation instructions](../../README.md#1-install) require that independently authenticated reference and refuse key installation when the fingerprint does not match. Do not insert an invented fingerprint or extract one from the untrusted download and call that independent validation. When rotating a signing key, announce both old and new full fingerprints through the authenticated channel before publishing the replacement key.
 
