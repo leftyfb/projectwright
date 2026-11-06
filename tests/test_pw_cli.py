@@ -27,6 +27,7 @@ class UnifiedCommandTests(unittest.TestCase):
             "gateway-restart": ("pw_project_timer", ["gateway-restart"]),
             "setup-user": ("pw_project_timer", ["setup-user"]),
             "defaults": ("pw_defaults", []),
+            "config": ("pw_settings", []),
             "init": ("pw_init", []),
         }
         for action, (module, flags) in cases.items():
