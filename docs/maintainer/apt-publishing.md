@@ -6,19 +6,19 @@ subscriber has configured the source and verified its archive signing key.
 Initial deployment and key provisioning are complete; the maintainer setup below
 is retained for recovery and future key rotation.
 
-## Required public signing-key identity
+## Public signing-key identity
 
-**Before merging onboarding changes or directing new users to install the APT source**, publish the archive's exact 40-hex-character primary-key fingerprint through an independently authenticated maintainer channel. The private GitHub Actions variable `APT_SIGNING_FINGERPRINT` is checked by the publishing workflow, but it is **not** a public trust anchor.
+The Projectwright maintainer provided the following 40-character fingerprint from the repository's `APT_SIGNING_FINGERPRINT` Actions variable:
 
-On the trusted maintainer system containing the signing key, obtain its fingerprint with:
-
-```sh
-gpg --list-secret-keys --with-fingerprint 'Projectwright APT Archive'
+```text
+064F558B4CE2A03869881CEE383454EB0B74AAA3
 ```
 
-To read the configured repository variable with an authorized GitHub CLI session, run `gh variable get APT_SIGNING_FINGERPRINT --repo leftyfb/projectwright`. Cross-check that 40-character value against the full primary-key fingerprint on the trusted signing host and the exported public key, then publish the complete value in a maintainer-controlled, separately authenticated notice. A signed release announcement, independently verified security announcement, or known trusted contact channel may be appropriate. Do not use a fingerprint published exclusively alongside the downloadable public key on GitHub Pages as purported independent verification.
+This is published as the expected reference directly in the [user README installation instructions](../../README.md#1-install). The README's installation commands compare the downloaded public key with this fixed value and refuse to install it on mismatch. The APT site is **not** used to supply the expected value.
 
-The user-facing [README installation instructions](../../README.md#1-install) require that independently authenticated reference and refuse key installation when the fingerprint does not match. Do not insert an invented fingerprint or extract one from the untrusted download and call that independent validation. When rotating a signing key, announce both old and new full fingerprints through the authenticated channel before publishing the replacement key.
+For auditing, read the configured variable with `gh variable get APT_SIGNING_FINGERPRINT --repo leftyfb/projectwright`, then cross-check it with the key on the trusted signing host using `gpg --list-secret-keys --with-fingerprint 'Projectwright APT Archive'`. This records the maintainer-provided identity; it does not establish an independent third-party endorsement. Users with higher assurance requirements should also confirm the fingerprint over another trusted channel.
+
+**Key rotation:** Publish the replacement key's fingerprint through a trusted maintainer channel and update the user-facing pinned value *before* users are instructed to install the new key. Keep the private signing key outside version control, CI logs, and GitHub Pages.
 
 ## Repository format and trust boundary
 
