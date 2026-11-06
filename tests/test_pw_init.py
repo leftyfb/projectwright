@@ -39,6 +39,25 @@ class SafeInitTests(unittest.TestCase):
                 ["git", "-C", str(repo), "status", "--porcelain"], text=True), "")
             self.assertTrue((repo / ".pw" / "config.json").is_file())
 
+    def test_new_project_reports_error_if_git_cannot_commit(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            repo = home / "projects" / "newproject"
+            env = {
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": "/dev/null",
+                "GIT_AUTHOR_NAME": "",
+                "GIT_AUTHOR_EMAIL": "",
+                "GIT_COMMITTER_NAME": "",
+                "GIT_COMMITTER_EMAIL": "",
+            }
+            with mock.patch.dict(os.environ, env):
+                result = self.invoke("pw_init", home, str(repo))
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertFalse(json.loads(result.stdout)["initial_commit_created"])
+            self.assertIn("ACTION REQUIRED", result.stderr)
+            self.assertTrue((repo / ".pw/config.json").exists())
+
     def test_existing_git_repository_never_auto_commits(self):
         with tempfile.TemporaryDirectory() as td:
             home = Path(td)
