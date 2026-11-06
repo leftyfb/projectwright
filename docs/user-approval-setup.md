@@ -66,6 +66,31 @@ changes) before invoking `hermes plugins enable`. A gateway restart/reload is a 
 mechanism, explicit target-user selection from Debian installation, migration
 of Hermes bot credentials to a generic Projectwright config, stable cross-source-version upgrades and general user cleanup are not complete. Regular hosted offline CI mocks Telegram, while separately authorized `disposable-test-container` LXD workflows have verified real installation, user timer setup, plugin registration, gateway loading, Telegram delivery, callback acceptance and cleanup. These are **not** routine CI jobs.
 
+## Restarting the Hermes gateway after package installation or upgrade
+
+The Debian package replaces Projectwright's Python modules on disk, but an already
+running Hermes gateway can continue using previously imported versions. That can
+cause a Telegram approval callback to fail even when the pending request, Git
+commit, and project registry are all valid.
+
+After installing or upgrading Projectwright, the package prints a reminder.
+When Hermes is idle, run this as the normal Hermes user (without `sudo`):
+
+```sh
+pw gateway-restart
+```
+
+The command checks whether `hermes-gateway.service` is active in your user
+systemd session, warns that a restart will interrupt running Hermes work, and
+asks `Restart hermes-gateway.service for this user now? [y/N]`. It defaults
+to No, refuses root and noninteractive execution, and does not restart an
+inactive or missing service. The Debian installer does **not** select a user
+account, restart any services, or prompt from its root-owned maintainer script.
+
+If an approval failed before the restart, retry the **existing** Telegram
+Approve button once the gateway is running. Do not delete the pending record
+or rerun completed tasks simply because the previous callback failed.
+
 ## Debian preview integration files
 
 The development Debian package now includes **inactive** reference assets at

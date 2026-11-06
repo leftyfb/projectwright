@@ -1,5 +1,6 @@
 """Unified pw command routing without executing user services."""
 import io
+import os
 import subprocess
 import sys
 import unittest
@@ -23,8 +24,10 @@ class UnifiedCommandTests(unittest.TestCase):
             "notify": ("pw_notify", []),
             "timer": ("pw_project_timer", []),
             "setup": ("pw_project_timer", ["setup"]),
+            "gateway-restart": ("pw_project_timer", ["gateway-restart"]),
             "setup-user": ("pw_project_timer", ["setup-user"]),
             "defaults": ("pw_defaults", []),
+            "config": ("pw_settings", []),
             "init": ("pw_init", []),
         }
         for action, (module, flags) in cases.items():
@@ -35,6 +38,19 @@ class UnifiedCommandTests(unittest.TestCase):
                     self.assertEqual(pw_dispatch.cli(), 0)
                     self.assertEqual(called.call_args.args[0],
                         [sys.executable, "-B", "-m", module, *flags, "--help"])
+
+    def test_config_infers_project_from_embedded_worktree(self):
+        with patch.object(sys, "argv", ["pw", "config", "list"]), \
+             patch("pw_embedded.discover", return_value=Path("/tmp/demo/.pw")), \
+             patch.object(pw_dispatch.subprocess, "run",
+                          return_value=subprocess.CompletedProcess([], 0)) as called:
+            self.assertEqual(pw_dispatch.cli(), 0)
+        self.assertEqual(called.call_args.args[0], [
+            sys.executable, "-B", "-m", "pw_settings", "list",
+            "--project", "demo",
+        ])
+        self.assertEqual(called.call_args.kwargs["env"]["PROJECTWRIGHT_PROJECT_DIR"],
+                         "/tmp/demo")
 
     def test_setup_options_forward_without_side_effects(self):
         with patch.object(sys, "argv", ["pw", "setup", "--minutes", "15", "--yes"]), patch.object(
@@ -56,12 +72,30 @@ class UnifiedCommandTests(unittest.TestCase):
                 "--minutes", "15", "--enable-hermes-plugin",
             ])
 
+    def test_explicit_legacy_config_home_ignores_inherited_embedded_location(self):
+        with patch.dict(os.environ,
+                        {"PROJECTWRIGHT_PROJECT_DIR": "/tmp/unrelated/example"},
+                        clear=True), patch.object(
+            sys, "argv", ["pw", "status", "--project", "demo",
+                          "--config-dir", "/tmp/legacy-home"]
+        ), patch.object(
+            pw_dispatch.subprocess, "run",
+            return_value=subprocess.CompletedProcess([], 0)
+        ) as run:
+            self.assertEqual(pw_dispatch.cli(), 0)
+            environment = run.call_args.kwargs["env"]
+            self.assertNotIn("PROJECTWRIGHT_PROJECT_DIR", environment)
+            self.assertEqual(environment["PROJECTWRIGHT_CONFIG_DIR"],
+                             "/tmp/legacy-home")
+
     def test_unknown_command_refuses_without_execution(self):
         with patch.object(sys, "argv", ["pw", "bad"]), patch.object(
             pw_dispatch.subprocess, "run"
-        ) as called, redirect_stderr(io.StringIO()):
+        ) as called, redirect_stderr(io.StringIO()) as output:
             self.assertEqual(pw_dispatch.cli(), 2)
             called.assert_not_called()
+        self.assertIn("Unknown Projectwright command: bad\nusage: pw ", output.getvalue())
+        self.assertNotIn(r"\\nusage:", output.getvalue())
 
     def test_help_has_no_side_effects(self):
         with patch.object(sys, "argv", ["pw", "--help"]), patch.object(

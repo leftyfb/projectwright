@@ -279,7 +279,7 @@ def authorized_cycle_task(project, scripts, report):
         # A current journal or recovery incident cannot authorize dispatch.
         journal_file = manager_helpers['worker_journal_path'](cfg, config_path)
         journal = manager_helpers['read_json_optional'](journal_file)
-        incidents = manager_helpers['read_json_optional'](root / project / 'recovery_incidents.json')
+        incidents = manager_helpers['read_json_optional'](config_path.parent / 'recovery_incidents.json')
         if journal.get('current_task') is not None or incidents and (
             not isinstance(incidents.get('incidents'), list) or
             any(not isinstance(i, dict) or i.get('status') not in ('resolved', 'closed') for i in incidents['incidents'])
@@ -374,7 +374,7 @@ def _manual_handoff(project, report):
         'git_branch': branch,
         'head': head,
     }
-    return create_handoff(root / project, claims)
+    return create_handoff(config_path.parent, claims)
 
 
 def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False, one_shot=False):
@@ -434,7 +434,8 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False, one_
             print('FAIL unexpected planning decision='+decision, file=sys.stderr)
             return 20
     worker = [sys.executable, '-B', str(scripts/'pw_task_worker.py'), '--project', project, '--once']
-    if no_telegram or not (default_project_root() / project / 'config.json').is_file():
+    from pw_config import load as _load_config
+    if no_telegram or not _load_config(project)[0].is_file():
         worker.append('--no-telegram')
     worker_env = {**os.environ, 'PYTHONDONTWRITEBYTECODE':'1'}
     if one_shot:
@@ -458,15 +459,14 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False, one_
         # Read-only observability: journal and queue are written by the worker.
         # Missing/inconsistent data is reported, not inferred as successful work.
         try:
-            root = default_project_root() / project
             import importlib.util
             spec = importlib.util.spec_from_file_location('pw_dispatch_manager_summary', scripts/'pw_queue_manager.py')
             manager_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(manager_module)
-            _, cfg = manager_module.project_config(project, root.parent)
-            journal_file = manager_module.worker_journal_path(cfg, root / 'config.json')
-            journal = json.loads(journal_file.read_text())
-            queue = (root/'queue.md').read_text(encoding='utf-8')
+            config_path, cfg = __import__('pw_config').load(project, default_project_root())
+            journal_file = manager_module.worker_journal_path(cfg, config_path)
+            journal = json.loads(journal_file.read_text(encoding='utf-8'))
+            queue = Path(cfg['queue']).read_text(encoding='utf-8')
             summary = manager_module.queue_summary(queue)
             completed = journal.get('last_completed_task') or {}
             if journal.get('current_task') is None and isinstance(completed.get('id'), str) and isinstance(completed.get('kind'), str):
@@ -501,20 +501,23 @@ def cli():
         'notify': ('pw_notify', []),
         'timer': ('pw_project_timer', []),
         'setup': ('pw_project_timer', ['setup']),
+        'gateway-restart': ('pw_project_timer', ['gateway-restart']),
         'setup-user': ('pw_project_timer', ['setup-user']),
         'defaults': ('pw_defaults', []),
+        'config': ('pw_settings', []),
         'init': ('pw_init', []),
+        'register': ('pw_embedded', []),
         'requirements': ('pw_onboarding', ['requirements']),
         'start': ('pw_onboarding', ['start']),
         'authorize-execution': ('pw_onboarding', ['authorize-execution']),
     }
-    usage = 'usage: pw {tick|status|plan|start|authorize-execution|requirements|worker|notify|timer|setup|setup-user|defaults|init} [options]'
+    usage = 'usage: pw {tick|status|plan|start|authorize-execution|requirements|worker|notify|timer|setup|gateway-restart|setup-user|defaults|config|init|register} [options]'
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
         print(usage)
         return 0 if len(sys.argv) > 1 else 2
     command = sys.argv[1]
     if command not in commands:
-        print(f'Unknown Projectwright command: {command}\\n{usage}', file=sys.stderr)
+        print(f'Unknown Projectwright command: {command}\n{usage}', file=sys.stderr)
         return 2
     module, fixed = commands[command]
     # Shared onboarding commands accept --config-dir in the same sense as
@@ -530,8 +533,27 @@ def cli():
             config_dir = str(candidate)
     if config_dir:
         os.environ['PROJECTWRIGHT_CONFIG_DIR'] = config_dir
-    return subprocess.run([sys.executable, '-B', '-m', module, *fixed, *sys.argv[2:]],
-                          check=False).returncode
+    env = os.environ.copy()
+    if config_dir is not None:
+        # An explicit legacy configuration home must not silently inherit a
+        # repository location from an unrelated shell or background service.
+        env.pop("PROJECTWRIGHT_PROJECT_DIR", None)
+    if command != "init" and "--config-dir" not in sys.argv[2:]:
+        from pw_embedded import discover
+        try:
+            found = discover(Path.cwd())
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        if found is not None:
+            env["PROJECTWRIGHT_PROJECT_DIR"] = str(found.parent)
+    arguments = list(sys.argv[2:])
+    if (command in {'tick', 'status', 'plan', 'worker', 'notify', 'requirements',
+                    'start', 'authorize-execution', 'config'} and
+            '--project' not in arguments and env.get('PROJECTWRIGHT_PROJECT_DIR')):
+        arguments.extend(['--project', Path(env['PROJECTWRIGHT_PROJECT_DIR']).name])
+    return subprocess.run([sys.executable, '-B', '-m', module, *fixed, *arguments],
+                          check=False, env=env).returncode
 
 
 if __name__=='__main__':raise SystemExit(main())

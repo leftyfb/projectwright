@@ -22,11 +22,13 @@ rm -rf "$stage/usr/lib/python3/dist-packages/bin"
 # from the privileged Debian installation context.
 mkdir -p "$stage/usr/share/projectwright/hermes"
 # Install the runnable starter and its walkthrough for APT users, without requiring a source checkout.
-mkdir -p "$stage/usr/share/doc/projectwright/examples/task_tracker/starter"
-install -m 0644 "$(dirname "$0")/../examples/task_tracker/README.md" \
-  "$stage/usr/share/doc/projectwright/examples/task_tracker/README.md"
-install -m 0644 "$(dirname "$0")/../examples/task_tracker/starter/README.md" \
-  "$stage/usr/share/doc/projectwright/examples/task_tracker/starter/README.md"
+mkdir -p "$stage/usr/share/doc/projectwright/examples/task-tracker/starter"
+install -m 0644 "$(dirname "$0")/../examples/task-tracker/README.md" \
+  "$stage/usr/share/doc/projectwright/examples/task-tracker/README.md"
+install -m 0644 "$(dirname "$0")/../examples/task-tracker/starter/README.md" \
+  "$stage/usr/share/doc/projectwright/examples/task-tracker/starter/README.md"
+install -m 0644 "$(dirname "$0")/../examples/task-tracker/requirements.md" \
+  "$stage/usr/share/doc/projectwright/examples/task-tracker/requirements.md"
 install -m 0644 "$(dirname "$0")/../src/projectwright/pw_plugin.py" \
   "$stage/usr/share/projectwright/hermes/projectwright-approvals.py"
 mkdir -p "$stage/usr/share/projectwright/hermes/projectwright-approvals"
@@ -80,5 +82,28 @@ Description: Development preview of project task orchestration
  services and project configuration are not provisioned by this package.
 EOF
 chmod 0644 "$stage/DEBIAN/control"
+# The package installer runs as root and cannot safely choose a Hermes
+# user's systemd session. Warn on install AND upgrade, never restart services.
+cat > "$stage/DEBIAN/postinst" <<'EOF'
+#!/bin/sh
+set -e
+if [ "$1" = "configure" ]; then
+    cat <<'NOTICE'
+
+Projectwright: Hermes gateway restart may be needed
+  A running Hermes gateway can keep older Projectwright Python modules loaded
+  after a Debian install or upgrade. Telegram approval buttons may fail until
+  the gateway restarts.
+
+  When Hermes is idle, run as the Hermes user (not sudo):
+    pw gateway-restart
+
+  The command checks this user's gateway and asks before restarting it.
+  The Debian package has NOT restarted any Hermes services.
+NOTICE
+fi
+exit 0
+EOF
+chmod 0755 "$stage/DEBIAN/postinst"
 dpkg-deb --build --root-owner-group "$stage" "$output/projectwright_0.1.0~dev0-1_all.deb"
 dpkg-deb --field "$output/projectwright_0.1.0~dev0-1_all.deb"

@@ -17,6 +17,26 @@ class SafeInitTests(unittest.TestCase):
         return subprocess.run([sys.executable, "-B", "-m", module, *args], env=env,
                               capture_output=True, text=True)
 
+    def test_embedded_init_rejects_legacy_only_options_without_mutation(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            target = home / "projects" / "task-tracker"
+            attempts = (
+                ("--config-dir", str(home / "other-config")),
+                ("--repo", str(home / "unrelated-repo")),
+                ("--no-config",),
+            )
+            for opts in attempts:
+                with self.subTest(opts=opts):
+                    result = self.invoke("pw_init", home, str(target), *opts)
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertFalse(target.exists())
+            shared_legacy = self.invoke("pw_init", home, "--project",
+                                        "task-tracker", "--shared",
+                                        "--config-dir", str(home / "cfg"))
+            self.assertEqual(shared_legacy.returncode, 2)
+            self.assertFalse((home / "cfg").exists())
+
     def test_init_connects_existing_git_repository_without_modifying_it(self):
         with tempfile.TemporaryDirectory() as td:
             home = Path(td)

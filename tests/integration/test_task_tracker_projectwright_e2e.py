@@ -228,7 +228,10 @@ Reject malformed local input and document recovery without destroying user data.
             self.assertIs(status["recurring_execution_configured"], False)
             self.assertIs(status["recurring_execution_enabled"], False)
             self.assertFalse((project_dir / "telegram_acceptance.json").exists())
-            self.assertFalse((project_dir / "telegram_approval_pending.json").exists())
+            # The last verified task now pins the approval request immediately,
+            # even when Telegram delivery is unavailable in this local fixture.
+            pending = json.loads((project_dir / "telegram_approval_pending.json").read_text())
+            self.assertEqual(pending["milestone"], "TRACK-1-M1")
             self.assertFalse((project_dir / "telegram_approval_notified.json").exists())
 
             # Without Telegram, approval is unavailable: replanning is gated

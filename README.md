@@ -1,5 +1,10 @@
 # Projectwright
 
+## Repository-local projects
+
+New projects keep their Git repository and Projectwright state together, with configuration and operational files in `.pw/`. The default repository parent is `~/projects`, and you can choose another location during initialization. Existing external-state projects remain supported.
+
+
 Projectwright turns your requirements into a reviewable queue of small development tasks, then coordinates Hermes to work through that queue in a Git repository. It tracks progress and Git changes, checks worker reports, and can pause for human milestone approval.
 
 Hermes is the AI developer: it plans and edits using your configured model and tools. Projectwright manages the requirements, queue, safety checks, progress and approval gates. Planning proposes work; it does not authorize execution. Execution is a separate, explicit action.
@@ -22,51 +27,58 @@ Do not run `pw setup` with sudo. Hermes CLI must already be installed and config
 
 ## Try the Task Tracker example
 
-A disposable, beginner-friendly [Task Tracker walkthrough](examples/task_tracker/README.md) demonstrates `pw init`, requirements, planning, a one-task Hermes run, and review. The task tracker is **not prebuilt**: Projectwright generates it from the example requirements.
+A disposable, beginner-friendly [Task Tracker walkthrough](examples/task-tracker/README.md) demonstrates `pw init`, requirements, planning, a one-task Hermes run, and review. The task tracker is **not prebuilt**: Projectwright generates it from the example requirements.
 
-The Debian package also installs this walkthrough and the starter README under `/usr/share/doc/projectwright/examples/task_tracker/`. Open the walkthrough after `sudo apt install projectwright`:
+The Debian package installs the walkthrough, starter README, and ready-to-copy `requirements.md` under `/usr/share/doc/projectwright/examples/task-tracker/`. Open the walkthrough after `sudo apt install projectwright`:
 
 ```sh
-less /usr/share/doc/projectwright/examples/task_tracker/README.md
+less /usr/share/doc/projectwright/examples/task-tracker/README.md
 ```
 
 The initial milestone can be worked and reviewed without Telegram. Advancing to the next milestone requires a real Telegram approval callback; the demo does not silently bypass the approval gate.
 
-## Quick start
+## Quick start: manual or automatic
 
-1. Describe the project to Hermes or another LLM; use the prompt in the [onboarding guide](docs/llm-requirements-onboarding.md) to ask questions and draft requirements.
-2. Review the draft, resolve open decisions, and save the approved Markdown draft locally as `requirements.md`.
-3. Connect an existing, initialized Git repository and initialize Projectwright:
+The [Task Tracker walkthrough](examples/task-tracker/README.md) contains a fully runnable example with expected output. To start a new project:
 
-   ```sh
-   pw init --project myproject --repo ~/repos/myproject
-   ```
+```sh
+pw init ~/projects/myproject
+cd ~/projects/myproject
+pw requirements --edit
+# Review requirements, then commit the starter files.
+pw plan
+pw status
+```
 
-   Project state normally lives at `~/projects/myproject`; the repository remains at `~/repos/myproject`. `pw init` does not create or modify the repository.
-4. Put the reviewed draft at `~/projects/myproject/requirements.md` (or use the actual configured project-state path), then explicitly plan:
+Choose how to run tasks:
 
-   ```sh
-   pw plan --project myproject
-   ```
+- **Manual, one task at a time:** `pw start` prompts before one run.
+- **Unattended, one task per timer activation:** first configure milestone sequencing, then explicitly authorize and enable the schedule:
 
-5. Review the generated queue and blockers:
+```sh
+pw config set planning.milestone_sequence strict
+pw authorize-execution --project myproject --yes
+pw timer install myproject --minutes 5
+pw timer enable myproject
+pw timer status myproject
+```
 
-   ```sh
-   pw status --project myproject
-   ```
+`pw timer install` **only creates disabled systemd user units**. `pw timer enable` starts the schedule; `pw timer disable` stops it. You can use intervals from 1 to 1440 minutes. Each interval begins **after the prior service finishes**, so a long task is not interrupted and a second invocation cannot overlap it. The project's worker lock also prevents simultaneous task execution. Human milestone approvals remain mandatory.
 
-   Inspect `queue.md` and proposed task scopes before proceeding.
-6. Manually authorize one task:
+To follow a running project, use `pw status`. The [CLI reference](docs/cli.md) and the [Task Tracker walkthrough](examples/task-tracker/README.md) explain both modes.
 
-   ```sh
-   pw start --project myproject
-   ```
+## Quick start (more detail)
 
-   Confirm at the prompt. This runs one manual dispatcher cycle; it does not enable persistent or recurring execution.
-7. Test the work and inspect its results and Git diff. A passing test or completed task is not milestone acceptance. Human milestone approval/rejection is supported through the configured Telegram callback flow; if that integration is not configured and enabled, acceptance remains blocked. There is no separate manual operator approval command documented.
-8. Review the results and Git diff, update requirements if needed, then repeat planning, queue review, and one-task execution until complete.
+Initialize a repository at a location of your choice, then provide requirements and review the proposed work:
 
-See the [full onboarding guide](docs/llm-requirements-onboarding.md) for the requirements format, paths, approvals, and manual-versus-recurring execution. Recurring execution is a separate opt-in; see [CLI reference](docs/cli.md) and [operator manual](docs/manual.md).
+```sh
+pw init ~/projects/myproject
+cd ~/projects/myproject
+```
+
+Projectwright keeps its state in `.pw/` inside the repository. Commit your starting application files before running worker tasks. Use `pw requirements --project myproject --edit` for requirements, `pw plan --project myproject` to propose a queue, and `pw start --project myproject` to authorize one task.
+
+For the **complete step-by-step example**, follow [examples/task-tracker/README.md](examples/task-tracker/README.md). The [CLI reference](docs/cli.md) describes available commands rather than duplicating the tutorial.
 
 ## Documentation
 

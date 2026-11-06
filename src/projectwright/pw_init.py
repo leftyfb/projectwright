@@ -99,11 +99,32 @@ def initialize(project: str, root: Path, *, no_config: bool = False, repo: Path 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", required=True)
+    parser.add_argument("directory", nargs="?", type=Path, help="Repository path (default: ~/projects/PROJECT)")
+    parser.add_argument("--shared", action="store_true", help="Track human-editable .pw files only")
+    parser.add_argument("--project", help="Legacy external-state project ID or default repository name")
     parser.add_argument("--config-dir", type=Path, help="Absolute Projectwright configuration home")
     parser.add_argument("--no-config", action="store_true", help="Create empty queue and work log without config.json")
     parser.add_argument("--repo", type=Path, help="Existing Git worktree to connect (never initialized or modified)")
     args = parser.parse_args()
+    if args.directory is not None and (args.config_dir is not None or args.repo is not None or args.no_config):
+        parser.error("Repository path cannot be combined with --config-dir, --repo, or --no-config")
+    if args.shared and (args.config_dir is not None or args.repo is not None or args.no_config):
+        parser.error("--shared is only supported for repository-local initialization")
+    if args.directory is not None or args.shared or (args.project and args.config_dir is None and args.repo is None and not args.no_config):
+        from pw_embedded import initialize as initialize_embedded
+        directory = args.directory or (Path.home() / "projects" / args.project)
+        if args.project is not None and directory.expanduser().resolve().name != args.project:
+            parser.error("--project must match repository directory name")
+        try:
+            output = initialize_embedded(directory, shared=args.shared)
+            from pw_embedded import register
+            register(output.parent.parent)
+        except (ValueError, FileExistsError, OSError, subprocess.CalledProcessError) as exc:
+            parser.error(str(exc))
+        print(json.dumps({"project": output.parent.parent.name, "config": str(output), "project_directory": str(output.parent.parent), "decision": "disabled"}))
+        return 0
+    if args.project is None:
+        parser.error("Specify a repository path or --project")
     if args.config_dir is not None and not args.config_dir.is_absolute():
         parser.error("--config-dir must be absolute")
     if args.no_config and args.repo is not None:

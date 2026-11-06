@@ -9,6 +9,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 
 from pw_dispatch import default_project_root
 
@@ -23,7 +24,8 @@ RESERVED_REQUIREMENTS_NAMES = {
 def _project_dir(project: str) -> Path:
     if not PROJECT_ID.fullmatch(project):
         raise ValueError("Invalid project ID")
-    return default_project_root() / project
+    from pw_embedded import directory
+    return directory(project, default_project_root())
 
 
 def _config(project: str) -> tuple[Path, dict]:
@@ -32,7 +34,7 @@ def _config(project: str) -> tuple[Path, dict]:
     if directory.is_symlink() or path.is_symlink():
         raise ValueError("Refusing symlink project state")
     if not path.is_file():
-        raise ValueError(f"Project {project!r} is not initialized. Run: pw init --project {project}")
+        raise ValueError(f"Project {project!r} is not initialized. Run: pw init PATH")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -42,6 +44,10 @@ def _config(project: str) -> tuple[Path, dict]:
     for section in ("planning", "execution"):
         if section in data and not isinstance(data[section], dict):
             raise ValueError(f"Malformed configuration: {section} must be an object")
+    # Read the effective configuration for validation, but return the raw
+    # document so relative paths are never rewritten as machine-specific ones.
+    from pw_config import load as validate_config
+    validate_config(project, directory_override=directory)
     return path, data
 
 
@@ -60,11 +66,19 @@ def _requirements_path(project: str, config: dict) -> Path:
 
 
 def _write(path: Path, config: dict) -> None:
-    # Preserve file permissions and avoid truncating a config on serialization failure.
-    temp = path.with_name(path.name + ".tmp")
-    temp.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    temp.chmod(path.stat().st_mode & 0o777)
-    os.replace(temp, path)
+    # Use an unpredictable private sibling, never a deterministic config.json.tmp.
+    # Serialize before opening the temporary file to preserve the original.
+    contents = json.dumps(config, indent=2, sort_keys=True) + "\n"
+    fd, name = tempfile.mkstemp(prefix=".pw-config-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(contents)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(name, path.stat().st_mode & 0o777)
+        os.replace(name, path)
+    finally:
+        Path(name).unlink(missing_ok=True)
 
 
 def requirements(project: str) -> int:
@@ -114,11 +128,21 @@ def authorize_planning(project: str) -> int:
     cmd = [sys.executable, "-B", "-m", "pw_queue_manager", "--project", project, "--once"]
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode:
+        # A normal successful planner run needs no diagnostics. Keep
+        # failure/no-op output parsing inside the nonzero return path.
         detail = (result.stdout or "").strip()
         try:
             payload = json.loads(detail)
         except (TypeError, json.JSONDecodeError):
             payload = None
+        # The manager intentionally exits 3 for a healthy no-op.
+        # Preserve its machine-readable contract while making the
+        # interactive pw plan command report success.
+        if result.returncode == 3 and isinstance(payload, dict) and (
+                payload.get("project") == project and payload.get("decision") == "no_op"):
+            reason = payload.get("reason") or "Queue already has enough work"
+            print(f"pw plan: No planning needed — {reason}")
+            return 0
         if isinstance(payload, dict):
             reason = payload.get("reason") or "Planning was blocked"
             blockers = payload.get("blockers") or []
@@ -161,7 +185,10 @@ def authorize_persistent_execution(project: str, confirmed: bool) -> int:
 
 
 def _recurring_state(project: str) -> tuple[bool | None, bool | None]:
-    unit = f"projectwright-worker-{project}.timer"
+    from pw_project_timer import unit_name
+    directory = _project_dir(project)
+    repo = directory.parent if directory.name == ".pw" else None
+    unit = unit_name(project, repo) + ".timer"
     unit_path = Path.home() / ".config/systemd/user" / unit
     if unit_path.is_symlink():
         return None, None
@@ -235,12 +262,20 @@ def status(project: str, as_json: bool) -> int:
         raise ValueError(f"Malformed project configuration: {config_path}")
     initialized = config_path.is_file()
     cfg = _config(project)[1] if initialized else {}
+    effective_cfg = None
+    effective_path = None
+    if initialized:
+        from pw_config import load as load_config
+        effective_path, effective_cfg = load_config(project, directory_override=project_dir)
     planning_enabled = cfg.get("planning", {}).get("enabled") if initialized else False
     execution_enabled = cfg.get("execution", {}).get("enabled") if initialized else False
     recurring_configured, recurring_enabled = _recurring_state(project)
+    display_worktree = cfg.get("worktree") if initialized else None
+    if initialized and cfg.get("layout") == "embedded" and isinstance(display_worktree, str):
+        display_worktree = str((project_dir / display_worktree).resolve())
     report.update({
         "initialized": initialized,
-        "worktree": cfg.get("worktree") if initialized else None,
+        "worktree": display_worktree,
         "planning_enabled": planning_enabled if isinstance(planning_enabled, bool) else None,
         "execution_enabled": execution_enabled if isinstance(execution_enabled, bool) else None,
         "recurring_execution_configured": recurring_configured,
@@ -251,13 +286,49 @@ def status(project: str, as_json: bool) -> int:
             "not_configured" if recurring_configured is False else "unknown"
         ),
     })
-    try:
-        journal_file = Path(cfg.get("worker_journal_file") or project_dir / "worker_journal.json").expanduser()
-        journal = json.loads(journal_file.read_text(encoding="utf-8"))
-        current_task = journal.get("current_task")
-        report["current_task"] = current_task if isinstance(current_task, dict) else None
-    except (OSError, json.JSONDecodeError, AttributeError):
-        report["current_task"] = None
+    # Read the canonical effective journal path, which for embedded projects
+    # is usually .pw/state/worker_journal.json (not .pw/worker_journal.json).
+    report["current_task"] = None
+    if effective_cfg is not None:
+        from pw_worker_journal import journal_path
+        try:
+            journal = json.loads(journal_path(effective_cfg, effective_path).read_text(encoding="utf-8"))
+            current_task = journal.get("current_task")
+            if isinstance(current_task, dict):
+                report["current_task"] = current_task
+        except (OSError, ValueError, RuntimeError):
+            # Preserve the manager's real blocked state; do not invent an
+            # active task when the journal is unreadable or absent.
+            pass
+
+    if report.get("decision") == "busy":
+        # The lock is expected when an unattended worker or planner is active.
+        # A busy manager returns no queue counts or blockers, so report a
+        # read-only queue snapshot rather than calling missing data an error.
+        report["blockers"] = []
+        if effective_cfg is not None:
+            from pw_queue_manager import queue_summary
+            try:
+                queue_path = Path(effective_cfg["queue"])
+                if not queue_path.is_symlink():
+                    summary = queue_summary(queue_path.read_text(encoding="utf-8"))
+                    report.update(pending=summary["pending_count"],
+                                  completed=summary["completed_count"],
+                                  queue_blocked=summary["blocked_count"])
+                    report["queue_counts_snapshot"] = True
+            except (OSError, ValueError, UnicodeError):
+                pass
+        active = report.get("current_task")
+        phase = active.get("phase") if isinstance(active, dict) else None
+        report["current_activity"] = (
+            "running" if phase in ("selected", "running") else "busy"
+        )
+        report["reason"] = (
+            "Project lock held; task in progress" if phase in ("selected", "running")
+            else "Project lock held by another worker or planner"
+        )
+    else:
+        report["current_activity"] = report.get("decision", "unknown")
     if not initialized:
         next_action = f"Initialize a managed project: pw init --project {project} --repo /path/to/repository"
     elif report.get("decision") == "unknown" and report.get("reason") == "Manager project identity mismatch":
@@ -269,15 +340,39 @@ def status(project: str, as_json: bool) -> int:
     elif report.get("blockers") and "requirements_invalid" in report["blockers"]:
         next_action = f"Correct the listed requirements diagnostics, then rerun: pw status --project {project}"
     elif report.get("decision") == "awaiting_acceptance":
-        next_action = ("Queued tasks are complete, but milestone acceptance is still pending. "
-                       "Run pw notify to preview the approval request, approve it through the "
-                       "configured Telegram callback, then run: pw plan --project " + project)
-    elif report.get("decision") in {"blocked", "busy", "quota_blocked"}:
+        next_action = ("Milestone acceptance is pending. Approve through the configured "
+                       "Telegram callback; Projectwright will attempt to replenish "
+                       "the next milestone immediately after approval.")
+    elif report.get("decision") == "busy":
+        next_action = "A run is in progress; no action required. Check the user service journal for progress."
+    elif (report.get("decision") == "blocked" and
+          set(report.get("blockers") or []) in (
+              {"active_git_cycle", "dirty_worktree_review"},
+              {"active_git_cycle", "branch_or_worktree"})):
+        # The dispatcher independently validates a recorded EDIT/TEST/COMMIT
+        # cycle before allowing the next task. Do not call this a manual blocker.
+        pending_tasks = report.get("pending_tasks")
+        candidate = (pending_tasks[0] if isinstance(pending_tasks, list)
+                     and pending_tasks and isinstance(pending_tasks[0], dict) else {})
+        task_id, kind = candidate.get("id"), candidate.get("kind")
+        if isinstance(task_id, str) and kind in ("TEST", "COMMIT"):
+            next_action = (f"{task_id} — {kind} will be attempted automatically on the "
+                           "next timer activation if the Git-cycle checks pass.")
+        else:
+            next_action = ("An EDIT/TEST/COMMIT cycle is in progress; the next queued "
+                           "task will be attempted on the next timer activation "
+                           "if the recorded Git-cycle checks pass.")
+    elif report.get("decision") in {"blocked", "quota_blocked"}:
         next_action = "Resolve the reported blocker or approval gate, then rerun pw status"
     elif type(report.get("pending")) is not int:
         next_action = "Queue counts are unknown; inspect the project queue and manager blockers, then rerun pw status"
+    elif (report.get("decision") in {"replenish", "strategic_review"} and
+          report.get("planning_enabled") is True and recurring_enabled is True):
+        next_action = "Automatic queue replenishment will be attempted on the next timer activation."
     elif report.get("pending") == 0:
         next_action = f"Review requirements and queue planning with: pw plan --project {project}"
+    elif recurring_enabled is True and execution_enabled is True:
+        next_action = "Queued work will be attempted automatically on the next timer activation."
     else:
         next_action = f"Review the queued task, then run one manually with: pw start --project {project}"
     report["next_action"] = next_action
@@ -294,8 +389,16 @@ def status(project: str, as_json: bool) -> int:
         if key in report:
             value = report[key]
             print(f"{label}: {value if isinstance(value, int) else 'unknown'}")
-    print(f"Current activity: {report.get('decision', 'unknown')} — {report.get('reason', 'unknown')}")
-    print(f"Current task: {report.get('current_task') or 'none reported'}")
+    if report.get("queue_counts_snapshot"):
+        print("Queue counts: read-only snapshot while a run holds the lock")
+    print(f"Current activity: {report.get('current_activity', 'unknown')} — {report.get('reason', 'unknown')}")
+    task = report.get("current_task")
+    if isinstance(task, dict):
+        task_id = task.get("id") or task.get("task_id") or "?"
+        kind, phase = task.get("kind", "?"), task.get("phase", "?")
+        print(f"Current task: {task_id} — {kind} ({phase})")
+    else:
+        print("Current task: none reported")
     blockers = report.get("blockers")
     print("Blockers: " + (", ".join(blockers) if isinstance(blockers, list) and blockers else "none reported"))
     for item in report.get("diagnostics", []):

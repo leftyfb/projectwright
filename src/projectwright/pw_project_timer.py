@@ -1,16 +1,46 @@
 """Manage disabled-by-default per-project systemd user schedules."""
 from __future__ import annotations
-import argparse, json, os, re, subprocess, sys, shutil
+import argparse, hashlib, json, os, re, subprocess, sys, shutil
 from pathlib import Path
 
 ID = re.compile(r'[a-z][a-z0-9_-]{0,63}\Z')
 
-def unit_strings(project: str, minutes: int, script: Path) -> tuple[str,str]:
-    if not ID.fullmatch(project) or not 5 <= minutes <= 1440:
-        raise ValueError('Invalid project or interval (5..1440 minutes)')
+def unit_name(project: str, repo: Path | None = None) -> str:
+    if not ID.fullmatch(project):
+        raise ValueError("Invalid project")
+    if repo is None:
+        return "projectwright-worker-" + project
+    # Distinct repositories with the same basename cannot share a systemd unit.
+    digest = hashlib.sha256(str(repo.resolve()).encode("utf-8")).hexdigest()[:12]
+    return "projectwright-worker-" + project + "-" + digest
+
+
+def _systemd_environment(name: str, value: str) -> str:
+    if "\n" in value or "\r" in value or "\x00" in value:
+        raise ValueError("Invalid systemd environment value")
+    # Quote according to systemd.syntax and double specifier expansion.
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%")
+    return 'Environment="' + name + "=" + escaped + '"\n'
+
+
+def _systemd_argument(value: str) -> str:
+    """One literal ExecStart argument; prevent whitespace/specifier injection."""
+    if not value or any(ch in value for ch in ("\n", "\r", "\x00")):
+        raise ValueError("Invalid systemd executable argument")
+    if re.fullmatch(r"/[A-Za-z0-9_./+-]+", value):
+        return value  # Preserve existing unit format when quoting is unnecessary.
+    safe = value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%")
+    return '"' + safe + '"'
+
+
+def unit_strings(project: str, minutes: int, script: Path, *,
+                 repo: Path | None = None) -> tuple[str,str]:
+    if not ID.fullmatch(project) or not 1 <= minutes <= 1440:
+        raise ValueError('Invalid project or interval (1..1440 minutes)')
     if not script.is_absolute(): raise ValueError('Dispatcher script path must be absolute')
+    environment = _systemd_environment('PROJECTWRIGHT_PROJECT_DIR', str(repo.resolve())) if repo else ''
     service = ('[Unit]\nDescription=Projectwright dispatcher for '+project+'\n'
-               '[Service]\nType=oneshot\nExecStart=/usr/bin/python3 -B '+str(script)+' --project '+project+'\n'
+               '[Service]\nType=oneshot\n' + environment + 'ExecStart=/usr/bin/python3 -B '+_systemd_argument(str(script))+' --project '+project+'\n'
                'TimeoutStartSec=45min\n')
     timer = ('[Unit]\nDescription=Schedule project worker for '+project+'\n'
              '[Timer]\nOnBootSec=2min\nOnUnitInactiveSec='+str(minutes)+'min\nPersistent=false\n'
@@ -22,7 +52,7 @@ def approval_notify_units(notifier: Path, *, minutes: int = 10) -> tuple[str, st
         raise ValueError('Invalid notifier path or timer interval')
     service = ('[Unit]\nDescription=Projectwright approval notification scan\n'
                '[Service]\nType=oneshot\nExecStart=/usr/bin/python3 -B '
-               + str(notifier) + ' --send\n')
+               + _systemd_argument(str(notifier)) + ' --send\n')
     timer = ('[Unit]\nDescription=Projectwright approval notification timer\n'
              '[Timer]\nOnBootSec=3min\nOnUnitInactiveSec=' + str(minutes)
              + 'min\nPersistent=false\n[Install]\nWantedBy=timers.target\n')
@@ -90,6 +120,34 @@ def setup_user_approvals(*, minutes=10, enable_plugin=False, hermes_cli='hermes'
     runner(['systemctl', '--user', 'daemon-reload'], check=True)
     runner(['systemctl', '--user', 'enable', '--now',
             'projectwright-approval-notify.timer'], check=True)
+
+
+
+
+def restart_hermes_gateway(*, runner=subprocess.run, prompt=input) -> bool:
+    """Opt-in restart in the current user's systemd session only."""
+    if os.geteuid() == 0:
+        raise ValueError("Run gateway-restart as the Hermes user, not root")
+    service = "hermes-gateway.service"
+    try:
+        probe = runner(["systemctl", "--user", "is-active", service],
+                       capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        raise ValueError("Cannot inspect the user Hermes gateway; no restart attempted") from None
+    if probe.returncode != 0 or (probe.stdout or "").strip() != "active":
+        print("Hermes gateway is not active in this user session; no restart attempted.")
+        return False
+    print("A running Hermes gateway may still have old Projectwright Python modules loaded.")
+    print("Restarting it will interrupt any active Hermes conversations or tasks.")
+    if not sys.stdin.isatty():
+        raise ValueError("Gateway restart requires an interactive terminal; no restart attempted")
+    answer = prompt("Restart hermes-gateway.service for this user now? [y/N] ").strip().lower()
+    if answer not in ("y", "yes"):
+        print("Hermes gateway left running.")
+        return False
+    runner(["systemctl", "--user", "restart", service], check=True, timeout=60)
+    print("Hermes gateway restarted. Retry the existing Telegram approval button if needed.")
+    return True
 
 
 
@@ -169,9 +227,16 @@ def setup_interactive(*, minutes=10, yes=False, no_telegram=False,
     setup_user_approvals(minutes=minutes, enable_plugin=True, hermes_cli=hermes, runner=runner)
     print('Hermes/Telegram plugin and approval notifier enabled for this user.')
     print('Check Hermes gateway plugin loading before relying on callbacks.')
+    print('If Hermes gateway is already running, restart it after checking for active work: pw gateway-restart')
 
 
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == 'gateway-restart':
+        parser = argparse.ArgumentParser(description='Confirm a restart of this user\'s Hermes gateway')
+        parser.add_argument('action', choices=['gateway-restart'])
+        parser.parse_args()
+        restart_hermes_gateway()
+        return 0
     if len(sys.argv) > 1 and sys.argv[1] == 'setup':
         p = argparse.ArgumentParser(description='First-run Hermes and optional Telegram setup')
         p.add_argument('action', choices=['setup'])
@@ -190,37 +255,72 @@ def main() -> int:
         setup_user_approvals(minutes=a.minutes, enable_plugin=a.enable_hermes_plugin)
         print('User approval timer enabled')
         return 0
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['check','install-disabled','enable','disable','status']);p.add_argument('project');p.add_argument('--minutes',type=int,default=20);p.add_argument('--root',type=Path,default=None)
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['check','install','enable','disable','status']);p.add_argument('project');p.add_argument('--minutes',type=int,default=20);p.add_argument('--root',type=Path,default=None)
     a=p.parse_args()
     if not ID.fullmatch(a.project):p.error('Invalid project ID')
-    unit='projectwright-worker-'+a.project
-    # Query systemd even if the project config or dispatcher script is gone.
-    if a.action=='status':
-        return subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False).returncode
     from project_queue_manager import default_project_root
+    from pw_embedded import directory as project_directory
     root = a.root if a.root is not None else default_project_root()
-    directory=root/a.project
-    cfg=json.loads((directory/'config.json').read_text())
-    if cfg.get('id')!=a.project: raise ValueError('Project config mismatch')
+    directory = None
+    repo = None
+    # Resolving a registered repository also works when invoked outside its cwd.
+    # Missing legacy projects still map to their historic unit names for status.
+    directory = project_directory(a.project, root)
+    if directory.name == '.pw':
+        repo = directory.parent
+    unit = unit_name(a.project, repo)
+    if a.action == 'status':
+        return subprocess.run(['systemctl','--user','status',unit+'.timer','--no-pager'],check=False).returncode
+    from pw_config import load as load_config
+    cfg_path, cfg = load_config(a.project, root)
+    if not cfg_path.is_file() or cfg_path.parent != directory or cfg.get('id') != a.project:
+        raise ValueError('Project config missing or mismatched')
     script=Path(__file__).resolve().parent/'pw_dispatch.py'
     if not script.is_file(): raise ValueError('Dispatcher script missing')
-    service,timer=unit_strings(a.project,a.minutes,script)
+    service,timer=unit_strings(a.project,a.minutes,script,repo=repo)
     dest=Path.home()/'.config/systemd/user'
     service_path=dest/(unit+'.service');timer_path=dest/(unit+'.timer')
     if a.action=='check':print(service);print(timer);return 0
-    if a.action=='install-disabled':
-        if service_path.exists() or timer_path.exists():raise ValueError('Units already exist; refusing overwrite')
+    if a.action=='install':
+        if service_path.exists() or timer_path.exists() or service_path.is_symlink() or timer_path.is_symlink():raise ValueError('Units already exist; refusing overwrite')
         dest.mkdir(parents=True,exist_ok=True)
         service_path.write_text(service);timer_path.write_text(timer)
         subprocess.run(['systemctl','--user','daemon-reload'],check=True)
-        print('Installed disabled units for',a.project);return 0
+        print('Installed timer for', a.project, '(disabled; run: pw timer enable '+a.project+')');return 0
+    if a.action in ('enable', 'disable'):
+        if service_path.is_symlink() or timer_path.is_symlink():
+            raise ValueError('Refusing symlinked Projectwright systemd units')
+        if a.action == 'enable' and repo is not None:
+            if not service_path.is_file() or not timer_path.is_file():
+                raise ValueError('Embedded systemd units are not installed')
+            installed_timer = timer_path.read_text(encoding='utf-8')
+            interval_lines = [line for line in installed_timer.splitlines()
+                              if line.startswith('OnUnitInactiveSec=')]
+            if len(interval_lines) != 1:
+                raise ValueError('Invalid installed timer interval')
+            match = re.fullmatch(r'OnUnitInactiveSec=([0-9]+)min', interval_lines[0])
+            if match is None:
+                raise ValueError('Invalid installed timer interval')
+            expected_service, expected_timer = unit_strings(
+                a.project, int(match.group(1)), script, repo=repo)
+            if (service_path.read_text(encoding='utf-8') != expected_service
+                    or installed_timer != expected_timer):
+                raise ValueError('Embedded systemd units differ from generated project scope; inspect and reinstall the units')
+        # Disabling an existing unit is always allowed even if it was altered;
+        # refusing would leave unattended execution running.
     if a.action=='enable':
-        if not service_path.exists() or not timer_path.exists():raise ValueError('Units not installed')
-        # Explicit user action only. Never silently enable on install.
-        subprocess.run(['systemctl','--user','enable','--now',unit+'.timer'],check=True);return 0
-    if a.action=='disable':subprocess.run(['systemctl','--user','disable','--now',unit+'.timer'],check=True);return 0
+        if not service_path.exists() or not timer_path.exists():
+            raise ValueError('Units not installed')
+        subprocess.run(['systemctl','--user','enable','--now',unit+'.timer'],check=True)
+        return 0
+    if a.action=='disable':
+        subprocess.run(['systemctl','--user','disable','--now',unit+'.timer'],check=True)
+        return 0
     return 0
 
 if __name__=='__main__':
-    try:raise SystemExit(main())
-    except Exception as e: print(f'REFUSED: {e}',file=sys.stderr);raise SystemExit(2)
+    try:
+        raise SystemExit(main())
+    except Exception as e:
+        print(f'REFUSED: {e}', file=sys.stderr)
+        raise SystemExit(2)

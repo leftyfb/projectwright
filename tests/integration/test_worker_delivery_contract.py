@@ -78,6 +78,15 @@ class WorkerDeliveryPersistenceTests(unittest.TestCase):
                 }))
                 return 0, "fixture Hermes output"
 
+            real_subprocess_run = subprocess.run
+            notification_calls = []
+            def run_with_notification_stub(argv, **kwargs):
+                if "pw_notify" in argv:
+                    notification_calls.append(argv)
+                    return subprocess.CompletedProcess(
+                        args=argv, returncode=0, stdout="No new notifications", stderr="")
+                return real_subprocess_run(argv, **kwargs)
+
             with patch.dict(os.environ, env):
                 worker.load_project("fixture")
                 with (
@@ -89,9 +98,14 @@ class WorkerDeliveryPersistenceTests(unittest.TestCase):
                     patch.object(worker, "cycle_read", return_value=None),
                     patch.object(worker, "notification_footer", return_value="fixture footer"),
                     patch.object(worker, "deliver", return_value=False),
+                    patch.object(worker.subprocess, "run",
+                                 side_effect=run_with_notification_stub),
                 ):
                     result = worker.process_once()
 
+            self.assertEqual(len(notification_calls), 1,
+                             "final task triggers the approval notifier even if progress delivery fails")
+            self.assertIn("--send", notification_calls[0])
             self.assertEqual(result, 1, "delivery failure is reported to the caller")
             self.assertEqual(queue.read_text(), "- [x] **P101 — READ** inspect fixture\n")
             progress = project_worker_progress.read_state(project_dir / "worker_state.json")
@@ -99,6 +113,57 @@ class WorkerDeliveryPersistenceTests(unittest.TestCase):
             journal = project_worker_journal.read(project_dir / "worker_journal.json")
             self.assertIsNone(journal["current_task"])
             self.assertEqual(journal["last_completed_task"]["id"], "P101")
+
+
+    def test_agent_failure_before_after_snapshot_records_review_instead_of_crashing(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="projectwright-early-failure-") as td:
+            root = Path(td)
+            project_dir = root / "projects" / "fixture"
+            project_dir.mkdir(parents=True)
+            repo = root / "repo"
+            repo.mkdir()
+            git(repo, "init", "-q")
+            git(repo, "config", "user.name", "Fixture")
+            git(repo, "config", "user.email", "fixture@example.invalid")
+            (repo / "probe.txt").write_text("fixture\n")
+            git(repo, "add", "probe.txt")
+            git(repo, "commit", "-qm", "fixture")
+            queue = project_dir / "queue.md"
+            queue.write_text("- [ ] **P101 — READ** inspect fixture\\n")
+            config = {
+                "id": "fixture",
+                "display_name": "Fixture Project",
+                "queue": str(queue),
+                "work_log": str(project_dir / "work_log.md"),
+                "lock": str(project_dir / "worker.lock"),
+                "run_log": str(project_dir / "run.log"),
+                "result_dir": str(project_dir / "results"),
+                "cycle_file": str(project_dir / "git_cycle.json"),
+                "worktree": str(repo),
+                "hermes": "/bin/false",
+                "timeout_seconds": 30,
+                "quota": {"enabled": False},
+                "worker_state_file": str(project_dir / "worker_state.json"),
+            }
+            (project_dir / "config.json").write_text(json.dumps(config))
+            with patch.dict(os.environ, {"HERMES_PROJECT_CONFIG_DIR": str(root / "projects")}):
+                worker.load_project("fixture")
+                with (
+                    patch.object(worker, "prompt_for", return_value="fixture prompt"),
+                    patch.object(worker, "run_agent", side_effect=RuntimeError("synthetic Hermes failure")),
+                    patch.object(worker, "cycle_begin"),
+                    patch.object(worker, "cycle_read", return_value=None),
+                    patch.object(worker, "notification_footer", return_value="fixture footer"),
+                    patch.object(worker, "deliver", return_value=True),
+                ):
+                    result = worker.process_once(no_telegram=True)
+
+            self.assertNotEqual(result, 0)
+            self.assertIn("synthetic Hermes failure", (project_dir / "work_log.md").read_text())
+            self.assertIn("commit none", (project_dir / "work_log.md").read_text())
+            self.assertEqual(queue.read_text(), "- [ ] **P101 — READ** inspect fixture\\n")
+            journal = project_worker_journal.read(project_dir / "worker_journal.json")
+            self.assertEqual(journal["current_task"]["phase"], "needs_review")
 
 
 if __name__ == "__main__":

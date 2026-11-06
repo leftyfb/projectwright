@@ -112,6 +112,17 @@ jobs:
           done
           PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" \
             "$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw" --help > /dev/null
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/doc/projectwright/examples/task-tracker/README.md"
+          test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/doc/projectwright/examples/task-tracker/starter/README.md"
+          cmp examples/task-tracker/requirements.md "$RUNNER_TEMP/projectwright-deb-extract/usr/share/doc/projectwright/examples/task-tracker/requirements.md"
+          mkdir -p "$RUNNER_TEMP/projectwright-deb-control"
+          dpkg-deb --control "$RUNNER_TEMP"/projectwright-debs/*.deb "$RUNNER_TEMP/projectwright-deb-control"
+          test -x "$RUNNER_TEMP/projectwright-deb-control/postinst"
+          sh "$RUNNER_TEMP/projectwright-deb-control/postinst" configure > "$RUNNER_TEMP/projectwright-test-logs/postinst-notice.log"
+          grep -Fq 'pw gateway-restart' "$RUNNER_TEMP/projectwright-test-logs/postinst-notice.log"
+          PYTHONPATH="$RUNNER_TEMP/projectwright-deb-extract/usr/lib/python3/dist-packages" \
+            "$RUNNER_TEMP/projectwright-deb-extract/usr/bin/pw" gateway-restart --help > /dev/null
+
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals.py"
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals/plugin.yaml"
           test -f "$RUNNER_TEMP/projectwright-deb-extract/usr/share/projectwright/hermes/projectwright-approvals/__init__.py"
@@ -139,8 +150,8 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v7
         with:
-          name: projectwright-deb-${{ github.run_id }}
           path: ${{ runner.temp }}/projectwright-debs/*.deb
+          archive: false
           retention-days: 7
           if-no-files-found: error
 

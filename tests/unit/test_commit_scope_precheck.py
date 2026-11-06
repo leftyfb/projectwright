@@ -25,6 +25,33 @@ class CommitScopePrecheckTests(unittest.TestCase):
             "task_tracker.py", "tests/test_task_tracker_m2.py", "README.md",
         })
 
+    def test_real_p106_commit_description_has_exact_scoped_paths(self):
+        description = (
+            "TRACK-1 / TRACK-1-M2: TRACK-1 / TRACK-1-M2: After M2 tests pass, "
+            "commit only the verified changes to task_tracker.py, README.md, "
+            "and tests/test_task_tracker_m2.py."
+        )
+        declared = worker.explicit_commit_paths(description)
+        self.assertEqual(declared, {
+            "task_tracker.py", "README.md", "tests/test_task_tracker_m2.py",
+        })
+        dirty = set(declared)
+        with (
+            patch.object(worker, "cycle_read", return_value={
+                "phase": "active", "allowed": sorted(dirty),
+            }),
+            patch.object(worker, "repo_state", return_value=(None, None, sorted(dirty))),
+        ):
+            worker.cycle_commit_precheck(
+                worker.Task("P106", "COMMIT", description, 1, "original queue row")
+            )
+
+    def test_commit_narrative_prefix_is_not_ignored(self):
+        with self.assertRaisesRegex(RuntimeError, "Cannot parse explicit COMMIT file scope"):
+            worker.explicit_commit_paths(
+                "Commit only arbitrary extras to task_tracker.py, README.md."
+            )
+
     def test_legacy_commit_without_literal_scope_uses_cycle_allowlist(self):
         self.assertIsNone(worker.explicit_commit_paths("Commit the validated changes"))
 
