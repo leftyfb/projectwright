@@ -45,8 +45,8 @@ class OnboardingTests(unittest.TestCase):
                                 "stdout": json.dumps({"project": "demo", "decision": "no_op",
                                                       "reason": "Queue healthy and no review due"}),
                                 "stderr": ""})()
-        with patch.object(pw_onboarding.subprocess, "run", return_value=result), \\
-             patch("sys.stdout", new_callable=__import__("io").StringIO) as out, \\
+        with patch.object(pw_onboarding.subprocess, "run", return_value=result), \
+             patch("sys.stdout", new_callable=__import__("io").StringIO) as out, \
              patch("sys.stderr", new_callable=__import__("io").StringIO) as err:
             self.assertEqual(pw_onboarding.authorize_planning("demo"), 0)
         self.assertIn("No planning needed", out.getvalue())
@@ -60,7 +60,7 @@ class OnboardingTests(unittest.TestCase):
                                                       "decision": "awaiting_acceptance",
                                                       "reason": "Milestone requires approval"}),
                                 "stderr": ""})()
-        with patch.object(pw_onboarding.subprocess, "run", return_value=result), \\
+        with patch.object(pw_onboarding.subprocess, "run", return_value=result), \
              patch("sys.stderr", new_callable=__import__("io").StringIO) as err:
             self.assertEqual(pw_onboarding.authorize_planning("demo"), 3)
         self.assertIn("Milestone requires approval", err.getvalue())
