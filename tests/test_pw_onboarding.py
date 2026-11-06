@@ -123,8 +123,8 @@ class OnboardingTests(unittest.TestCase):
             self.assertEqual(pw_onboarding.authorize_persistent_execution("demo", False), 2)
             run.assert_not_called()
         self.assertFalse(json.loads(self.config_path.read_text())["execution"]["enabled"])
-        with patch.object(pw_onboarding.Path, "home", return_value=self.home), \\
-             patch.object(pw_onboarding.subprocess, "run", return_value=type("R", (), {"returncode": 0})()) as runner, \\
+        with patch.object(pw_onboarding.Path, "home", return_value=self.home), \
+             patch.object(pw_onboarding.subprocess, "run", return_value=type("R", (), {"returncode": 0})()) as runner, \
              patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
             self.assertEqual(pw_onboarding.authorize_persistent_execution("demo", True), 0)
         self.assertTrue(json.loads(self.config_path.read_text())["execution"]["enabled"])
