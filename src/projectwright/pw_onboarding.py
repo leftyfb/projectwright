@@ -372,7 +372,8 @@ def status(project: str, as_json: bool) -> int:
     print(f"Current activity: {report.get('current_activity', 'unknown')} — {report.get('reason', 'unknown')}")
     task = report.get("current_task")
     if isinstance(task, dict):
-        task_id, kind, phase = task.get("id", "?"), task.get("kind", "?"), task.get("phase", "?")
+        task_id = task.get("id") or task.get("task_id") or "?"
+        kind, phase = task.get("kind", "?"), task.get("phase", "?")
         print(f"Current task: {task_id} — {kind} ({phase})")
     else:
         print("Current task: none reported")
