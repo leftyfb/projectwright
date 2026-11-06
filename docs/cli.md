@@ -16,17 +16,19 @@ Invoking `pw plan` explicitly authorizes planning: it enables `planning.enabled`
 
 `pw start` asks for confirmation before launching one manual dispatcher run. It does not modify `execution.enabled`, install a timer, or enable recurring execution. In non-interactive scripts, `pw start --project NAME --yes` is the explicit confirmation. A declined prompt leaves the project unchanged. The worker's Git scope checks, journals, recovery rules, task sequencing and milestone gates remain in effect.
 
-Persistent execution is separately authorized with `pw authorize-execution --project NAME --yes`; this only changes the persistent project setting. To run unattended, install a disabled timer, then enable it:
+Persistent execution is separately authorized with `pw authorize-execution --project NAME --yes`; this only changes the persistent project setting. To run unattended, install a timer definition **without starting it**, then explicitly enable it:
 
 ```sh
 pw authorize-execution --project NAME --yes
-pw timer install-disabled NAME
+pw timer install NAME --minutes 5
 pw timer enable NAME
 ```
 
+The `install` command only writes user systemd service/timer units; it does not schedule work until `enable`. Worker intervals are 1–1440 minutes (default 20); `OnUnitInactiveSec` schedules the next activation relative to the **end** of the preceding run, rather than overlapping active tasks. The dispatcher and project lock also prevent concurrent work. Approval notification timers are separate and retain their own configuration and constraints.
+
 Use `pw timer disable NAME` to stop recurring runs and `pw timer status NAME` to inspect the timer. `pw start` never authorizes persistent execution, installs a timer, or enables recurring execution.
 
-`pw status` prints a human-readable summary. Add `--json` for machine-readable JSON. Both formats include the manager decision and reason, queue counts, blockers, project settings, and next action. JSON adds `recurring_execution_configured` and `recurring_execution_enabled`; these are `unknown` when the user timer cannot be inspected reliably, and `recurring_execution` summarizes the result as `enabled`, `disabled`, `not_configured`, or `unknown`.
+`pw status` prints a human-readable summary. While a worker holds the lock, status reads the live task journal and a read-only queue snapshot; a busy lock is not an approval blocker and the displayed counts may change as the task finishes. Add `--json` for machine-readable JSON. Both formats include the manager decision and reason, queue counts, blockers, project settings, and next action. JSON adds `recurring_execution_configured` and `recurring_execution_enabled`; these are `unknown` when the user timer cannot be inspected reliably, and `recurring_execution` summarizes the result as `enabled`, `disabled`, `not_configured`, or `unknown`.
 
 ## Configure a project with `pw config`
 
@@ -93,7 +95,7 @@ These are the keys supported by `pw config`, their effective defaults and their 
 | `id`, `layout`, `projectwright_initialized` | Set by `pw init` | Readable but **not editable** via `pw config` |
 
 The default worker interval and approval-notifier interval are **not**
-`config.json` settings: use `pw timer install-disabled NAME --minutes N`
+`config.json` settings: use `pw timer install NAME --minutes N`
 for the worker (default 20 minutes), and `pw setup --minutes N` for the
 approval notifier (default 10 minutes). Those are separate systemd user timers.
 The `provider` command arrays are an advanced integration; the `hermes`
