@@ -24,7 +24,10 @@ class ReadmeInstallationTests(unittest.TestCase):
         self.assertIn("actual_fingerprint", readme)
         self.assertIn("expected_fingerprint", readme)
         self.assertIn("REFUSED: missing, invalid, or mismatched signing-key fingerprint", readme)
-        self.assertIn("separately authenticated maintainer announcement", readme)
+        self.assertIn('expected_fingerprint="064F558B4CE2A03869881CEE383454EB0B74AAA3"', readme)
+        self.assertNotIn("read -r -p", readme)
+        maintainer = (ROOT / "docs/maintainer/apt-publishing.md").read_text(encoding="utf-8")
+        self.assertIn("064F558B4CE2A03869881CEE383454EB0B74AAA3", maintainer)
 
     def test_publisher_procedures_are_maintainer_only(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
