@@ -1,14 +1,14 @@
-# Per-user approval notification setup (development)
+# Optional Telegram milestone approvals
 
-The Debian preview does **not** silently enable Telegram, Hermes plugins,
+Projectwright does **not** silently enable Telegram, Hermes plugins,
 or systemd timers during `apt install`. A Debian `postinst` runs as root,
 while the required user bus and Hermes plugin configuration belong to a
 specific unprivileged account. There is no reliable way to select that
-account from an unattended installation. The release checklist requires a
-package-triggered, explicitly selected per-user onboarding mechanism before
-stable deployment.
+account from an unattended installation. The intended user explicitly opts into Telegram during first-run setup.
 
-The standard first-run command is:
+**Telegram is optional.** To approve locally without a bot, review the completed milestone and run `pw approve --milestone ID`. This prompts before calling the acceptance guard and does not require a Telegram bot, approval plugin, or notifier timer.
+
+To use Telegram buttons instead, the standard first-run command is:
 
 ```bash
 pw setup
@@ -32,10 +32,7 @@ leaves Telegram integration inactive. To deliberately skip Telegram, use
 invocation with detected Telegram credentials refuses activation. `--minutes N`
 sets the notification scan interval, 5 through 1440 minutes.
 
-For older development installs, `pw-timer setup-user --enable-hermes-plugin`
-and `pw setup-user --enable-hermes-plugin` remain direct compatibility entrypoints;
-unlike `pw setup`, these advanced commands request activation without an
-interactive confirmation.
+The user-facing workflow is `pw setup`. Additional low-level setup commands are for advanced operators; they request activation directly and should not replace the reviewed first-run prompt.
 
 Run it **as the intended ordinary user**, not with `sudo`. It verifies that
 `~/.hermes/.env` contains a Telegram bot token and a valid authorized-user
@@ -111,7 +108,7 @@ inside a Hermes virtual environment. These integration assets are still
 installed **inertly** by dpkg; the explicit non-root onboarding action is
 required for each account. Isolated Hermes discovery/registration and live Approve callback have been verified; production rollout, Reject and other security edges remain separate acceptance gates.
 
-**First-run interface:** new packages should use `pw setup`. Previously built preview artifacts may not include this command; `pw-timer setup-user` is the older direct onboarding route.
+**First-run interface:** run `pw setup` as the intended unprivileged Hermes user.
 
 See [full manual](manual.md) and [packaging operations](packaging-and-operations.md).
 
@@ -138,7 +135,7 @@ A previously accepted scoped milestone is kept valid after a successor COMMIT
 only when Projectwright can verify the exact successor commit chain through
 acceptance policy scopes, completed queue tasks and an accepted receipt or
 completed COMMIT journal. If that evidence is missing, the old approval stays
-stale and requires explicit revalidation. Unscoped legacy receipts remain
+stale and requires explicit revalidation. Unscoped receipts remain
 HEAD-strict.
 
 
