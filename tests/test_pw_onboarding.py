@@ -123,10 +123,14 @@ class OnboardingTests(unittest.TestCase):
             self.assertEqual(pw_onboarding.authorize_persistent_execution("demo", False), 2)
             run.assert_not_called()
         self.assertFalse(json.loads(self.config_path.read_text())["execution"]["enabled"])
-        with patch("sys.stdout", new_callable=__import__('io').StringIO) as out:
+        with patch.object(pw_onboarding.Path, "home", return_value=self.home), \\
+             patch.object(pw_onboarding.subprocess, "run", return_value=type("R", (), {"returncode": 0})()) as runner, \\
+             patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
             self.assertEqual(pw_onboarding.authorize_persistent_execution("demo", True), 0)
         self.assertTrue(json.loads(self.config_path.read_text())["execution"]["enabled"])
-        self.assertIn("pw timer", out.getvalue())
+        self.assertEqual(runner.call_args.args[0][-4:], ["install", "demo", "--minutes", "20"])
+        self.assertIn("LEFT DISABLED", out.getvalue())
+        self.assertIn("pw timer enable demo", out.getvalue())
 
     def test_status_resolves_embedded_relative_worktree(self):
         from pw_embedded import initialize
