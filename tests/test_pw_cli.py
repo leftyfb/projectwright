@@ -19,6 +19,7 @@ class UnifiedCommandTests(unittest.TestCase):
             "status": ("pw_onboarding", ["status"]),
             "plan": ("pw_onboarding", ["plan"]),
             "start": ("pw_onboarding", ["start"]),
+            "approve": ("pw_onboarding", ["approve"]),
             "requirements": ("pw_onboarding", ["requirements"]),
             "worker": ("pw_task_worker", []),
             "notify": ("pw_notify", []),
@@ -51,6 +52,17 @@ class UnifiedCommandTests(unittest.TestCase):
         ])
         self.assertEqual(called.call_args.kwargs["env"]["PROJECTWRIGHT_PROJECT_DIR"],
                          "/tmp/demo")
+
+    def test_positional_approval_id_forwarded_from_repository(self):
+        with patch.object(sys, "argv", ["pw", "approve", "TRACK-1-M1"]), \
+             patch("pw_embedded.discover", return_value=Path("/tmp/task-tracker/.pw")), \
+             patch.object(pw_dispatch.subprocess, "run",
+                          return_value=subprocess.CompletedProcess([], 0)) as called:
+            self.assertEqual(pw_dispatch.cli(), 0)
+        self.assertEqual(called.call_args.args[0], [
+            sys.executable, "-B", "-m", "pw_onboarding", "approve",
+            "TRACK-1-M1", "--project", "task-tracker",
+        ])
 
     def test_setup_options_forward_without_side_effects(self):
         with patch.object(sys, "argv", ["pw", "setup", "--minutes", "15", "--yes"]), patch.object(
