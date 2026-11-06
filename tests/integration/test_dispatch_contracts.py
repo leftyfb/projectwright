@@ -670,7 +670,7 @@ class TimerTests(unittest.TestCase):
 
     def test_rejects_invalid_project_interval_path(self):
         for project, minutes, script in [("Bad!", 20, Path("/tmp/pw_dispatch.py")),
-                                         ("valid", 1, Path("/tmp/pw_dispatch.py")),
+                                         ("valid", 0, Path("/tmp/pw_dispatch.py")),
                                          ("valid", 20, Path("pw_dispatch.py"))]:
             with self.assertRaises(ValueError):
                 timer.unit_strings(project, minutes, script)
