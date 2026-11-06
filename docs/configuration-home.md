@@ -1,147 +1,59 @@
-# Configuration home and project paths
+# Repository-local project layout
 
-By default, Projectwright project state lives under `~/projects/<project-id>/`.
-This contains `requirements.md`, `queue.md`, `config.json` and work logs.
-Projectwright does **not** use `~/.config/projects` or `~/.hermes/projects`
-as the default for new projects, even if those legacy directories exist.
-The project's Git worktree defaults to `worktree/` inside that project directory,
-but can point to a separate repository using `pw init --repo PATH`, configuration or `PROJECTWRIGHT_WORKTREE`.
-
-The CLI accepts an explicit Projectwright config home with:
-
-```bash
-pw tick --project demo --config-dir /absolute/config/projectwright
-pw status --project demo --config-dir /absolute/config/projectwright
-pw worker --project demo --config-dir /absolute/config/projectwright --once
-```
-
-For `pw tick`, its dispatcher forwards the chosen root to manager and worker
-subprocesses as `PROJECTWRIGHT_CONFIG_DIR`, so each sees the same project
-directory. On a direct manager/worker invocation, `--config-dir` is also
-supported.
-
-Project directory selection:
-
-1. `PROJECTWRIGHT_CONFIG_DIR/projects` if explicitly set.
-2. `HERMES_PROJECT_CONFIG_DIR` if explicitly set (legacy direct-root override).
-3. **`~/projects` otherwise**, regardless of existing legacy directories.
-
-Existing directories are never automatically migrated, overwritten, or deleted.
-To inspect an older project that still lives at `~/.hermes/projects`, explicitly
-select that root for the command, for example:
+Projectwright keeps application code, Git history, and its own state in one repository. For a new project, the default parent is `~/projects`:
 
 ```sh
-HERMES_PROJECT_CONFIG_DIR="$HOME/.hermes/projects" pw status --project older-project
+pw init ~/projects/myproject
+cd ~/projects/myproject
 ```
 
-Move old state only as an intentional, separately reviewed migration. The
-`PROJECTWRIGHT_CONFIG_DIR` option/environment variable denotes a configuration
-home whose `projects/` child is used; it is **not** a direct project root.
-The `HERMES_PROJECT_CONFIG_DIR` override remains a direct project-root path.
+Or, in an existing Git repository:
 
-**Missing configuration behavior:** an ordinary unprepared project without `config.json` is disabled, and no provider, Git repository, queue or credentials are created. An **explicitly prepared** config-free project with a Git worktree, HEAD commit, branch match, queue and work log can be manually inspected and executed, as described later on this page. With `requirements.md` an explicit planning path is supported. Unattended scheduling and human approval are never inferred.
+```sh
+cd /path/to/myproject
+pw init .
+```
 
-The explicit `--config-dir` option takes a configuration home and appends
-`projects/`; it is not itself the project directory. The legacy
-`HERMES_PROJECT_CONFIG_DIR` environment variable remains a direct project-root
-override for compatibility.
+Both forms create `.pw/` at the repository root. The repository directory name is also the Projectwright project ID. Initialization does **not** enable planning, persistent execution, timers, or approvals.
 
-## Inspect defaults without initializing a project
+| Repository path | Contents |
+|---|---|
+| `.pw/README.md` | Guide to Projectwright state |
+| `.pw/config.json` | Validated project configuration |
+| `.pw/requirements.md` | Requirements and milestone acceptance rules |
+| `.pw/queue.md` | Planned and completed tasks |
+| `.pw/work_log.md` | Task summaries |
+| `.pw/state/` | Lock, journal, and runtime state |
+| `.pw/logs/` | Operational logs |
+| `.pw/results/` | Worker reports |
 
-`pw defaults --project demo` prints the selected project root, optional
-configuration-file location and an explicit fail-closed set of defaults.
-`pw defaults --project demo --config-dir /absolute/config/projectwright`
-inspects another configuration home. Neither command creates files, starts a
-provider, sends Telegram messages, enables systemd services, or approves tasks.
+By default `pw init` adds `/.pw/` to `.gitignore`; no Projectwright state is tracked. `pw init PATH --shared` instead permits selected human-maintained definitions to be committed, but still excludes runtime files. Keep credentials out of configuration and Git.
 
-The `configured` field reports only whether `config.json` exists; it is not
-an authorization decision or validation of its contents. The reported defaults
-describe behavior **when no project configuration exists**, not effective
-settings in an existing project. Config-free *execution* requires an explicitly prepared worktree and preflight; it is not an unattended authorization.
+## Find and configure a project
 
-## Initialize a safe, disabled project
+Within an initialized repository, commands discover the local `.pw/` automatically. From another directory, use `--project NAME` for a registered project. After relocating or cloning a repository with tracked Projectwright definitions, run `pw register .` at its root to refresh registration.
 
-`pw init --project demo` creates a new, private
-`<project-root>/demo/config.json` with execution, planning, and notes disabled.
-Use `--config-dir /absolute/config/projectwright` to select an XDG-style
-configuration home. Initialization refuses existing project directories
-(including symbolic links); it will not overwrite an existing configuration.
-The created directory is mode 0700 and configuration is mode 0600.
+```sh
+pw requirements --edit
+pw config list
+pw config set planning.milestone_sequence strict
+pw plan
+pw status
+pw start
+```
 
-`pw status --project demo` reports `disabled`; `pw worker --project demo
---once` also refuses execution. Initialization deliberately does **not**
-invent a Git worktree, credentials, provider, queue, approval policy, systemd
-unit or Telegram recipient. Enabling real execution remains an explicit
-separate configuration and authorization process.
+Planning and task execution are separate actions. `pw plan` enables planning and requests a queue; `pw start` prompts before one manual dispatcher run. Neither installs a worker schedule.
 
-## Hardcoded runtime defaults (optional config file)
+To authorize recurring work, use:
 
-`pw_config.load(project, root)` now constructs ordinary project paths and
-runtime settings from built-in defaults, whether or not `config.json` exists.
-A present JSON file overrides those defaults, including partial settings for
-planning, notes and execution. `pw defaults --project demo` also exposes
-`effective_config` so users can inspect the resulting values.
+```sh
+pw authorize-execution --yes --minutes 5
+```
 
-A missing worktree setting resolves to the project's `worktree/` directory
-and a missing branch setting defaults to `main`; neither default creates or
-initializes a Git repository. A worker must still pass its Git-state and
-execution checks before acting. The basic filesystem defaults are local to
-`<project-root>/<project-id>/`: `queue.md`, `work_log.md`,
-`worker.lock`, `worker.log`, `results/`, `git_cycle.json`, and
-`worker_journal.json`. Runtime timeout defaults to 900 seconds and the
-Hermes executable name defaults to `hermes`, which uses its own selected model.
+This creates the per-project systemd user timer, **left disabled**, and prints `pw timer enable NAME` so you can start it when ready. `pw timer disable NAME` stops future scheduled activations.
 
-The manager and worker consume shared defaults and optional overrides. A
-prepared config-free worktree can be invoked manually after Git and queue
-preflight; an unprepared project remains disabled.
+## Approval without Telegram
 
-## Manually running a prepared project without config.json
+After reviewing completed milestone work and commits, run `pw approve --milestone YOUR-MILESTONE-ID`. It shows the configured command and scope, requires explicit confirmation, and invokes the same milestone acceptance guard used by Telegram approvals. It will not accept incomplete tasks, untracked required paths, a dirty worktree, or a failed acceptance command.
 
-A config file is not required for an explicitly invoked worker when the
-hardcoded project paths point to an existing, initialized Git worktree, the
-current branch matches the configured/default branch, and both `queue.md`
-and `work_log.md` already exist. For example, `pw worker --project demo
---dry-run` can inspect the next task from this prepared directory without
-creating `config.json`. By default its worktree is
-`<project-root>/demo/worktree`, branch `main`. A different repository or
-branch can be selected with `PROJECTWRIGHT_WORKTREE` (absolute path) and
-`PROJECTWRIGHT_BRANCH`. These environment values override JSON fields.
-
-Explicit `--once` is also eligible after preflight validation, but all normal
-worker Git, journal and task-scope checks continue to apply. Projectwright does
-not create a Git repository, queue, or notes automatically, and will return
-`disabled` when these prerequisites are absent. The normal `pw tick --project demo` dispatcher also accepts this prepared
-config-free workspace: it skips automatic planning and dispatches one worker
-cycle directly. Config-free automatic planning and scheduled execution remain
-disabled until explicitly configured.
-
-### Creating a project with no config.json
-
-`pw init --project demo --no-config` creates private empty `queue.md`
-and `work_log.md` files in the default project directory, with **no**
-`config.json`. It does not initialize a Git repository, invoke Hermes or
-enable automatic execution. Clone or initialize the intended repository into
-the default `worktree/` subdirectory (with a real HEAD commit), then use
-`pw worker --project demo --dry-run` or `pw tick --project demo`.
-The prepared repository must be on the expected branch (default `main`).
-Existing projects are never overwritten.
-
-### Default requirements file and planning
-
-The default requirements path is `<project-root>/<id>/requirements.md`.
-When that file and the prepared Git worktree, queue, and work log exist,
-an explicit `pw plan --project demo` can invoke the planner without
-`config.json`. `pw tick --project demo` may then plan and execute the
-next task using normal quota, Git, journal and acceptance checks. Planner
-invocation still requires a working, locally installed provider (default:
-`hermes` on `PATH`). If requirements are absent, planning stays disabled;
-nothing invents a requirements document or auto-approves a milestone.
-
-### Defaults for external integrations
-
-For a project with no `config.json`, Home Assistant quota telemetry is
-disabled by default, and the worker does not send Telegram progress messages.
-This avoids requiring unrelated Hermes/HA credentials for local operation.
-Existing configured projects retain their prior quota default (enabled unless
-overridden) and notification behavior. Automatic milestone approval is never
-inferred from missing configuration.
+See the [README](../README.md) for complete examples and the [CLI reference](cli.md) for commands and settings.
