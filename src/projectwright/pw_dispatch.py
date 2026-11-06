@@ -549,7 +549,7 @@ def cli():
             env["PROJECTWRIGHT_PROJECT_DIR"] = str(found.parent)
     arguments = list(sys.argv[2:])
     if (command in {'tick', 'status', 'plan', 'worker', 'notify', 'requirements',
-                    'start', 'authorize-execution'} and
+                    'start', 'authorize-execution', 'config'} and
             '--project' not in arguments and env.get('PROJECTWRIGHT_PROJECT_DIR')):
         arguments.extend(['--project', Path(env['PROJECTWRIGHT_PROJECT_DIR']).name])
     return subprocess.run([sys.executable, '-B', '-m', module, *fixed, *arguments],
