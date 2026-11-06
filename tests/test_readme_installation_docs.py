@@ -21,6 +21,10 @@ class ReadmeInstallationTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertIn(command, readme)
         self.assertIn("fingerprint", readme)
+        self.assertIn("actual_fingerprint", readme)
+        self.assertIn("expected_fingerprint", readme)
+        self.assertIn("REFUSED: missing, invalid, or mismatched signing-key fingerprint", readme)
+        self.assertIn("separately authenticated maintainer announcement", readme)
 
     def test_publisher_procedures_are_maintainer_only(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
