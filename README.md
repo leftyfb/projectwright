@@ -42,13 +42,16 @@ curl -fsSL https://leftyfb.github.io/projectwright/projectwright-archive-keyring
 gpg --show-keys --with-fingerprint "$keyfile"
 ```
 
-**Verify the key before trusting it.** Obtain Projectwright's 40-character APT signing-key fingerprint from a **separately authenticated maintainer announcement** (not the downloaded key, the APT site, or a fingerprint file fetched from that same site). The maintainer must publish and confirm this reference out-of-band before a first-time user proceeds. If you don't have a trustworthy reference, **stop here**—do not install the key or add the repository.
+**Verify the signing key.** The Projectwright maintainer-provided APT archive key fingerprint is:
 
-Enter the independently verified fingerprint below. The comparison is case-insensitive and refuses an invalid or mismatched value.
+```text
+064F558B4CE2A03869881CEE383454EB0B74AAA3
+```
+
+The following commands check the downloaded key against that exact fingerprint **before** installing it. The reference is published in this repository's README, separate from the GitHub Pages APT download. For higher-assurance installation, confirm the published fingerprint with the maintainer through another trusted channel as well.
 
 ```bash
-read -r -p "Verified 40-character Projectwright APT key fingerprint: " expected_fingerprint
-expected_fingerprint="${expected_fingerprint^^}"
+expected_fingerprint="064F558B4CE2A03869881CEE383454EB0B74AAA3"
 actual_fingerprint="$(gpg --batch --show-keys --with-colons "$keyfile" |
   awk -F: '$1 == "fpr" {print toupper($10); exit}')"
 
@@ -58,7 +61,7 @@ if [[ ! "$expected_fingerprint" =~ ^[0-9A-F]{40}$ ]] ||
   rm -f "$keyfile"
   exit 1
 fi
-echo "Signing-key fingerprint matches the independently verified reference."
+echo "Signing-key fingerprint matches the maintainer-published reference."
 ```
 
 Only after that check succeeds, finish installation:
