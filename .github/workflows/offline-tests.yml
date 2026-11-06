@@ -150,8 +150,8 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v7
         with:
-          name: projectwright-deb-${{ github.run_id }}
           path: ${{ runner.temp }}/projectwright-debs/*.deb
+          archive: false
           retention-days: 7
           if-no-files-found: error
 
