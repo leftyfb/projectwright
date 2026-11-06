@@ -8,13 +8,32 @@ Your code, Git history, and Projectwright state live in one repository. Projectw
 
 **Prerequisites:** Ubuntu 24.04 or 26.04, Git, Python 3, a configured [Hermes](https://github.com/NousResearch/hermes-agent) CLI, and a working user-level systemd session if you want scheduled execution. Set your Git user name/email before making commits.
 
-First [configure the signed Projectwright APT repository](docs/apt-repository.md) and verify its signing key fingerprint independently. Then run:
+Install the APT prerequisites, download the Projectwright archive signing key, and add the signed APT source. These commands are for Ubuntu 24.04 and 26.04:
 
 ```sh
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg
+
+keyfile=$(mktemp)
+curl -fsSL https://leftyfb.github.io/projectwright/projectwright-archive-keyring.gpg -o "$keyfile"
+gpg --show-keys --with-fingerprint "$keyfile"
+```
+
+**Check the displayed signing-key fingerprint against a trusted maintainer-published fingerprint before proceeding.** The download URL alone does not authenticate the key. Once verified, finish installation:
+
+```sh
+sudo install -m 0644 "$keyfile" /usr/share/keyrings/projectwright-archive-keyring.gpg
+rm -f "$keyfile"
+
+echo 'deb [signed-by=/usr/share/keyrings/projectwright-archive-keyring.gpg] https://leftyfb.github.io/projectwright/ stable main' \
+  | sudo tee /etc/apt/sources.list.d/projectwright.list
+
 sudo apt update
 sudo apt install projectwright
 pw setup
 ```
+
+You can upgrade Projectwright later with the normal `sudo apt update && sudo apt upgrade` process.
 
 Run `pw setup` as **your normal user**, not with sudo. It validates Hermes and offers optional Telegram integration if Hermes already has Telegram credentials. Telegram is **not required** to run tasks or approve milestones locally.
 
@@ -204,5 +223,4 @@ If planning cannot start, verify requirements, valid acceptance blocks, a commit
 - [Paths and repository layout](docs/configuration-home.md)
 - [Operator manual](docs/manual.md)
 - [Telegram approvals](docs/user-approval-setup.md)
-- [Signed APT installation](docs/apt-repository.md)
 - [Advanced provider adapters](docs/provider-adapters.md)
