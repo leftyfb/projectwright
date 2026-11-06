@@ -28,17 +28,17 @@ class HermesServicePathTests(unittest.TestCase):
         self.assertEqual(argv[0], "/custom/hermes")
 
     def test_worker_delivery_finds_hermes_outside_path(self):
-        with patch.object(worker, "HERMES", "hermes"), \\
+        with patch.object(worker, "HERMES", "hermes"), \
              patch("pw_project_timer.find_hermes_cli",
-                   return_value="/home/fixture/.local/bin/hermes"), \\
+                   return_value="/home/fixture/.local/bin/hermes"), \
              patch.object(worker.subprocess, "run",
                           return_value=Mock(returncode=0)) as run:
             self.assertTrue(worker.deliver("test", io.StringIO()))
         self.assertEqual(run.call_args.args[0][0], "/home/fixture/.local/bin/hermes")
 
     def test_missing_hermes_delivery_is_failure_not_crash(self):
-        with patch.object(worker, "HERMES", "hermes"), \\
-             patch("pw_project_timer.find_hermes_cli", return_value=None), \\
+        with patch.object(worker, "HERMES", "hermes"), \
+             patch("pw_project_timer.find_hermes_cli", return_value=None), \
              patch.object(worker.subprocess, "run",
                           side_effect=FileNotFoundError("hermes")):
             output = io.StringIO()
