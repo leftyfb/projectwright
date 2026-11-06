@@ -41,12 +41,14 @@ Run `pw setup` as **your normal user**, not with sudo. It validates Hermes and o
 
 You can create a new repository or add Projectwright to an existing one.
 
-**New repository:**
+**New, empty project:**
 
 ```sh
 pw init ~/projects/myproject
 cd ~/projects/myproject
 ```
+
+Projectwright creates the Git repository on `main`, adds `/.pw/` to a new `.gitignore`, and **automatically commits that file**, giving the project a clean initial Git HEAD. Git must have an author identity configured (`user.name` and `user.email`) for this automatic commit. If Git cannot make the commit, `pw init` prints explicit recovery instructions.
 
 **Existing repository** (run at its Git root):
 
@@ -56,6 +58,8 @@ pw init .
 ```
 
 Both initialize `.pw/` without enabling planning, unattended execution, or a timer. The repository directory name becomes its Projectwright project ID. Use simple lowercase names such as `myproject`.
+
+For an **existing Git repository or non-empty directory**, `pw init` does **not** make Git commits. It preserves the existing `.gitignore` and appends `/.pw/` if necessary. Review `git status --short`, then commit any resulting changes yourself before planning.
 
 ### Write and review requirements
 
@@ -80,14 +84,15 @@ This opens `.pw/requirements.md`. Describe what you want to build, ordered requi
 
 The acceptance command is run directly, **not through a shell**. Scope entries are literal relative paths and must be tracked in Git when approval occurs. In a new project, the test and source files above are **proposed future deliverables**, not pre-existing files or proven commands. Adjust the names and verify the command before authorizing work. For a larger project, you can ask an LLM to help draft and review requirements using the [optional drafting prompt](docs/llm-requirements-onboarding.md).
 
-Commit any starting application files and ensure your repository has a first commit:
+For a new empty project, the initial `.gitignore` commit was already created by `pw init`; no additional commit is needed until you add application files. For an existing project, ensure you have a clean Git HEAD before planning. If `pw init` changed `.gitignore`, review and commit that change:
 
 ```sh
-git add .
-git commit -m "Initialize project"
+git status --short
+git add .gitignore
+git commit -m "Ignore Projectwright state"
 ```
 
-If your existing repo is already committed and clean, there is no need to create another commit. `.pw/` remains untracked by default; do not force-add operational state.
+Do not run the commit command when `git status` is already clean. Operational `.pw/` files are ignored by default; do not force-add them.
 
 ### Plan and inspect
 
