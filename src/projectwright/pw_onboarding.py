@@ -340,9 +340,9 @@ def status(project: str, as_json: bool) -> int:
     elif report.get("blockers") and "requirements_invalid" in report["blockers"]:
         next_action = f"Correct the listed requirements diagnostics, then rerun: pw status --project {project}"
     elif report.get("decision") == "awaiting_acceptance":
-        next_action = ("Queued tasks are complete, but milestone acceptance is still pending. "
-                       "Run pw notify to preview the approval request, approve it through the "
-                       "configured Telegram callback, then run: pw plan --project " + project)
+        next_action = ("Milestone acceptance is pending. Approve through the configured "
+                       "Telegram callback; Projectwright will attempt to replenish "
+                       "the next milestone immediately after approval.")
     elif report.get("decision") == "busy":
         next_action = "A run is in progress; no action required. Check the user service journal for progress."
     elif (report.get("decision") == "blocked" and
@@ -366,8 +366,13 @@ def status(project: str, as_json: bool) -> int:
         next_action = "Resolve the reported blocker or approval gate, then rerun pw status"
     elif type(report.get("pending")) is not int:
         next_action = "Queue counts are unknown; inspect the project queue and manager blockers, then rerun pw status"
+    elif (report.get("decision") in {"replenish", "strategic_review"} and
+          report.get("planning_enabled") is True and recurring_enabled is True):
+        next_action = "Automatic queue replenishment will be attempted on the next timer activation."
     elif report.get("pending") == 0:
         next_action = f"Review requirements and queue planning with: pw plan --project {project}"
+    elif recurring_enabled is True and execution_enabled is True:
+        next_action = "Queued work will be attempted automatically on the next timer activation."
     else:
         next_action = f"Review the queued task, then run one manually with: pw start --project {project}"
     report["next_action"] = next_action
