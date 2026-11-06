@@ -262,6 +262,11 @@ def status(project: str, as_json: bool) -> int:
         raise ValueError(f"Malformed project configuration: {config_path}")
     initialized = config_path.is_file()
     cfg = _config(project)[1] if initialized else {}
+    effective_cfg = None
+    effective_path = None
+    if initialized:
+        from pw_config import load as load_config
+        effective_path, effective_cfg = load_config(project, directory_override=project_dir)
     planning_enabled = cfg.get("planning", {}).get("enabled") if initialized else False
     execution_enabled = cfg.get("execution", {}).get("enabled") if initialized else False
     recurring_configured, recurring_enabled = _recurring_state(project)
@@ -281,13 +286,49 @@ def status(project: str, as_json: bool) -> int:
             "not_configured" if recurring_configured is False else "unknown"
         ),
     })
-    try:
-        journal_file = Path(cfg.get("worker_journal_file") or project_dir / "worker_journal.json").expanduser()
-        journal = json.loads(journal_file.read_text(encoding="utf-8"))
-        current_task = journal.get("current_task")
-        report["current_task"] = current_task if isinstance(current_task, dict) else None
-    except (OSError, json.JSONDecodeError, AttributeError):
-        report["current_task"] = None
+    # Read the canonical effective journal path, which for embedded projects
+    # is usually .pw/state/worker_journal.json (not .pw/worker_journal.json).
+    report["current_task"] = None
+    if effective_cfg is not None:
+        from pw_worker_journal import journal_path, read as read_journal
+        try:
+            journal = read_journal(journal_path(effective_cfg, effective_path))
+            current_task = journal.get("current_task")
+            if isinstance(current_task, dict):
+                report["current_task"] = current_task
+        except (OSError, ValueError, RuntimeError):
+            # Preserve the manager's real blocked state; do not invent an
+            # active task when the journal is unreadable or absent.
+            pass
+
+    if report.get("decision") == "busy":
+        # The lock is expected when an unattended worker or planner is active.
+        # A busy manager returns no queue counts or blockers, so report a
+        # read-only queue snapshot rather than calling missing data an error.
+        report["blockers"] = []
+        if effective_cfg is not None:
+            from pw_queue_manager import queue_summary
+            try:
+                queue_path = Path(effective_cfg["queue"])
+                if not queue_path.is_symlink():
+                    summary = queue_summary(queue_path.read_text(encoding="utf-8"))
+                    report.update(pending=summary["pending_count"],
+                                  completed=summary["completed_count"],
+                                  queue_blocked=summary["blocked_count"])
+                    report["queue_counts_snapshot"] = True
+            except (OSError, ValueError, UnicodeError):
+                pass
+        active = report.get("current_task")
+        phase = active.get("phase") if isinstance(active, dict) else None
+        report["current_activity"] = (
+            "running" if phase in ("selected", "running") else "busy"
+        )
+        report["reason"] = (
+            "Project lock held; task in progress" if phase in ("selected", "running")
+            else "Project lock held by another worker or planner"
+        )
+    else:
+        report["current_activity"] = report.get("decision", "unknown")
     if not initialized:
         next_action = f"Initialize a managed project: pw init --project {project} --repo /path/to/repository"
     elif report.get("decision") == "unknown" and report.get("reason") == "Manager project identity mismatch":
@@ -302,7 +343,9 @@ def status(project: str, as_json: bool) -> int:
         next_action = ("Queued tasks are complete, but milestone acceptance is still pending. "
                        "Run pw notify to preview the approval request, approve it through the "
                        "configured Telegram callback, then run: pw plan --project " + project)
-    elif report.get("decision") in {"blocked", "busy", "quota_blocked"}:
+    elif report.get("decision") == "busy":
+        next_action = "A run is in progress; no action required. Check the user service journal for progress."
+    elif report.get("decision") in {"blocked", "quota_blocked"}:
         next_action = "Resolve the reported blocker or approval gate, then rerun pw status"
     elif type(report.get("pending")) is not int:
         next_action = "Queue counts are unknown; inspect the project queue and manager blockers, then rerun pw status"
@@ -324,8 +367,15 @@ def status(project: str, as_json: bool) -> int:
         if key in report:
             value = report[key]
             print(f"{label}: {value if isinstance(value, int) else 'unknown'}")
-    print(f"Current activity: {report.get('decision', 'unknown')} — {report.get('reason', 'unknown')}")
-    print(f"Current task: {report.get('current_task') or 'none reported'}")
+    if report.get("queue_counts_snapshot"):
+        print("Queue counts: read-only snapshot while a run holds the lock")
+    print(f"Current activity: {report.get('current_activity', 'unknown')} — {report.get('reason', 'unknown')}")
+    task = report.get("current_task")
+    if isinstance(task, dict):
+        task_id, kind, phase = task.get("id", "?"), task.get("kind", "?"), task.get("phase", "?")
+        print(f"Current task: {task_id} — {kind} ({phase})")
+    else:
+        print("Current task: none reported")
     blockers = report.get("blockers")
     print("Blockers: " + (", ".join(blockers) if isinstance(blockers, list) and blockers else "none reported"))
     for item in report.get("diagnostics", []):
