@@ -32,7 +32,7 @@ class LocalApprovalAndAuthorizationTests(unittest.TestCase):
                  redirect_stdout(output):
                 self.assertEqual(pw_onboarding.authorize_persistent_execution("myproject", True, 5), 0)
             self.assertTrue(written[0]["execution"]["enabled"])
-            self.assertEqual(runner.call_args.args[0][-4:], ["myproject", "--minutes", "5"][-4:])
+            self.assertEqual(runner.call_args.args[0][-4:], ["install", "myproject", "--minutes", "5"])
             self.assertIn("LEFT DISABLED", output.getvalue())
             self.assertIn("No recurring tasks will run", output.getvalue())
             self.assertIn("pw timer enable myproject", output.getvalue())
