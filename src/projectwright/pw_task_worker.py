@@ -968,8 +968,38 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
 
         if not no_telegram:
             if not deliver(msg.rstrip() + '\n\n' + notification_footer() + '\n', log):
-                return 1
-        return 0 if ok else 1
+                # Progress delivery does not undo a verified task. The approval
+                # notifier remains independent and must still be attempted.
+                print('WARNING: Worker progress Telegram delivery failed', file=log, flush=True)
+                progress_delivered = False
+            else:
+                progress_delivered = True
+        else:
+            progress_delivered = True
+        if ok and following is None and not no_telegram:
+            # The last queue checkbox, work log and journal are durable, and
+            # the worker lock was released above. Reuse the existing pinned
+            # approval scan and idempotent notifier instead of waiting for the
+            # independent user notification timer. Failure is retryable there.
+            try:
+                from pw_dispatch import default_project_root
+                notify = subprocess.run(
+                    [sys.executable, '-B', '-m', 'pw_notify', '--root',
+                     str(default_project_root()), '--project', PROJECT_ID, '--send'],
+                    capture_output=True, text=True, timeout=45, check=False)
+                if notify.returncode:
+                    print('WARNING: Immediate milestone approval delivery failed; '
+                          'notifier timer may retry: ' +
+                          (notify.stderr or notify.stdout)[-1000:],
+                          file=log, flush=True)
+                elif notify.stdout.strip():
+                    print('Immediate milestone check: ' + notify.stdout.strip(),
+                          file=log, flush=True)
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                print('WARNING: Immediate milestone approval check failed; '
+                      'notifier timer may retry: ' + str(exc),
+                      file=log, flush=True)
+        return (0 if ok else 1) if progress_delivered else 1
 
 
 def main() -> int:
