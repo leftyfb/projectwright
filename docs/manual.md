@@ -100,6 +100,4 @@ Status can report missing/invalid acceptance policy, wrong Git branch, uncommitt
 
 Use [baseline diagnostics](baseline-validation.md), [workflow mechanics](workflow.md), [CLI reference](cli.md), and [provider adapters](provider-adapters.md) for detailed contracts.
 
-## Development and releases
-
-Use the repository's tests and CI to validate modifications before publishing. The release tooling and APT signing workflow are documented in [release-process.md](release-process.md) and [apt-repository.md](apt-repository.md). Do not treat source-tree execution as equivalent to an installed-package test.
+For help using Projectwright, continue with the [CLI reference](cli.md) and [workflow guide](workflow.md). Development, build, and release procedures are maintained separately for contributors in [CONTRIBUTING.md](../CONTRIBUTING.md).
