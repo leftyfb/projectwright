@@ -261,5 +261,52 @@ class OnboardingTests(unittest.TestCase):
             payload = json.loads(out.getvalue())
         self.assertEqual(payload["current_task"], task)
 
+
+    def test_busy_status_uses_journal_and_queue_without_fake_blockers(self):
+        from pw_embedded import initialize
+        repo = self.home / "task-tracker"
+        initialize(repo)
+        state = repo / ".pw/state"
+        (repo / ".pw/queue.md").write_text(
+            "- [ ] **P101 — EDIT** Build tracker\\n"
+            "- [ ] **P102 — TEST** Test tracker\\n"
+            "- [x] **P100 — READ** Review tracker\\n")
+        state.mkdir(parents=True, exist_ok=True)
+        (state / "worker_journal.json").write_text(json.dumps({
+            "schema_version": 1,
+            "current_task": {"id": "P101", "kind": "EDIT", "phase": "running"},
+            "last_completed_task": None,
+        }))
+        result = type("R", (), {
+            "returncode": 2, "stderr": "",
+            "stdout": json.dumps({
+                "project": "task-tracker", "decision": "busy",
+                "reason": "Project lock held; skip planning"
+            })
+        })()
+        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \\
+             patch.object(pw_onboarding.subprocess, "run", return_value=result), \\
+             patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
+            pw_onboarding.status("task-tracker", False)
+        human = out.getvalue()
+        self.assertIn("Current activity: running", human)
+        self.assertIn("Current task: P101 — EDIT (running)", human)
+        self.assertIn("Queue pending: 2", human)
+        self.assertIn("Queue completed: 1", human)
+        self.assertIn("Blockers: none reported", human)
+        self.assertNotIn("Manager returned invalid blocker data", human)
+        self.assertIn("no action required", human)
+        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \\
+             patch.object(pw_onboarding.subprocess, "run", return_value=result), \\
+             patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
+            pw_onboarding.status("task-tracker", True)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload["decision"], "busy")
+        self.assertEqual(payload["current_activity"], "running")
+        self.assertEqual(payload["current_task"]["id"], "P101")
+        self.assertEqual(payload["pending"], 2)
+        self.assertEqual(payload["blockers"], [])
+        self.assertTrue(payload["queue_counts_snapshot"])
+
 if __name__ == "__main__":
     unittest.main()
