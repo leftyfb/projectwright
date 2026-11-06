@@ -15,7 +15,7 @@ class ApprovalSetupTests(unittest.TestCase):
         def runner(argv, **kwargs):
             calls.append((argv, kwargs))
             if argv[2] == "is-active":
-                return Mock(returncode=0, stdout="active\\n")
+                return Mock(returncode=0, stdout="active\n")
             return Mock(returncode=0)
         with patch.object(timer.os, "geteuid", return_value=1000), \
              patch.object(timer.sys, "stdin", Mock(isatty=lambda: True)):
@@ -34,7 +34,7 @@ class ApprovalSetupTests(unittest.TestCase):
             calls = []
             def probe(argv, **kwargs):
                 calls.append(argv)
-                return Mock(returncode=0, stdout="active\\n")
+                return Mock(returncode=0, stdout="active\n")
             with self.assertRaisesRegex(ValueError, "interactive terminal"):
                 timer.restart_hermes_gateway(runner=probe)
             self.assertEqual(calls, [["systemctl", "--user", "is-active", "hermes-gateway.service"]])
@@ -43,7 +43,7 @@ class ApprovalSetupTests(unittest.TestCase):
         calls = []
         def probe(argv, **kwargs):
             calls.append(argv)
-            return Mock(returncode=3, stdout="inactive\\n")
+            return Mock(returncode=3, stdout="inactive\n")
         with patch.object(timer.os, "geteuid", return_value=1000):
             self.assertFalse(timer.restart_hermes_gateway(runner=probe,
                                                           prompt=lambda _ : self.fail("prompted")))
