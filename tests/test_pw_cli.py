@@ -78,9 +78,11 @@ class UnifiedCommandTests(unittest.TestCase):
     def test_unknown_command_refuses_without_execution(self):
         with patch.object(sys, "argv", ["pw", "bad"]), patch.object(
             pw_dispatch.subprocess, "run"
-        ) as called, redirect_stderr(io.StringIO()):
+        ) as called, redirect_stderr(io.StringIO()) as output:
             self.assertEqual(pw_dispatch.cli(), 2)
             called.assert_not_called()
+        self.assertIn("Unknown Projectwright command: bad\\nusage: pw ", output.getvalue())
+        self.assertNotIn(r"\\nusage:", output.getvalue())
 
     def test_help_has_no_side_effects(self):
         with patch.object(sys, "argv", ["pw", "--help"]), patch.object(
