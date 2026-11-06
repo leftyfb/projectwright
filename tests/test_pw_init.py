@@ -45,7 +45,7 @@ class SafeInitTests(unittest.TestCase):
             repo = home / "existing"
             repo.mkdir()
             subprocess.run(["git", "-C", str(repo), "init", "-b", "main"], check=True, capture_output=True)
-            (repo / ".gitignore").write_text("*.swp\\n")
+            (repo / ".gitignore").write_text("*.swp\n")
             result = self.invoke("pw_init", home, str(repo))
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertFalse(json.loads(result.stdout)["initial_commit_created"])
