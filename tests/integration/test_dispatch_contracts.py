@@ -115,6 +115,40 @@ class DispatchFixture(unittest.TestCase):
 
 
 class TestTick(DispatchFixture):
+    def test_embedded_project_worker_summary_uses_pinned_pw_paths(self):
+        from pw_embedded import initialize
+        repo = self.root / "custom" / "task-tracker"
+        repo.parent.mkdir()
+        initialize(repo)
+        marker_dir = repo / ".pw"
+        (marker_dir / "queue.md").write_text(
+            "- [x] **P101 — EDIT** TRACK-1 / TRACK-1-M1: build the tracker\\n"
+            "- [ ] **P102 — TEST** TRACK-1 / TRACK-1-M1: test the tracker\\n",
+            encoding="utf-8",
+        )
+        (marker_dir / "state" / "worker_journal.json").write_text(
+            json.dumps({"schema_version": 1, "current_task": None,
+                        "last_completed_task": {"id": "P101", "kind": "EDIT"}}),
+            encoding="utf-8",
+        )
+        report = {"project": "task-tracker", "decision": "queued",
+                  "pending": 1, "added": 1, "task_ids": ["P102"],
+                  "planning_mode": "tactical", "notes_sync": "not_configured"}
+        calls = []
+
+        def runner(argv, **kwargs):
+            calls.append(argv)
+            if len(calls) == 1:
+                return subprocess.CompletedProcess(argv, 0, json.dumps(report), "")
+            return subprocess.CompletedProcess(argv, 0, "", "")
+
+        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \\
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(dispatch.run_tick("task-tracker", self.scripts, runner=runner), 0)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("TASK SUMMARY last_completed=P101 kind=EDIT pending=1", output.getvalue())
+        self.assertNotIn("TASK SUMMARY unavailable", output.getvalue())
+
     def test_manager_output_contract_rejects_ambiguous_responses(self):
         valid_queued = {
             "project": self.project, "decision": "queued", "pending": 0,
