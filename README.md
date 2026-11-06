@@ -37,7 +37,37 @@ less /usr/share/doc/projectwright/examples/task-tracker/README.md
 
 The initial milestone can be worked and reviewed without Telegram. Advancing to the next milestone requires a real Telegram approval callback; the demo does not silently bypass the approval gate.
 
-## Quick start
+## Quick start: manual or automatic
+
+The [Task Tracker walkthrough](examples/task-tracker/README.md) contains a fully runnable example with expected output. To start a new project:
+
+```sh
+pw init ~/projects/myproject
+cd ~/projects/myproject
+pw requirements --edit
+# Review requirements, then commit the starter files.
+pw plan
+pw status
+```
+
+Choose how to run tasks:
+
+- **Manual, one task at a time:** `pw start` prompts before one run.
+- **Unattended, one task per timer activation:** first configure milestone sequencing, then explicitly authorize and enable the schedule:
+
+```sh
+pw config set planning.milestone_sequence strict
+pw authorize-execution --project myproject --yes
+pw timer install myproject --minutes 5
+pw timer enable myproject
+pw timer status myproject
+```
+
+`pw timer install` **only creates disabled systemd user units**. `pw timer enable` starts the schedule; `pw timer disable` stops it. You can use intervals from 1 to 1440 minutes. Each interval begins **after the prior service finishes**, so a long task is not interrupted and a second invocation cannot overlap it. The project's worker lock also prevents simultaneous task execution. Human milestone approvals remain mandatory.
+
+To follow a running project, use `pw status`. The [CLI reference](docs/cli.md) and the [Task Tracker walkthrough](examples/task-tracker/README.md) explain both modes.
+
+## Quick start (more detail)
 
 Initialize a repository at a location of your choice, then provide requirements and review the proposed work:
 
