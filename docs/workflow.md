@@ -1,18 +1,10 @@
 # Projectwright workflow: from requirements to accepted milestones
 
-This document describes the current **development** implementation. It covers
-existing functional boundaries without implying that Hermes integrations and
-filenames have already been fully replaced.
+This document describes Projectwright's current repository-local workflow and the safety checks surrounding planning, execution, and acceptance.
 
 ## 1. Define the project
 
-A project has an identifier, Git worktree/branch, queue, requirements file,
-optional acceptance policy and optional planning/agent provider settings.
-Existing projects use a JSON configuration under the selected project root.
-See [configuration-home.md](configuration-home.md) for XDG paths, overrides
-and the backwards-compatible Hermes-project fallback.
-
-A missing `config.json` normally yields `disabled`; however, an **explicitly prepared** config-free project with a real Git worktree, HEAD commit, queue and work log can run through manual `pw worker` or `pw tick` after preflight. `requirements.md` permits explicit planning. Missing prerequisites remain disabled, and no Git repository, executable or approval is invented. See [the current manual](manual.md).
+A project has an identifier, Git worktree/branch, queue, requirements file, and optional acceptance and provider settings. The current layout places application files and Git history at the repository root and all Projectwright state beneath `.pw/`. Run `pw init PATH` for a new repository or `pw init .` in an existing repository. Initialization is inert: planning, unattended execution, and scheduling are off until explicitly authorized. See [repository layout](configuration-home.md) and the [README](../README.md).
 
 ## 2. Inspect, plan and dispatch
 
@@ -82,12 +74,10 @@ shell. The block contains only exact `Command` and `Scope` list entries; it
 ends at the next heading of the same or higher level. `Scope` entries are
 relative literal Git paths (not Git pathspec magic); they must be unique and
 tracked at approval time. Every milestone in a strict requirements document
-must define one command and at least one scope. If `config.json` sets
-`planning.requirements_file`, that file is the only embedded-policy source
-(expanded with `~`); the project-root `requirements.md` is used only when the
-setting is absent. `telegram_acceptance.json` is a legacy compatibility source
-only when no embedded blocks exist; keeping both sources is rejected. The human
+must define one command and at least one scope. The supported policy lives in the selected `.pw/requirements.md` and is read according to `planning.requirements_file`. Maintain a single source of acceptance rules. The human
 approval boundary and receipt freshness checks remain unchanged.
+
+**Telegram is optional.** Local operators can approve completed milestones using `pw approve --milestone ID`. It displays the configured acceptance command and scope, requires confirmation (unless explicitly run with `--yes`), and calls the same guarded acceptance implementation. Any existing pinned Telegram request and rejection must be honored; it cannot be bypassed through the local path.
 
 For Telegram approvals, the notifier scans pending requests and posts
 inline **Approve** and **Reject** buttons to authorized recipients. Callback
@@ -105,8 +95,7 @@ progress does not replace or satisfy milestone approval.
 
 ## 6. Scheduling and installation
 
-The timer utility can install disabled-by-default per-project systemd user
-units. `pw-timer setup-user` performs explicit non-root setup for the separate
+`pw authorize-execution --yes --minutes N` enables persistent execution authorization and installs disabled-by-default per-project systemd user units. It prints how to activate them with `pw timer enable NAME`. Timer installation alone never enables scheduling. The timer utility can also install units independently. `pw-timer setup-user` performs explicit non-root setup for the separate
 approval notification timer, only after validating Telegram configuration.
 The Debian preview does **not** silently choose an operating-system user
 from its root-run installation script. The separate non-root onboarding, real Debian install/purge, Hermes plugin/gateway and a real Telegram Approve callback have passed isolated LXD tests. Generalized user onboarding, cross-source-version migration and stable uninstall/upgrade guarantees remain pending; see [release-checklist.md](release-checklist.md).
