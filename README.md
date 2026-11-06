@@ -42,7 +42,26 @@ curl -fsSL https://leftyfb.github.io/projectwright/projectwright-archive-keyring
 gpg --show-keys --with-fingerprint "$keyfile"
 ```
 
-**Check the displayed signing-key fingerprint against a trusted maintainer-published fingerprint before proceeding.** The download URL alone does not authenticate the key. Once verified, finish installation:
+**Verify the key before trusting it.** Obtain Projectwright's 40-character APT signing-key fingerprint from a **separately authenticated maintainer announcement** (not the downloaded key, the APT site, or a fingerprint file fetched from that same site). The maintainer must publish and confirm this reference out-of-band before a first-time user proceeds. If you don't have a trustworthy reference, **stop here**—do not install the key or add the repository.
+
+Enter the independently verified fingerprint below. The comparison is case-insensitive and refuses an invalid or mismatched value.
+
+```bash
+read -r -p "Verified 40-character Projectwright APT key fingerprint: " expected_fingerprint
+expected_fingerprint="${expected_fingerprint^^}"
+actual_fingerprint="$(gpg --batch --show-keys --with-colons "$keyfile" |
+  awk -F: '$1 == "fpr" {print toupper($10); exit}')"
+
+if [[ ! "$expected_fingerprint" =~ ^[0-9A-F]{40}$ ]] ||
+   [[ "$actual_fingerprint" != "$expected_fingerprint" ]]; then
+  echo "REFUSED: missing, invalid, or mismatched signing-key fingerprint" >&2
+  rm -f "$keyfile"
+  exit 1
+fi
+echo "Signing-key fingerprint matches the independently verified reference."
+```
+
+Only after that check succeeds, finish installation:
 
 ```sh
 sudo install -m 0644 "$keyfile" /usr/share/keyrings/projectwright-archive-keyring.gpg
