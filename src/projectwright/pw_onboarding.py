@@ -246,7 +246,9 @@ def approve_local(project: str, milestone: str, confirmed: bool) -> int:
     # An alternate approval channel must never bypass a rejected callback.
     pending_file = path.parent / "telegram_approval_pending.json"
     pending = json.loads(pending_file.read_text(encoding="utf-8")) if pending_file.is_file() else None
-    receipt = approve(config, path.parent, requirement, milestone, command, scopes,
+    from pw_config import load as load_effective_config
+    _, effective_config = load_effective_config(project, directory_override=path.parent)
+    receipt = approve(effective_config, path.parent, requirement, milestone, command, scopes,
                       expected=pending)
     if pending is not None:
         if receipt["git_head"] != pending.get("head"):
