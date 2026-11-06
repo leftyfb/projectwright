@@ -415,9 +415,15 @@ def status(project: str, as_json: bool) -> int:
     elif report.get("blockers") and "requirements_invalid" in report["blockers"]:
         next_action = f"Correct the listed requirements diagnostics, then rerun: pw status --project {project}"
     elif report.get("decision") == "awaiting_acceptance":
-        next_action = ("Milestone acceptance is pending. Approve through the configured "
-                       "Telegram callback; Projectwright will attempt to replenish "
-                       "the next milestone immediately after approval.")
+        pending_milestones = report.get("milestones")
+        if (isinstance(pending_milestones, list) and len(pending_milestones) == 1
+                and isinstance(pending_milestones[0], str)
+                and re.fullmatch(r"[A-Z][A-Z0-9_-]*-M[1-9][0-9]*", pending_milestones[0])):
+            next_action = f"Review the completed milestone, then run: pw approve {pending_milestones[0]}"
+        elif isinstance(pending_milestones, list) and len(pending_milestones) > 1:
+            next_action = "Review the pending milestones and approve each by ID with: pw approve MILESTONE-ID"
+        else:
+            next_action = "Review the pending milestone and its acceptance policy; use pw approve MILESTONE-ID or Telegram buttons."
     elif report.get("decision") == "busy":
         next_action = "A run is in progress; no action required. Check the user service journal for progress."
     elif (report.get("decision") == "blocked" and
@@ -467,6 +473,12 @@ def status(project: str, as_json: bool) -> int:
     if report.get("queue_counts_snapshot"):
         print("Queue counts: read-only snapshot while a run holds the lock")
     print(f"Current activity: {report.get('current_activity', 'unknown')} — {report.get('reason', 'unknown')}")
+    if report.get("decision") == "awaiting_acceptance":
+        pending_milestones = report.get("milestones")
+        if isinstance(pending_milestones, list) and pending_milestones:
+            for milestone in pending_milestones:
+                if isinstance(milestone, str):
+                    print(f"Milestone awaiting approval: {milestone}")
     task = report.get("current_task")
     if isinstance(task, dict):
         task_id = task.get("id") or task.get("task_id") or "?"
