@@ -24,6 +24,7 @@ class UnifiedCommandTests(unittest.TestCase):
             "notify": ("pw_notify", []),
             "timer": ("pw_project_timer", []),
             "setup": ("pw_project_timer", ["setup"]),
+            "gateway-restart": ("pw_project_timer", ["gateway-restart"]),
             "setup-user": ("pw_project_timer", ["setup-user"]),
             "defaults": ("pw_defaults", []),
             "init": ("pw_init", []),
