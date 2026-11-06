@@ -459,15 +459,14 @@ def run_tick(project, scripts, *, runner=subprocess.run, no_telegram=False, one_
         # Read-only observability: journal and queue are written by the worker.
         # Missing/inconsistent data is reported, not inferred as successful work.
         try:
-            root = default_project_root() / project
             import importlib.util
             spec = importlib.util.spec_from_file_location('pw_dispatch_manager_summary', scripts/'pw_queue_manager.py')
             manager_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(manager_module)
-            _, cfg = manager_module.project_config(project, root.parent)
-            journal_file = manager_module.worker_journal_path(cfg, root / 'config.json')
-            journal = json.loads(journal_file.read_text())
-            queue = (root/'queue.md').read_text(encoding='utf-8')
+            config_path, cfg = __import__('pw_config').load(project, default_project_root())
+            journal_file = manager_module.worker_journal_path(cfg, config_path)
+            journal = json.loads(journal_file.read_text(encoding='utf-8'))
+            queue = Path(cfg['queue']).read_text(encoding='utf-8')
             summary = manager_module.queue_summary(queue)
             completed = journal.get('last_completed_task') or {}
             if journal.get('current_task') is None and isinstance(completed.get('id'), str) and isinstance(completed.get('kind'), str):
