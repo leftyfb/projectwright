@@ -123,6 +123,34 @@ def setup_user_approvals(*, minutes=10, enable_plugin=False, hermes_cli='hermes'
 
 
 
+
+def restart_hermes_gateway(*, runner=subprocess.run, prompt=input) -> bool:
+    """Opt-in restart in the current user's systemd session only."""
+    if os.geteuid() == 0:
+        raise ValueError("Run gateway-restart as the Hermes user, not root")
+    service = "hermes-gateway.service"
+    try:
+        probe = runner(["systemctl", "--user", "is-active", service],
+                       capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        raise ValueError("Cannot inspect the user Hermes gateway; no restart attempted") from None
+    if probe.returncode != 0 or (probe.stdout or "").strip() != "active":
+        print("Hermes gateway is not active in this user session; no restart attempted.")
+        return False
+    print("A running Hermes gateway may still have old Projectwright Python modules loaded.")
+    print("Restarting it will interrupt any active Hermes conversations or tasks.")
+    if not sys.stdin.isatty():
+        raise ValueError("Gateway restart requires an interactive terminal; no restart attempted")
+    answer = prompt("Restart hermes-gateway.service for this user now? [y/N] ").strip().lower()
+    if answer not in ("y", "yes"):
+        print("Hermes gateway left running.")
+        return False
+    runner(["systemctl", "--user", "restart", service], check=True, timeout=60)
+    print("Hermes gateway restarted. Retry the existing Telegram approval button if needed.")
+    return True
+
+
+
 def find_hermes_cli() -> str | None:
     """Find standard PATH or known user-local Hermes installations."""
     home = Path.home()
@@ -202,6 +230,12 @@ def setup_interactive(*, minutes=10, yes=False, no_telegram=False,
 
 
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == 'gateway-restart':
+        parser = argparse.ArgumentParser(description='Confirm a restart of this user\'s Hermes gateway')
+        parser.add_argument('action', choices=['gateway-restart'])
+        parser.parse_args()
+        restart_hermes_gateway()
+        return 0
     if len(sys.argv) > 1 and sys.argv[1] == 'setup':
         p = argparse.ArgumentParser(description='First-run Hermes and optional Telegram setup')
         p.add_argument('action', choices=['setup'])
