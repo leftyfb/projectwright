@@ -183,7 +183,9 @@ def main() -> int:
                           "project_directory": str(project_dir),
                           "decision": "disabled",
                           "initial_commit_created": initial_commit_created}))
-        return 0
+        # An empty project's initial Git HEAD is a required postcondition.
+        # Preserve the created files for recovery but signal incomplete setup.
+        return 2 if brand_new_empty and not initial_commit_created else 0
     if args.project is None:
         parser.error("Specify a repository path or --project")
     if args.config_dir is not None and not args.config_dir.is_absolute():
