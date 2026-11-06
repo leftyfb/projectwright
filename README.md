@@ -129,7 +129,7 @@ python3 -B -m unittest discover -s tests -p test_task_tracker_m1.py
 Review the implementation and commits; a passing test alone **does not approve** a milestone. To approve locally:
 
 ```sh
-pw approve --milestone TRACK-1-M1
+pw approve TRACK-1-M1
 pw plan
 pw status
 ```
@@ -138,9 +138,11 @@ After approval, plan the next milestone and repeat the one-task cycle. When M2 f
 
 ```sh
 python3 -B -m unittest discover -s tests -p test_task_tracker_m2.py
-pw approve --milestone TRACK-1-M2
+pw approve TRACK-1-M2
 pw status
 ```
+
+**Where does `TRACK-1-M1` come from?** It is the milestone ID at the start of a `###` heading in `.pw/requirements.md`. For example, `### TRACK-1-M1 — Scaffold and core lifecycle` means the command is `pw approve TRACK-1-M1`. You can find the IDs with `grep '^### ' .pw/requirements.md`; they also appear in `pw status` and `.pw/queue.md`.
 
 `pw approve` shows the selected acceptance command and scope, requires confirmation, and rechecks Git, task completion and acceptance evidence. Do not use `--yes` unless you already reviewed the work. For additional explanation and troubleshooting, see the [Task Tracker reference walkthrough](examples/task-tracker/README.md); the steps above stand alone.
 
@@ -172,10 +174,10 @@ Human milestone approval remains mandatory even in unattended mode. The schedule
 **Without Telegram:** when all milestone tasks are complete and committed, review `pw status`, the worktree and commits, then run:
 
 ```sh
-pw approve --milestone TRACK-1-M1
+pw approve TRACK-1-M1
 ```
 
-Replace the milestone ID with the actual one from your requirements. The command prints the configured acceptance command and scope and prompts you before running the guard. It refuses incomplete tasks, a dirty/wrong-branch worktree, invalid scope, failed tests, or stale acceptance evidence. It does not fabricate an approval record.
+Replace `TRACK-1-M1` with the milestone ID from the `###` heading in `.pw/requirements.md` (not the project name or task number). The command prints the configured acceptance command and scope and prompts you before running the guard. It refuses incomplete tasks, a dirty/wrong-branch worktree, invalid scope, failed tests, or stale acceptance evidence. It does not fabricate an approval record.
 
 **With Telegram (optional):** configure `TELEGRAM_BOT_TOKEN` and numeric `TELEGRAM_ALLOWED_USERS` in `~/.hermes/.env`, then run `pw setup` as your normal user. Review the prompt to activate the plugin and approval notifier, and restart an active Hermes gateway when appropriate. Authorized private-chat users can approve/reject from Telegram buttons; [setup and troubleshooting](docs/user-approval-setup.md).
 
