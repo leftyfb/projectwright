@@ -208,6 +208,36 @@ class OnboardingTests(unittest.TestCase):
         self.assertIn("Execution: disabled", out.getvalue())
         self.assertIn("pw init --project new", out.getvalue())
 
+    def test_status_shows_exact_pending_milestone_and_approval_command(self):
+        report = {"project": "demo", "decision": "awaiting_acceptance",
+                  "reason": "Completed milestone requires acceptance approval",
+                  "milestones": ["DEMO-1-M1"], "pending": 0, "completed": 4,
+                  "queue_blocked": 0, "blockers": []}
+        result = type("R", (), {"returncode": 3, "stdout": json.dumps(report), "stderr": ""})()
+        with patch.object(pw_onboarding.subprocess, "run", return_value=result), \
+             patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
+            self.assertEqual(pw_onboarding.status("demo", False), 3)
+        self.assertIn("Milestone awaiting approval: DEMO-1-M1", out.getvalue())
+        self.assertIn("pw approve DEMO-1-M1", out.getvalue())
+        with patch.object(pw_onboarding.subprocess, "run", return_value=result), \
+             patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
+            self.assertEqual(pw_onboarding.status("demo", True), 3)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload["milestones"], ["DEMO-1-M1"])
+        self.assertIn("pw approve DEMO-1-M1", payload["next_action"])
+
+    def test_status_shows_each_ambiguous_pending_milestone_without_guessing(self):
+        report = {"project": "demo", "decision": "awaiting_acceptance",
+                  "reason": "Multiple milestones pending", "milestones": ["DEMO-1-M1", "DEMO-1-M2"],
+                  "pending": 0, "completed": 8, "queue_blocked": 0, "blockers": []}
+        result = type("R", (), {"returncode": 3, "stdout": json.dumps(report), "stderr": ""})()
+        with patch.object(pw_onboarding.subprocess, "run", return_value=result), \
+             patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
+            self.assertEqual(pw_onboarding.status("demo", False), 3)
+        self.assertIn("Milestone awaiting approval: DEMO-1-M1", out.getvalue())
+        self.assertIn("Milestone awaiting approval: DEMO-1-M2", out.getvalue())
+        self.assertIn("pw approve MILESTONE-ID", out.getvalue())
+
     def test_status_human_and_json_share_manager_values(self):
         report = {
             "decision": "blocked",
