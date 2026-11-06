@@ -234,8 +234,8 @@ Reject malformed local input and document recovery without destroying user data.
             self.assertEqual(pending["milestone"], "TRACK-1-M1")
             self.assertFalse((project_dir / "telegram_approval_notified.json").exists())
 
-            # Without Telegram, approval is unavailable: replanning is gated
-            # locally and the valid fake provider is not called for M2.
+            # Before human approval, replanning is gated and the valid fake provider
+            # must not be invoked for M2, even with unattended execution authorized earlier.
             calls_before = calls.read_text(encoding="utf-8").splitlines()
             blocked_plan = run("plan", "--project", project, "--config-dir", str(state), expected=3)
             self.assertEqual(blocked_plan.stdout, "")  # gate blocks before planner output
@@ -247,11 +247,21 @@ Reject malformed local input and document recovery without destroying user data.
             self.assertNotIn("TRACK-1-M2", final_queue)
             final_config = json.loads(config_path.read_text(encoding="utf-8"))
             self.assertIs(final_config["execution"]["enabled"], False)
-            self.assertFalse((home / ".config/systemd/user" / f"projectwright-worker-{project}.timer").exists())
+            self.assertTrue((home / ".config/systemd/user" / f"projectwright-worker-{project}.timer").exists())
 
             provider_calls = [json.loads(line) for line in calls.read_text(encoding="utf-8").splitlines()]
             self.assertEqual(sum(call and call[0] == "chat" for call in provider_calls), 4)
             self.assertEqual(sum("-z" in call for call in provider_calls), 1)
+
+            # No Telegram is configured. Local approval must nevertheless use
+            # the real acceptance guard and consume the pinned pending request.
+            approved = run("approve", "--project", project, "--config-dir", str(state),
+                           "--milestone", "TRACK-1-M1", "--yes")
+            self.assertIn("TRACK-1-M1 accepted", approved.stdout)
+            self.assertFalse((project_dir / "telegram_approval_pending.json").exists())
+            approved_status = json.loads(run("status", "--project", project,
+                                            "--config-dir", str(state), "--json").stdout)
+            self.assertNotEqual(approved_status["decision"], "awaiting_acceptance")
 
 
 if __name__ == "__main__":
