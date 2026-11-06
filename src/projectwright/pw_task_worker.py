@@ -632,9 +632,20 @@ def run_agent(prompt: str, log) -> tuple[int, str]:
 
 
 def deliver(message: str, log) -> bool:
-    result = subprocess.run([HERMES, 'send', '--to', 'telegram', '--quiet'],
-                            input=message, stdout=log, stderr=subprocess.STDOUT,
-                            text=True, timeout=60)
+    # The dispatcher may run under systemd without the interactive user's PATH.
+    # Respect an explicit config override; resolve only the default binary name.
+    executable = HERMES
+    if executable == 'hermes':
+        from pw_project_timer import find_hermes_cli
+        executable = find_hermes_cli() or executable
+    try:
+        result = subprocess.run([executable, 'send', '--to', 'telegram', '--quiet'],
+                                input=message, stdout=log, stderr=subprocess.STDOUT,
+                                text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f'WARNING: Telegram worker notification not delivered: {exc}',
+              file=log, flush=True)
+        return False
     return result.returncode == 0
 
 
