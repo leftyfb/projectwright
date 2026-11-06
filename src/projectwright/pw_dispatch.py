@@ -517,7 +517,7 @@ def cli():
         return 0 if len(sys.argv) > 1 else 2
     command = sys.argv[1]
     if command not in commands:
-        print(f'Unknown Projectwright command: {command}\\n{usage}', file=sys.stderr)
+        print(f'Unknown Projectwright command: {command}\n{usage}', file=sys.stderr)
         return 2
     module, fixed = commands[command]
     # Shared onboarding commands accept --config-dir in the same sense as
