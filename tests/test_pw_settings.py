@@ -77,14 +77,15 @@ class SettingsTests(unittest.TestCase):
         before = self.path.read_bytes()
         with self.assertRaisesRegex(ValueError, "authorize-execution"):
             self.run_action("set", "execution.enabled", "true")
-        with self.assertRaisesRegex(ValueError, "authorize-execution"):
-            self.run_action("reset", "execution.enabled")
+        # Disabling execution or restoring the disabled default is safe.
+        self.run_action("set", "execution.enabled", "false")
+        self.run_action("reset", "execution.enabled")
         with self.assertRaisesRegex(ValueError, "pw plan"):
             self.run_action("set", "planning.enabled", "true")
         for key in ("id", "layout", "projectwright_initialized"):
             with self.assertRaisesRegex(ValueError, "cannot be changed"):
                 self.run_action("set", key, "different")
-        self.assertEqual(self.path.read_bytes(), before)
+        self.assertFalse(json.loads(self.path.read_text()).get("execution", {}).get("enabled", False))
 
     def test_sensitive_changes_require_explicit_yes(self):
         before = self.path.read_bytes()
