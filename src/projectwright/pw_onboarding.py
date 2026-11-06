@@ -242,7 +242,12 @@ def approve_local(project: str, milestone: str, confirmed: bool) -> int:
         if input("Approve this milestone after verification? [y/N] ").strip().lower() not in ("y", "yes"):
             print("Milestone not approved.")
             return 1
-    receipt = approve(config, path.parent, requirement, milestone, command, scopes)
+    # Honor any pinned Telegram request, including explicit rejections and staleness.
+    # An alternate approval channel must never bypass a rejected callback.
+    pending_file = path.parent / "telegram_approval_pending.json"
+    pending = json.loads(pending_file.read_text(encoding="utf-8")) if pending_file.is_file() else None
+    receipt = approve(config, path.parent, requirement, milestone, command, scopes,
+                      expected=pending)
     print(f"Milestone {milestone} accepted at Git HEAD {receipt['git_head']}.")
     print("Run pw plan to continue if further milestones remain.")
     return 0
