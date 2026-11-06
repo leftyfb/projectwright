@@ -51,6 +51,7 @@ Existing installations with external state remain supported. `--config-dir /abso
 | `pw timer ACTION NAME` | Inspect or explicitly manage a project timer |
 | `pw setup` | Check Hermes and optionally configure Telegram onboarding |
 | `pw setup-user` | Explicit non-root Telegram approval integration onboarding |
+| `pw gateway-restart` | Prompt the current user to restart an active Hermes gateway after an install or upgrade |
 
 Legacy `pw-dispatch`, `pw-manager`, `pw-worker`, `pw-notify`, and `pw-timer` entrypoints remain available. `pw init --project NAME --no-config` retains its config-free skeleton behavior; it cannot be combined with `--repo`.
 
