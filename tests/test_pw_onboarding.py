@@ -268,9 +268,9 @@ class OnboardingTests(unittest.TestCase):
         initialize(repo)
         state = repo / ".pw/state"
         (repo / ".pw/queue.md").write_text(
-            "- [ ] **P101 — EDIT** Build tracker\\n"
-            "- [ ] **P102 — TEST** Test tracker\\n"
-            "- [x] **P100 — READ** Review tracker\\n")
+            "- [ ] **P101 — EDIT** Build tracker\n"
+            "- [ ] **P102 — TEST** Test tracker\n"
+            "- [x] **P100 — READ** Review tracker\n")
         state.mkdir(parents=True, exist_ok=True)
         (state / "worker_journal.json").write_text(json.dumps({
             "schema_version": 1,
@@ -284,8 +284,8 @@ class OnboardingTests(unittest.TestCase):
                 "reason": "Project lock held; skip planning"
             })
         })()
-        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \\
-             patch.object(pw_onboarding.subprocess, "run", return_value=result), \\
+        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \
+             patch.object(pw_onboarding.subprocess, "run", return_value=result), \
              patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
             pw_onboarding.status("task-tracker", False)
         human = out.getvalue()
@@ -296,8 +296,8 @@ class OnboardingTests(unittest.TestCase):
         self.assertIn("Blockers: none reported", human)
         self.assertNotIn("Manager returned invalid blocker data", human)
         self.assertIn("no action required", human)
-        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \\
-             patch.object(pw_onboarding.subprocess, "run", return_value=result), \\
+        with patch.dict(os.environ, {"PROJECTWRIGHT_PROJECT_DIR": str(repo)}), \
+             patch.object(pw_onboarding.subprocess, "run", return_value=result), \
              patch("sys.stdout", new_callable=__import__("io").StringIO) as out:
             pw_onboarding.status("task-tracker", True)
         payload = json.loads(out.getvalue())
