@@ -91,4 +91,4 @@ pw authorize-execution --yes --minutes 5
 
 The command explicitly reports that the timer was created but left disabled and prints the activation command. Only when you are ready, run `pw timer enable myproject`. Use `pw timer status myproject` to inspect it and `pw timer disable myproject` to stop future activations. A completed milestone still requires local or Telegram approval; automatic execution does not bypass the guard.
 
-For the concrete end-to-end sample see the [self-contained Task Tracker steps in the README](../README.md#3-try-the-complete-task-tracker-example). For advanced settings see the [CLI reference](cli.md).
+For the concrete end-to-end sample see the [self-contained Task Tracker steps in the README](../README.md). For advanced settings see the [CLI reference](cli.md).
