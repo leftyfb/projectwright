@@ -227,6 +227,7 @@ def setup_interactive(*, minutes=10, yes=False, no_telegram=False,
     setup_user_approvals(minutes=minutes, enable_plugin=True, hermes_cli=hermes, runner=runner)
     print('Hermes/Telegram plugin and approval notifier enabled for this user.')
     print('Check Hermes gateway plugin loading before relying on callbacks.')
+    print('If Hermes gateway is already running, restart it after checking for active work: pw gateway-restart')
 
 
 def main() -> int:
