@@ -10,7 +10,7 @@ Projectwright orchestrates Hermes; it is not an AI model itself. Its Git worktre
 - `pw start` asks for confirmation before one manual dispatcher cycle.
 - `pw authorize-execution --yes --minutes N` authorizes persistent execution and **creates a disabled** per-project systemd user timer. It prints the exact activation command.
 - `pw timer enable PROJECT` starts recurring execution; `pw timer disable PROJECT` stops the schedule.
-- `pw approve --milestone ID` accepts a completed milestone locally **without Telegram**, after running the configured acceptance guard and an explicit human confirmation.
+- `pw approve MILESTONE-ID` accepts a completed milestone locally **without Telegram**, after running the configured acceptance guard and an explicit human confirmation.
 - Telegram approval buttons are optional. They use the same guard; enabling notifications is a separately consented action.
 - `pw notify` previews without sending; `pw notify --send` contacts configured Telegram recipients.
 
@@ -48,12 +48,12 @@ cat .pw/work_log.md
 Repeat the reviewed single-task run until the current milestone finishes. Once all tasks are committed, inspect the changes and evidence, then:
 
 ```sh
-pw approve --milestone APP-1-M1
+pw approve APP-1-M1
 pw plan
 pw status
 ```
 
-The milestone must have a valid `#### Acceptance` block in requirements with one command and one or more literal tracked scope paths. The command is executed as argv (not in a shell) under the project lock. The guard requires completed milestone tasks including a COMMIT, a clean worktree on the expected branch, valid scoped paths and a passing acceptance command. A test run alone is not approval. The guard refuses stale or rejected pending Telegram evidence rather than allowing local approval to override it.
+The ID is the identifier from a `###` milestone heading in `.pw/requirements.md` (e.g. `APP-1-M1`), not a task ID. The milestone must have a valid `#### Acceptance` block in requirements with one command and one or more literal tracked scope paths. The command is executed as argv (not in a shell) under the project lock. The guard requires completed milestone tasks including a COMMIT, a clean worktree on the expected branch, valid scoped paths and a passing acceptance command. A test run alone is not approval. The guard refuses stale or rejected pending Telegram evidence rather than allowing local approval to override it.
 
 ## Unattended task execution
 
@@ -84,7 +84,7 @@ If the timer already exists with the same configuration and is disabled, authori
 
 ## Telegram approvals (optional)
 
-Run `pw setup` as the ordinary Hermes user. It validates Hermes and, when Telegram credentials and authorized users are present, asks before enabling the approval plugin and user notification timer. An active gateway may need a reviewed restart with `pw gateway-restart`. Telegram transport is not needed for `pw approve --milestone ID`. See [Telegram setup](user-approval-setup.md).
+Run `pw setup` as the ordinary Hermes user. It validates Hermes and, when Telegram credentials and authorized users are present, asks before enabling the approval plugin and user notification timer. An active gateway may need a reviewed restart with `pw gateway-restart`. Telegram transport is not needed for `pw approve MILESTONE-ID`. See [Telegram setup](user-approval-setup.md).
 
 ## Status and recovery
 
