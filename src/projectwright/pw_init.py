@@ -153,7 +153,7 @@ def main() -> int:
                 "  git add .gitignore\\n"
                 '  git commit -m "Ignore Projectwright state"\\n'
                 "Projectwright did NOT commit anything for you.\\n",
-                file=__import__("sys").stderr,
+                file=sys.stderr,
             )
         return 0
     if args.project is None:
