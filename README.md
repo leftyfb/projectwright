@@ -142,7 +142,7 @@ pw approve TRACK-1-M2
 pw status
 ```
 
-**Where does `TRACK-1-M1` come from?** It is the milestone ID at the start of a `###` heading in `.pw/requirements.md`. For example, `### TRACK-1-M1 — Scaffold and core lifecycle` means the command is `pw approve TRACK-1-M1`. You can find the IDs with `grep '^### ' .pw/requirements.md`; they also appear in `pw status` and `.pw/queue.md`.
+**Where does `TRACK-1-M1` come from?** It is the milestone ID at the start of a `###` heading in `.pw/requirements.md`. For example, `### TRACK-1-M1 — Scaffold and core lifecycle` means the command is `pw approve TRACK-1-M1`. You can find all declared IDs with `grep '^### ' .pw/requirements.md`. **When approval is pending, `pw status` displays the exact milestone ID and `pw approve TRACK-1-M1` command**, so you don't need to look it up.
 
 `pw approve` shows the selected acceptance command and scope, requires confirmation, and rechecks Git, task completion and acceptance evidence. Do not use `--yes` unless you already reviewed the work. For additional explanation and troubleshooting, see the [Task Tracker reference walkthrough](examples/task-tracker/README.md); the steps above stand alone.
 
