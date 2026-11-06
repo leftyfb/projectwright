@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 
 from pw_dispatch import default_project_root
@@ -122,6 +123,38 @@ def main() -> int:
         except (ValueError, FileExistsError, OSError, subprocess.CalledProcessError) as exc:
             parser.error(str(exc))
         print(json.dumps({"project": output.parent.parent.name, "config": str(output), "project_directory": str(output.parent.parent), "decision": "disabled"}))
+        project_dir = output.parent.parent
+        # Keep stdout machine-readable. Make the required manual Git step
+        # unmissable on stderr for both new and existing repositories.
+        head = subprocess.run(
+            ["git", "-C", str(project_dir), "rev-parse", "--verify", "HEAD"],
+            capture_output=True, text=True, check=False,
+        )
+        git_state = subprocess.run(
+            ["git", "-C", str(project_dir), "status", "--porcelain"],
+            capture_output=True, text=True, check=False,
+        )
+        if head.returncode != 0:
+            print(
+                "\\nACTION REQUIRED: Projectwright initialized this repository, but Git has NO initial commit.\\n"
+                "Projectwright cannot plan or execute tasks until you create a commit.\\n"
+                f"  cd {project_dir}\\n"
+                "  git add .gitignore\\n"
+                '  git commit -m "Initialize project"\\n'
+                "Review git status before proceeding. Projectwright did NOT commit anything for you.\\n",
+                file=sys.stderr,
+            )
+        elif git_state.returncode == 0 and git_state.stdout.strip():
+            print(
+                "\\nACTION REQUIRED: Projectwright updated .gitignore, leaving Git changes.\\n"
+                "Review and commit the changes before planning or running tasks:\\n"
+                f"  cd {project_dir}\\n"
+                "  git status --short\\n"
+                "  git add .gitignore\\n"
+                '  git commit -m "Ignore Projectwright state"\\n'
+                "Projectwright did NOT commit anything for you.\\n",
+                file=__import__("sys").stderr,
+            )
         return 0
     if args.project is None:
         parser.error("Specify a repository path or --project")
