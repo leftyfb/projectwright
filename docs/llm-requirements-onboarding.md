@@ -78,7 +78,7 @@ Use the same repository-local workflow as the [README](../README.md). Projectwri
 5. Choose strict milestone sequencing with `pw config set planning.milestone_sequence strict`, then run `pw plan`.
 6. Review `pw status` and `cat .pw/queue.md`. Planning authorizes no worker execution.
 7. To run one task with an interactive confirmation, run `pw start`; inspect `git status --short`, `pw status`, and `.pw/work_log.md` after each step.
-8. When a milestone's tasks are complete, review its code, commits, and acceptance command; run `pw approve --milestone MILESTONE-ID` to approve it locally **without Telegram**. The approval guard verifies completed tasks, a clean Git tree, tracked authorized scope, and a passing acceptance command before recording a receipt.
+8. When a milestone's tasks are complete, review its code, commits, and acceptance command; run `pw approve MILESTONE-ID` to approve it locally **without Telegram**. The approval guard verifies completed tasks, a clean Git tree, tracked authorized scope, and a passing acceptance command before recording a receipt.
 9. Run `pw plan` after approval when there are additional milestones, and repeat the cycle.
 
 ## Optional unattended execution
