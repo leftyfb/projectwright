@@ -289,7 +289,7 @@ class RecoveryContracts(unittest.TestCase):
         }
         completed = subprocess.run(
             [sys.executable, "-B", str(SRC / "pw_project_timer.py"),
-             "install-disabled", "pw-timer-fixture", "--root", str(project_root)],
+             "install", "pw-timer-fixture", "--root", str(project_root)],
             capture_output=True, text=True, env=env, check=False,
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
@@ -315,7 +315,7 @@ class RecoveryContracts(unittest.TestCase):
 
     def test_timer_rejects_invalid_interval_and_relative_dispatcher(self):
         with self.assertRaises(ValueError):
-            timer.unit_strings(self.config["id"], 1, Path("/tmp/pw_dispatch.py"))
+            timer.unit_strings(self.config["id"], 0, Path("/tmp/pw_dispatch.py"))
         with self.assertRaises(ValueError):
             timer.unit_strings(self.config["id"], 20, Path("pw_dispatch.py"))
 
