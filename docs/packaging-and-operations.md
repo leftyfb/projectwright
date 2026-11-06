@@ -1,6 +1,6 @@
 # Debian packaging, installation and operations
 
-The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides the downloadable Debian package and checksums. Older development snapshots and test artifacts are documented as historical evidence in [release-checklist.md](release-checklist.md). A signed [GitHub Pages APT repository](apt-repository.md) is live; supported Ubuntu installations can use `sudo apt install projectwright` and receive upgrades via normal APT operations after configuring that source.
+The [latest GitHub Release](https://github.com/leftyfb/projectwright/releases/latest) provides the downloadable Debian package and checksums. Older development snapshots and test artifacts are documented as historical evidence in [release-checklist.md](release-checklist.md). A signed GitHub Pages APT repository is live; end-user installation commands are provided in the [README](../README.md#1-install). Maintainer-only signing and publishing procedures live in [maintainer/apt-publishing.md](maintainer/apt-publishing.md).
 
 ## How the artifact is built
 
