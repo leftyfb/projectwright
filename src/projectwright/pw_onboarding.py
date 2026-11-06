@@ -345,6 +345,15 @@ def status(project: str, as_json: bool) -> int:
                        "configured Telegram callback, then run: pw plan --project " + project)
     elif report.get("decision") == "busy":
         next_action = "A run is in progress; no action required. Check the user service journal for progress."
+    elif (report.get("decision") == "blocked" and
+          set(report.get("blockers") or []) in (
+              {"active_git_cycle", "dirty_worktree_review"},
+              {"active_git_cycle", "branch_or_worktree"})):
+        # The dispatcher independently validates a recorded EDIT/TEST/COMMIT
+        # cycle before allowing the next task. Do not call this a manual blocker.
+        next_action = ("An EDIT/TEST/COMMIT cycle is in progress; the next queued "
+                       "TEST or COMMIT will be attempted on the next timer activation "
+                       "if the recorded Git-cycle checks pass.")
     elif report.get("decision") in {"blocked", "quota_blocked"}:
         next_action = "Resolve the reported blocker or approval gate, then rerun pw status"
     elif type(report.get("pending")) is not int:
