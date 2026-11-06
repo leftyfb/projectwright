@@ -40,6 +40,31 @@ class OnboardingTests(unittest.TestCase):
         self.assertFalse(cfg["execution"]["enabled"])
         self.assertIn("pw_queue_manager", run.call_args.args[0])
 
+    def test_plan_healthy_no_op_is_success_without_claiming_blocker(self):
+        result = type("R", (), {"returncode": 3,
+                                "stdout": json.dumps({"project": "demo", "decision": "no_op",
+                                                      "reason": "Queue healthy and no review due"}),
+                                "stderr": ""})()
+        with patch.object(pw_onboarding.subprocess, "run", return_value=result), \\
+             patch("sys.stdout", new_callable=__import__("io").StringIO) as out, \\
+             patch("sys.stderr", new_callable=__import__("io").StringIO) as err:
+            self.assertEqual(pw_onboarding.authorize_planning("demo"), 0)
+        self.assertIn("No planning needed", out.getvalue())
+        self.assertIn("Queue healthy", out.getvalue())
+        self.assertEqual(err.getvalue(), "")
+        self.assertTrue(json.loads(self.config_path.read_text())["planning"]["enabled"])
+
+    def test_plan_awaiting_acceptance_remains_nonzero_and_explained(self):
+        result = type("R", (), {"returncode": 3,
+                                "stdout": json.dumps({"project": "demo",
+                                                      "decision": "awaiting_acceptance",
+                                                      "reason": "Milestone requires approval"}),
+                                "stderr": ""})()
+        with patch.object(pw_onboarding.subprocess, "run", return_value=result), \\
+             patch("sys.stderr", new_callable=__import__("io").StringIO) as err:
+            self.assertEqual(pw_onboarding.authorize_planning("demo"), 3)
+        self.assertIn("Milestone requires approval", err.getvalue())
+
     def test_malformed_configuration_and_escaping_requirements_fail_safely(self):
         for invalid in ("../demo", "bad/name", "Upper"):
             with self.assertRaisesRegex(ValueError, "Invalid project ID"):
