@@ -17,7 +17,7 @@ class ApprovalSetupTests(unittest.TestCase):
             if argv[2] == "is-active":
                 return Mock(returncode=0, stdout="active\\n")
             return Mock(returncode=0)
-        with patch.object(timer.os, "geteuid", return_value=1000), \\
+        with patch.object(timer.os, "geteuid", return_value=1000), \
              patch.object(timer.sys, "stdin", Mock(isatty=lambda: True)):
             self.assertFalse(timer.restart_hermes_gateway(runner=runner, prompt=lambda _:"n"))
             self.assertEqual(len(calls), 1)
@@ -29,7 +29,7 @@ class ApprovalSetupTests(unittest.TestCase):
         with patch.object(timer.os, "geteuid", return_value=0):
             with self.assertRaisesRegex(ValueError, "not root"):
                 timer.restart_hermes_gateway(runner=lambda *a, **k: self.fail("systemctl called"))
-        with patch.object(timer.os, "geteuid", return_value=1000), \\
+        with patch.object(timer.os, "geteuid", return_value=1000), \
              patch.object(timer.sys, "stdin", Mock(isatty=lambda: False)):
             calls = []
             def probe(argv, **kwargs):
