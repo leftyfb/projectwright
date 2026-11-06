@@ -431,6 +431,10 @@ def explicit_commit_paths(description: str) -> set[str] | None:
     if match is None:
         return None
     raw = match.group(1)
+    # Planner-generated COMMIT tasks may use the exact phrase
+    # 'commit only the verified changes to <paths>'. Discard only this known
+    # prose prefix; never ignore arbitrary words before the file list.
+    raw = re.sub(r'^the verified changes to\s+', '', raw, flags=re.IGNORECASE)
     parts = re.split(r',\s*(?:and\s+)?|\s+and\s+', raw)
     paths = {p.strip().strip('\x60') for p in parts}
     if (not paths or any(not p or not re.fullmatch(r'[A-Za-z0-9_./-]+', p)
