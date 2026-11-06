@@ -28,7 +28,7 @@ The `authorize-execution` command writes disabled systemd service/timer units wh
 
 Use `pw timer disable NAME` to stop recurring runs and `pw timer status NAME` to inspect the timer. `pw start` never authorizes persistent execution, installs a timer, or enables recurring execution.
 
-The milestone ID is the identifier in a `###` milestone heading of `.pw/requirements.md`, such as `TRACK-1-M1` in `### TRACK-1-M1 — Scaffold and core lifecycle`. It is **not** a task ID (`P101`) or project ID (`task-tracker`). Find IDs with `grep '^### ' .pw/requirements.md`.
+The milestone ID is the identifier in a `###` milestone heading of `.pw/requirements.md`, such as `TRACK-1-M1` in `### TRACK-1-M1 — Scaffold and core lifecycle`. It is **not** a task ID (`P101`) or project ID (`task-tracker`). Find all declared IDs with `grep '^### ' .pw/requirements.md`. When a milestone is awaiting acceptance, `pw status` prints `Milestone awaiting approval: TRACK-1-M1` and the corresponding `Next action: ... pw approve TRACK-1-M1` guidance; `pw status --json` includes the manager's `milestones` list and a `next_action` field.
 
 Local milestone approval is available without Telegram: `pw approve MILESTONE-ID --project NAME` prints the acceptance command and scope and asks for explicit human confirmation before invoking the guarded acceptance checks. You can also use `--yes` for deliberately reviewed noninteractive approval. The milestone must have completed tasks, valid acceptance rules, and clean Git state.
 
