@@ -50,7 +50,7 @@ class SafeInitTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertFalse(json.loads(result.stdout)["initial_commit_created"])
             self.assertIn("ACTION REQUIRED", result.stderr)
-            self.assertIn("*.swp\\n/.pw/\\n", (repo / ".gitignore").read_text())
+            self.assertIn("*.swp\n/.pw/\n", (repo / ".gitignore").read_text())
             head = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "HEAD"],
                                   capture_output=True)
             self.assertNotEqual(head.returncode, 0)
