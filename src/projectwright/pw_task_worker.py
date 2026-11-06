@@ -887,7 +887,7 @@ def process_once(*, dry_run=False, no_telegram=False) -> int:
                  f'- Task: {task.task_id} — {task.kind}: {task.description}\n'
                  f'- Result: {status}: {summary}\n'
                  f'- Verification: {verification}\n'
-                 f'- Changed: {", ".join(files) or "none"}; commit {after[0][:12] if after[0] != before[0] else "none"}\n'
+                 f'- Changed: {", ".join(files) or "none"}; commit {report_after[0][:12] if report_after[0] != before[0] else "none"}\n'
                  f'- Blocker: {reason if not ok else "None"}\n')
         with WORK_LOG.open('a', encoding='utf-8') as f:
             f.write(entry)
