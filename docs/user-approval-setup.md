@@ -6,7 +6,7 @@ while the required user bus and Hermes plugin configuration belong to a
 specific unprivileged account. There is no reliable way to select that
 account from an unattended installation. The intended user explicitly opts into Telegram during first-run setup.
 
-**Telegram is optional.** To approve locally without a bot, review the completed milestone and run `pw approve --milestone ID`. This prompts before calling the acceptance guard and does not require a Telegram bot, approval plugin, or notifier timer.
+**Telegram is optional.** To approve locally without a bot, review the completed milestone and run `pw approve MILESTONE-ID`. This prompts before calling the acceptance guard and does not require a Telegram bot, approval plugin, or notifier timer.
 
 To use Telegram buttons instead, the standard first-run command is:
 
