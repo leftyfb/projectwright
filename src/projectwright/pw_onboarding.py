@@ -290,9 +290,9 @@ def status(project: str, as_json: bool) -> int:
     # is usually .pw/state/worker_journal.json (not .pw/worker_journal.json).
     report["current_task"] = None
     if effective_cfg is not None:
-        from pw_worker_journal import journal_path, read as read_journal
+        from pw_worker_journal import journal_path
         try:
-            journal = read_journal(journal_path(effective_cfg, effective_path))
+            journal = json.loads(journal_path(effective_cfg, effective_path).read_text(encoding="utf-8"))
             current_task = journal.get("current_task")
             if isinstance(current_task, dict):
                 report["current_task"] = current_task
