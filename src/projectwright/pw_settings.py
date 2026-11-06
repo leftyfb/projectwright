@@ -48,6 +48,29 @@ SENSITIVE = {"branch", "worktree", "hermes", "provider.type",
              "quota.ha_env_file", "quota.allow_local_http",
              "notes.progress_file", "notes.mirrors.queue",
              "notes.mirrors.work_log"}
+DEFAULT_VALUES = {
+    "planning.milestone_sequence": "off",
+    "planning.trigger.pending_below": 3,
+    "planning.trigger.review_every_completed_tasks": 6,
+    "planning.trigger.replan_on_blocker": True,
+    "planning.queue.target_pending": 6,
+    "planning.queue.max_new_tasks": 5,
+    "planning.queue.max_pending": 10,
+    "provider.type": "hermes",
+    "quota.minimum_remaining_percent": 10,
+    "quota.timeout_seconds": 10,
+    "quota.remaining_entity": "sensor.codex_usage_weekly_remaining",
+    "quota.rate_limited_entity": None,
+    "quota.allow_local_http": False,
+    "test_file_patterns": ["scripts/test_*.py", "tests/test_*.py"],
+}
+
+
+def _effective_value(effective: dict, key: str):
+    actual = _nested(effective, key)
+    return DEFAULT_VALUES.get(key) if actual is None and key in DEFAULT_VALUES else actual
+
+
 PATHS = {"base", "queue", "work_log", "worktree", "lock", "run_log",
          "result_dir", "cycle_file", "worker_journal_file",
          "planning.requirements_file", "notes.progress_file",
@@ -180,17 +203,13 @@ def operate(action: str, project: str, key: str | None = None,
         raise ValueError("Refusing symlinked config.json")
     if action == "list":
         for name in sorted(KEYS | READ_ONLY):
-            actual = _nested(effective, name)
-            if name == "planning.milestone_sequence" and actual is None:
-                actual = "off"
+            actual = _effective_value(effective, name)
             print(f"{name} = {json.dumps(actual, sort_keys=True)}")
         return
     if key not in KEYS and key not in READ_ONLY:
         raise ValueError(f"Unknown setting: {key}. Use pw config list to see supported options")
     if action == "get":
-        actual = _nested(effective, key)
-        if key == "planning.milestone_sequence" and actual is None:
-            actual = "off"
+        actual = _effective_value(effective, key)
         print(json.dumps(actual, sort_keys=True))
         return
     if key in READ_ONLY:
@@ -204,7 +223,6 @@ def operate(action: str, project: str, key: str | None = None,
     value = _value(key, raw) if action == "set" else None
     if key in SENSITIVE and not yes:
         raise ValueError(f"{key} is sensitive; review the change and repeat with --yes")
-    from pw_config import load as reload_config
     # Lock the running worker out of configuration mutations and reject changes
     # while a Git cycle or an interrupted task is awaiting recovery.
     lock = Path(effective["lock"])
@@ -239,9 +257,8 @@ def operate(action: str, project: str, key: str | None = None,
             return
         # Validate embedded paths and security constraints with the canonical
         # loader before replacing the actual configuration file.
-        backup = path.with_name(".config-validation-" + str(os.getpid()) + ".json")
-        # The canonical loader only takes config.json, so validate on a temporary
-        # directory override with a temporary file holding candidate content.
+        # Use the embedded layout's security boundaries even for changes that
+        # do not involve a path, rather than trusting arbitrary JSON.
         if original.get("layout") == "embedded":
             from pw_embedded import directory
             state = directory(project, __import__("pw_dispatch").default_project_root())
