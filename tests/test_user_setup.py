@@ -10,6 +10,45 @@ import pw_project_timer as timer
 
 
 class ApprovalSetupTests(unittest.TestCase):
+    def test_gateway_restart_requires_current_user_confirmation(self):
+        calls = []
+        def runner(argv, **kwargs):
+            calls.append((argv, kwargs))
+            if argv[2] == "is-active":
+                return Mock(returncode=0, stdout="active\\n")
+            return Mock(returncode=0)
+        with patch.object(timer.os, "geteuid", return_value=1000), \\
+             patch.object(timer.sys, "stdin", Mock(isatty=lambda: True)):
+            self.assertFalse(timer.restart_hermes_gateway(runner=runner, prompt=lambda _:"n"))
+            self.assertEqual(len(calls), 1)
+            self.assertTrue(timer.restart_hermes_gateway(runner=runner, prompt=lambda _:"y"))
+        self.assertEqual(calls[-1][0], ["systemctl", "--user", "restart", "hermes-gateway.service"])
+        self.assertTrue(calls[-1][1]["check"])
+
+    def test_gateway_restart_never_runs_unattended_or_as_root(self):
+        with patch.object(timer.os, "geteuid", return_value=0):
+            with self.assertRaisesRegex(ValueError, "not root"):
+                timer.restart_hermes_gateway(runner=lambda *a, **k: self.fail("systemctl called"))
+        with patch.object(timer.os, "geteuid", return_value=1000), \\
+             patch.object(timer.sys, "stdin", Mock(isatty=lambda: False)):
+            calls = []
+            def probe(argv, **kwargs):
+                calls.append(argv)
+                return Mock(returncode=0, stdout="active\\n")
+            with self.assertRaisesRegex(ValueError, "interactive terminal"):
+                timer.restart_hermes_gateway(runner=probe)
+            self.assertEqual(calls, [["systemctl", "--user", "is-active", "hermes-gateway.service"]])
+
+    def test_gateway_restart_refuses_inactive_service(self):
+        calls = []
+        def probe(argv, **kwargs):
+            calls.append(argv)
+            return Mock(returncode=3, stdout="inactive\\n")
+        with patch.object(timer.os, "geteuid", return_value=1000):
+            self.assertFalse(timer.restart_hermes_gateway(runner=probe,
+                                                          prompt=lambda _ : self.fail("prompted")))
+        self.assertEqual(len(calls), 1)
+
     def test_find_hermes_in_user_local_path(self):
         with tempfile.TemporaryDirectory(prefix="pw-hermes-local-") as temp:
             home = Path(temp)
