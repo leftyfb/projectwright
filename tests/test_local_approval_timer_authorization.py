@@ -58,7 +58,7 @@ class LocalApprovalAndAuthorizationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             directory = Path(td) / "myproject" / ".pw"
             directory.mkdir(parents=True)
-            pending = {"project": "myproject", "milestone": "APP-1-M1"}
+            pending = {"project": "myproject", "milestone": "APP-1-M1", "head": "abc123"}
             (directory / "telegram_approval_pending.json").write_text(json.dumps(pending))
             policy = {"milestones": {"APP-1-M1": {
                 "requirement": "APP-1",
@@ -74,6 +74,7 @@ class LocalApprovalAndAuthorizationTests(unittest.TestCase):
                 self.assertEqual(pw_onboarding.approve_local("myproject", "APP-1-M1", True), 0)
             self.assertEqual(approve.call_args.kwargs["expected"], pending)
             self.assertIn("APP-1-M1 accepted", output.getvalue())
+            self.assertFalse((directory / "telegram_approval_pending.json").exists())
 
 
 if __name__ == "__main__":
