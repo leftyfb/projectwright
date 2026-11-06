@@ -39,6 +39,19 @@ class UnifiedCommandTests(unittest.TestCase):
                     self.assertEqual(called.call_args.args[0],
                         [sys.executable, "-B", "-m", module, *flags, "--help"])
 
+    def test_config_infers_project_from_embedded_worktree(self):
+        with patch.object(sys, "argv", ["pw", "config", "list"]), \
+             patch("pw_embedded.discover", return_value=Path("/tmp/demo/.pw")), \
+             patch.object(pw_dispatch.subprocess, "run",
+                          return_value=subprocess.CompletedProcess([], 0)) as called:
+            self.assertEqual(pw_dispatch.cli(), 0)
+        self.assertEqual(called.call_args.args[0], [
+            sys.executable, "-B", "-m", "pw_settings", "list",
+            "--project", "demo",
+        ])
+        self.assertEqual(called.call_args.kwargs["env"]["PROJECTWRIGHT_PROJECT_DIR"],
+                         "/tmp/demo")
+
     def test_setup_options_forward_without_side_effects(self):
         with patch.object(sys, "argv", ["pw", "setup", "--minutes", "15", "--yes"]), patch.object(
             pw_dispatch.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
