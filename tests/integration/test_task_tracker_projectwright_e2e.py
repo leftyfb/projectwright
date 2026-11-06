@@ -256,7 +256,7 @@ Reject malformed local input and document recovery without destroying user data.
             # No Telegram is configured. Local approval must nevertheless use
             # the real acceptance guard and consume the pinned pending request.
             approved = run("approve", "--project", project, "--config-dir", str(state),
-                           "--milestone", "TRACK-1-M1", "--yes")
+                           "TRACK-1-M1", "--yes")
             self.assertIn("TRACK-1-M1 accepted", approved.stdout)
             self.assertFalse((project_dir / "telegram_approval_pending.json").exists())
             approved_status = json.loads(run("status", "--project", project,
