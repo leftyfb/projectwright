@@ -67,68 +67,28 @@ For strict milestone acceptance, each milestone needs an `#### Acceptance` subse
 
 This is a format illustration, not a valid ready-to-run specification: replace every illustrative command and path with verified values for your repository. Projectwright validates requirement/milestone heading syntax and acceptance policy when planning; diagnostics must be resolved before planning can proceed. See [workflow and milestone gates](workflow.md) for acceptance-policy details.
 
-## End-to-end manual workflow
+## End-to-end workflow: repository-local projects
 
-Use an existing, initialized Git worktree with a named branch and a HEAD commit. Projectwright state and the application repository are distinct: by default, state is under `$XDG_CONFIG_HOME/projects/<id>/` (normally `~/.config/projects/<id>/`), while the repository can be at a path such as `~/repos/myproject`. `pw init --repo` connects the two; it does not clone, initialize or otherwise modify the Git repository. One Projectwright project coordinates one worktree, not multiple repositories as a single task.
+Use the same repository-local workflow as the [README](../README.md). Projectwright state lives under `.pw/` inside the Git repository, not in a separate project directory.
 
-1. Describe the project to Hermes or another LLM and answer its clarification questions.
-2. Review the complete requirements draft, verify its commands and paths, settle decisions, and save it at `<project-state>/requirements.md`.
-3. Initialize the Projectwright project against your existing repository:
+1. Describe the intended application and ask Hermes or another LLM to draft incremental requirements using the prompt above.
+2. Review every scope, command, and open decision. Save the completed requirements at `.pw/requirements.md`.
+3. In a new project run `pw init ~/projects/myproject` followed by `cd ~/projects/myproject`. In an existing Git repository, run `pw init .` from the repository root.
+4. Run `pw requirements --edit` to enter the reviewed draft. Commit your starting application files and ensure Git has a HEAD commit.
+5. Choose strict milestone sequencing with `pw config set planning.milestone_sequence strict`, then run `pw plan`.
+6. Review `pw status` and `cat .pw/queue.md`. Planning authorizes no worker execution.
+7. To run one task with an interactive confirmation, run `pw start`; inspect `git status --short`, `pw status`, and `.pw/work_log.md` after each step.
+8. When a milestone's tasks are complete, review its code, commits, and acceptance command; run `pw approve --milestone MILESTONE-ID` to approve it locally **without Telegram**. The approval guard verifies completed tasks, a clean Git tree, tracked authorized scope, and a passing acceptance command before recording a receipt.
+9. Run `pw plan` after approval when there are additional milestones, and repeat the cycle.
 
-   ```sh
-   pw init --project myproject --repo ~/repos/myproject
-   ```
+## Optional unattended execution
 
-4. If using the default state root, save/copy the reviewed draft to `~/.config/projects/myproject/requirements.md`. If using a different configuration home, pass the same absolute `--config-dir /absolute/config/home` to commands; the project state is in its `projects/myproject/` subdirectory.
-5. Explicitly authorize planning and request a planning pass:
-
-   ```sh
-   pw plan --project myproject
-   ```
-
-   This enables planning only. It does not run a worker or enable execution. Planning requires valid requirements, a usable configured Git worktree and an available planner/provider.
-6. Inspect status and blockers, then read `queue.md` in the project-state directory. Check that tasks match the requirements and remain within intended scope. Do not treat a proposed queue as permission to execute.
-
-   ```sh
-   pw status --project myproject
-   ```
-
-7. When ready, authorize a single manual dispatcher run interactively:
-
-   ```sh
-   pw start --project myproject
-   ```
-
-   Confirm the prompt. This is a one-run authorization and does not set persistent execution or install a timer. In a supervised non-interactive invocation, `pw start --project myproject --yes` is the explicit confirmation.
-8. Review `pw status`, work logs/results, and `git diff`. Completed tasks, commits and passing tests do not themselves constitute milestone acceptance.
-9. Test and inspect the work against the approved criteria. Human approval/rejection is supported through the configured Telegram callback flow; if that integration is not configured and enabled, milestone acceptance remains blocked. There is no separate manual operator approval command documented. See [Telegram approval setup](user-approval-setup.md).
-10. Resolve blockers, revise and re-review requirements if scope changes, then plan and inspect the queue again before manually starting another task. Repeat testing and review for each milestone. Acceptance can be recorded only through the supported Telegram callback flow, so work remains blocked at milestone acceptance when that integration is unavailable.
-
-The actual onboarding commands and flags are documented in the [`pw` CLI reference](cli.md). Other commands such as `pw tick` intentionally use the dispatcher path; do not substitute them for the explicit reviewed-queue/manual-start workflow unless you understand their behavior.
-
-## Manual runs and recurring execution are different
-
-`pw start` asks for confirmation and runs one manually authorized dispatcher cycle; it does not change `execution.enabled`, install a timer, or enable unattended recurrence. Repeat `pw start` when you have reviewed and authorized another manual cycle.
-
-Recurring execution is a separate opt-in. It requires persistent execution authorization and separate installation and activation of a per-project systemd user timer:
+Running `pw start` never enables a recurring schedule. To authorize persistent execution and create a **disabled** systemd user timer, run:
 
 ```sh
-pw authorize-execution --project myproject --yes
-pw timer install-disabled myproject
-pw timer enable myproject
+pw authorize-execution --yes --minutes 5
 ```
 
-`pw authorize-execution` changes the persistent project setting but does not schedule anything. `install-disabled` writes timer/service units without enabling the timer; `enable` activates the installed timer. Inspect or stop it with `pw timer status myproject` or `pw timer disable myproject`. Do not perform these recurring-execution steps unless unattended operation is intended. Review the [operator manual](manual.md) first.
+The command explicitly reports that the timer was created but left disabled and prints the activation command. Only when you are ready, run `pw timer enable myproject`. Use `pw timer status myproject` to inspect it and `pw timer disable myproject` to stop future activations. A completed milestone still requires local or Telegram approval; automatic execution does not bypass the guard.
 
-## State, repository, and configuration paths
-
-- Projectwright state: `$XDG_CONFIG_HOME/projects/<project-id>/`, normally `~/.config/projects/<project-id>/`. This contains `config.json`, `requirements.md`, `queue.md`, work logs and runtime state.
-- Git worktree: the repository path supplied to `pw init --repo`; it can be outside the state directory. Projectwright does not make a duplicate worktree during initialization.
-- Alternate configuration home: use the same absolute `--config-dir /absolute/config/home` for each `pw` command; Projectwright appends `projects/<project-id>` beneath it. Existing legacy roots are resolved according to the rules in [configuration-home.md](configuration-home.md); they are not migrated or deleted.
-
-If your project ID is `myproject` and you use defaults, the requirements file is `~/.config/projects/myproject/requirements.md`; the repository could independently be `~/repos/myproject`. Keep source/test paths in acceptance scope relative to the Git worktree, not relative to the state directory.
-
-## Optional Telegram approval
-
-Telegram approval is an optional integration, but this workflow's human acceptance callback requires it to be configured and enabled. Without that integration, milestone acceptance remains blocked; do not treat task completion or a test pass as acceptance. See [user-approval-setup.md](user-approval-setup.md).
-
+For the concrete end-to-end sample see the [self-contained Task Tracker steps in the README](../README.md#3-try-the-complete-task-tracker-example). For advanced settings see the [CLI reference](cli.md).
