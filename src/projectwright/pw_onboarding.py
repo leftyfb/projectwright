@@ -351,9 +351,17 @@ def status(project: str, as_json: bool) -> int:
               {"active_git_cycle", "branch_or_worktree"})):
         # The dispatcher independently validates a recorded EDIT/TEST/COMMIT
         # cycle before allowing the next task. Do not call this a manual blocker.
-        next_action = ("An EDIT/TEST/COMMIT cycle is in progress; the next queued "
-                       "TEST or COMMIT will be attempted on the next timer activation "
-                       "if the recorded Git-cycle checks pass.")
+        pending_tasks = report.get("pending_tasks")
+        candidate = (pending_tasks[0] if isinstance(pending_tasks, list)
+                     and pending_tasks and isinstance(pending_tasks[0], dict) else {})
+        task_id, kind = candidate.get("id"), candidate.get("kind")
+        if isinstance(task_id, str) and kind in ("TEST", "COMMIT"):
+            next_action = (f"{task_id} — {kind} will be attempted automatically on the "
+                           "next timer activation if the Git-cycle checks pass.")
+        else:
+            next_action = ("An EDIT/TEST/COMMIT cycle is in progress; the next queued "
+                           "task will be attempted on the next timer activation "
+                           "if the recorded Git-cycle checks pass.")
     elif report.get("decision") in {"blocked", "quota_blocked"}:
         next_action = "Resolve the reported blocker or approval gate, then rerun pw status"
     elif type(report.get("pending")) is not int:
