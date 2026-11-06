@@ -55,5 +55,32 @@ class TimerStatusTests(unittest.TestCase):
                 self.assertEqual(timer.main(), 0)
             runner.assert_not_called()
 
+
+    def test_one_minute_timer_does_not_start_service_or_enable_schedule(self):
+        service, unit = timer.unit_strings("fixture", 1, Path("/usr/bin/pw_dispatch.py"))
+        self.assertIn("Type=oneshot", service)
+        self.assertIn("OnUnitInactiveSec=1min", unit)
+        self.assertNotIn("OnUnitActiveSec", unit)
+        with self.assertRaisesRegex(ValueError, "1..1440"):
+            timer.unit_strings("fixture", 0, Path("/usr/bin/pw_dispatch.py"))
+
+    def test_install_writes_disabled_units_without_enabling_timer(self):
+        with tempfile.TemporaryDirectory(prefix="pw-install-timer-") as td:
+            root = Path(td)
+            project = root / "projects" / "fixture"
+            project.mkdir(parents=True)
+            (project / "config.json").write_text(json.dumps({"id": "fixture"}))
+            argv = ["pw_project_timer.py", "install", "fixture", "--minutes", "1",
+                    "--root", str(root / "projects")]
+            with patch.object(timer.Path, "home", return_value=root), \\
+                 patch.object(timer.sys, "argv", argv), \\
+                 patch.object(timer.subprocess, "run",
+                              return_value=subprocess.CompletedProcess([], 0)) as run:
+                self.assertEqual(timer.main(), 0)
+            unit = (root / ".config/systemd/user/projectwright-worker-fixture.timer").read_text()
+            self.assertIn("OnUnitInactiveSec=1min", unit)
+            self.assertEqual(run.call_args.args[0], ["systemctl", "--user", "daemon-reload"])
+            self.assertEqual(run.call_count, 1)
+
 if __name__ == "__main__":
     unittest.main()
