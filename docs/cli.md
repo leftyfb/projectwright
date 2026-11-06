@@ -28,7 +28,9 @@ The `authorize-execution` command writes disabled systemd service/timer units wh
 
 Use `pw timer disable NAME` to stop recurring runs and `pw timer status NAME` to inspect the timer. `pw start` never authorizes persistent execution, installs a timer, or enables recurring execution.
 
-Local milestone approval is available without Telegram: `pw approve --project NAME --milestone MILESTONE-ID` prints the acceptance command and scope and asks for explicit human confirmation before invoking the guarded acceptance checks. You can also use `--yes` for deliberately reviewed noninteractive approval. The milestone must have completed tasks, valid acceptance rules, and clean Git state.
+The milestone ID is the identifier in a `###` milestone heading of `.pw/requirements.md`, such as `TRACK-1-M1` in `### TRACK-1-M1 — Scaffold and core lifecycle`. It is **not** a task ID (`P101`) or project ID (`task-tracker`). Find IDs with `grep '^### ' .pw/requirements.md`.
+
+Local milestone approval is available without Telegram: `pw approve MILESTONE-ID --project NAME` prints the acceptance command and scope and asks for explicit human confirmation before invoking the guarded acceptance checks. You can also use `--yes` for deliberately reviewed noninteractive approval. The milestone must have completed tasks, valid acceptance rules, and clean Git state.
 
 `pw status` prints a human-readable summary. While a worker holds the lock, status reads the live task journal and a read-only queue snapshot; a busy lock is not an approval blocker and the displayed counts may change as the task finishes. Add `--json` for machine-readable JSON. Both formats include the manager decision and reason, queue counts, blockers, project settings, and next action. JSON adds `recurring_execution_configured` and `recurring_execution_enabled`; these are `unknown` when the user timer cannot be inspected reliably, and `recurring_execution` summarizes the result as `enabled`, `disabled`, `not_configured`, or `unknown`.
 
