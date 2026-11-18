@@ -71,22 +71,41 @@ def _authorized_successor_commit(repo: Path, before: str, after: str, milestone:
     if not isinstance(journal, dict) or journal.get('current_task') is not None:
         return False
     completed = journal.get('last_completed_task')
-    if not isinstance(completed, dict) or completed.get('kind') != 'COMMIT':
+    if not isinstance(completed, dict):
         return False
-    if completed.get('git_head_before') != before or completed.get('git_head_after') != after:
+    # VERIFY replaces last_completed_task, so the worker journal retains the
+    # previous checked COMMIT's pinned before/after HEAD and task identity.
+    # An older journal with a last_completed COMMIT is valid during upgrade.
+    commit = (completed if completed.get('kind') == 'COMMIT'
+              else journal.get('last_verified_commit'))
+    if not isinstance(commit, dict) or commit.get('kind') != 'COMMIT':
         return False
-    return _scoped_successor(repo, before, after, milestone, queue, policy, completed.get('id'))
+    if commit.get('git_head_before') != before or commit.get('git_head_after') != after:
+        return False
+    return _scoped_successor(repo, before, after, milestone, queue, policy,
+                             commit.get('id'), allow_pending_verify=True)
 
 
 def _scoped_successor(repo: Path, before: str, after: str, milestone: str,
-                      queue: str, policy: dict, task_id: str | None = None) -> bool:
+                      queue: str, policy: dict, task_id: str | None = None,
+                      *, allow_pending_verify: bool = False) -> bool:
     spec = policy.get('milestones', {}).get(milestone) if isinstance(policy, dict) else None
     if acceptance_policy_fingerprint(spec) is None:
         return False
     req = spec['requirement']
     tasks = scoped_tasks(queue, req, milestone)
     commits = [t for t in tasks if t['kind'] == 'COMMIT' and t['state'] == 'x']
-    if not tasks or any(t['state'] != 'x' for t in tasks) or len(commits) != 1:
+    if not tasks or len(commits) != 1:
+        return False
+    if allow_pending_verify:
+        # A completed COMMIT is pinned by the worker journal. A following
+        # read-only VERIFY must remain runnable even when this successor
+        # modifies files covered by the previous milestone's receipt.
+        # Never carry a receipt through pending EDIT/TEST/COMMIT work.
+        if any(t['state'] != 'x' and
+               not (t['state'] == ' ' and t['kind'] == 'VERIFY') for t in tasks):
+            return False
+    elif any(t['state'] != 'x' for t in tasks):
         return False
     if task_id is not None and commits[0]['id'] != task_id:
         return False
