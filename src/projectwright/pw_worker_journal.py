@@ -121,10 +121,18 @@ def finalize(path: Path, task_id: str) -> None:
     c = data['current_task']
     if c is None or c['id'] != task_id or c['phase'] != 'verified':
         raise RuntimeError('Cannot finalize unverified journal task')
+    previous = data.get('last_completed_task')
+    if c['kind'] != 'COMMIT' and isinstance(previous, dict) and previous.get('kind') == 'COMMIT':
+        # Preserve the journal-verified successor COMMIT when the following
+        # read-only VERIFY task replaces last_completed_task. This also
+        # upgrades an active cycle from a journal written by older versions.
+        data['last_verified_commit'] = previous
     data['last_completed_task'] = {'id': task_id, 'kind': c['kind'],
                                    'completed_at': stamp(),
                                    'git_head_before': c['git_head_before'],
                                    'git_head_after': c.get('git_head_after')}
+    if c['kind'] == 'COMMIT':
+        data['last_verified_commit'] = data['last_completed_task']
     data['current_task'] = None
     atomic_json(path, data)
 
