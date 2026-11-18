@@ -71,12 +71,19 @@ def _authorized_successor_commit(repo: Path, before: str, after: str, milestone:
     if not isinstance(journal, dict) or journal.get('current_task') is not None:
         return False
     completed = journal.get('last_completed_task')
-    if not isinstance(completed, dict) or completed.get('kind') != 'COMMIT':
+    if not isinstance(completed, dict):
         return False
-    if completed.get('git_head_before') != before or completed.get('git_head_after') != after:
+    # VERIFY replaces last_completed_task, so the worker journal retains the
+    # previous checked COMMIT's pinned before/after HEAD and task identity.
+    # An older journal with a last_completed COMMIT is valid during upgrade.
+    commit = (completed if completed.get('kind') == 'COMMIT'
+              else journal.get('last_verified_commit'))
+    if not isinstance(commit, dict) or commit.get('kind') != 'COMMIT':
+        return False
+    if commit.get('git_head_before') != before or commit.get('git_head_after') != after:
         return False
     return _scoped_successor(repo, before, after, milestone, queue, policy,
-                             completed.get('id'), allow_pending_verify=True)
+                             commit.get('id'), allow_pending_verify=True)
 
 
 def _scoped_successor(repo: Path, before: str, after: str, milestone: str,
