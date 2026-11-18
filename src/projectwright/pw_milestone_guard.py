@@ -75,18 +75,30 @@ def _authorized_successor_commit(repo: Path, before: str, after: str, milestone:
         return False
     if completed.get('git_head_before') != before or completed.get('git_head_after') != after:
         return False
-    return _scoped_successor(repo, before, after, milestone, queue, policy, completed.get('id'))
+    return _scoped_successor(repo, before, after, milestone, queue, policy,
+                             completed.get('id'), allow_pending_verify=True)
 
 
 def _scoped_successor(repo: Path, before: str, after: str, milestone: str,
-                      queue: str, policy: dict, task_id: str | None = None) -> bool:
+                      queue: str, policy: dict, task_id: str | None = None,
+                      *, allow_pending_verify: bool = False) -> bool:
     spec = policy.get('milestones', {}).get(milestone) if isinstance(policy, dict) else None
     if acceptance_policy_fingerprint(spec) is None:
         return False
     req = spec['requirement']
     tasks = scoped_tasks(queue, req, milestone)
     commits = [t for t in tasks if t['kind'] == 'COMMIT' and t['state'] == 'x']
-    if not tasks or any(t['state'] != 'x' for t in tasks) or len(commits) != 1:
+    if not tasks or len(commits) != 1:
+        return False
+    if allow_pending_verify:
+        # A completed COMMIT is pinned by the worker journal. A following
+        # read-only VERIFY must remain runnable even when this successor
+        # modifies files covered by the previous milestone's receipt.
+        # Never carry a receipt through pending EDIT/TEST/COMMIT work.
+        if any(t['state'] != 'x' and
+               not (t['state'] == ' ' and t['kind'] == 'VERIFY') for t in tasks):
+            return False
+    elif any(t['state'] != 'x' for t in tasks):
         return False
     if task_id is not None and commits[0]['id'] != task_id:
         return False
